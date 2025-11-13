@@ -1,24 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
+@extends('layouts.base')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <title>Document</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+@section('page.title', 'Home')
 
-</head>
+@section('main-content')
+    <div class="container py-4">
+        <form method="GET" action="{{ route('home') }}" class="mb-4 d-flex">
+            <input type="text" name="url" class="form-control me-2" placeholder="Enter the API URL"
+                value="{{ $url ?? '' }}">
+            <button type="submit" class="btn btn-primary">Download</button>
+        </form>
 
-<body>
-    @include('includes.header.index')
-    @include('includes.main.index')
-    @include('includes.footer.index')
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous">
-    </script>
-</body>
-
-</html>
+        @if (empty($url))
+            <p class="text-center">Enter the URL and click "Upload" to get the data.</p>
+        @elseif(isset($data['error']))
+            <div class="alert alert-danger text-center">{{ $data['error'] }}</div>
+        @elseif(empty($data))
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Uploading data...</p>
+            </div>
+        @else
+            <ol>
+                @foreach ($data as $item)
+                    <li><strong>{{ $item['id'] }}</strong></li>
+                @endforeach
+            </ol>
+        @endif
+    </div>
+@endsection

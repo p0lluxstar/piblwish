@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\PostController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('pages.home.index');
-});
+Route::get('/', [PostController::class, 'index'])->name('home');
+
+Route::get('/about', function () {
+    return view('pages.about.index');
+})->name('about');
