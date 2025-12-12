@@ -2,7 +2,9 @@
 
 @section('page.title', 'About')
 
-
 @section('main-content')
-    <h1>About</h1>
+    <div class="container py-4">
+        <h1>About</h1>
+    </div>
+
 @endsection
