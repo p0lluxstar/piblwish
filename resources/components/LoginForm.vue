@@ -1,12 +1,18 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue';
 import axios from 'axios';
+
+interface User {
+    id: number;
+    name: string;
+    email: string;
+}
 
 axios.defaults.baseURL = 'http://localhost:8000';
 axios.defaults.withCredentials = true;
 axios.defaults.withXSRFToken = true;
 
-const user = ref(null);
+const user = ref<User | null>(null);
 
 const form = ref({
     email: '',
