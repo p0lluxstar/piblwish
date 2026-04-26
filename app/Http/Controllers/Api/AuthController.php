@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\JsonResponse;
 use App\Http\Resources\UserResource;
+use App\Http\Requests\Auth\LoginRequest;
 
 class AuthController extends Controller
 {
@@ -41,7 +42,7 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function login(Request $request): JsonResponse
+    public function login(LoginRequest $request): UserResource
     {
         $credentials = $request->validate([
             'email' => ['required', 'email'],
@@ -56,9 +57,11 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return response()->json([
-            'user' => new UserResource($request->user()),
-        ]);
+        // return response()->json([
+        //     'user' => new UserResource($request->user()),
+        // ]);
+
+        return UserResource::make($request->user());
     }
 
     public function logout(Request $request)

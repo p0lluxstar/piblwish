@@ -34,7 +34,7 @@ async function login() {
 
         // 2 Логин
         const response = await axios.post(
-            '/login',
+            '/api/v1/login',
             {
                 email: form.value.email,
                 password: form.value.password,
@@ -46,7 +46,7 @@ async function login() {
             },
         );
 
-        user.value = response.data.user;
+        user.value = response.data.data;
     } catch (e) {
         if (e.response?.status === 422) {
             error.value = 'Неверный логин или пароль';

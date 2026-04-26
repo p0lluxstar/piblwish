@@ -3,6 +3,8 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\TransformApiResponse;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,7 +14,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Включает stateful auth для Sanctum SPA, cookie auth + sessions + csrf
         $middleware->statefulApi();
+
+        // оборачивает JSON ответы в единый формат
+        $middleware->api(append: [
+            TransformApiResponse::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
