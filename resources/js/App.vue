@@ -1,12 +1,7 @@
-<script setup>
-console.log('test');
-</script>
+<script setup></script>
 
 <template>
-    <div>
-        <h1>Тестовая страница</h1>
-        <p>Laravel + Vue + Vite работает</p>
-    </div>
+    <router-view />
 </template>
 
 <script setup></script>
