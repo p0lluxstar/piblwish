@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import axios from 'axios';
+import { ref } from 'vue';
 
 interface User {
     id: number;
@@ -22,7 +22,7 @@ const form = ref({
 const loading = ref(false);
 const error = ref('');
 
-async function login() {
+async function login(): Promise<void> {
     error.value = '';
     loading.value = true;
 
@@ -58,7 +58,7 @@ async function login() {
     }
 }
 
-async function logout() {
+async function logout(): Promise<void> {
     try {
         await axios.post(
             '/logout',
@@ -74,7 +74,7 @@ async function logout() {
 
         form.value.email = '';
         form.value.password = '';
-    } catch (e) {
+    } catch {
         error.value = 'Ошибка выхода';
     }
 }
@@ -83,7 +83,8 @@ async function logout() {
 <template>
     <div class="auth-box">
         <div v-if="!user">
-            <h2>Вход</h2>
+            <p class="eyebrow">Вход</p>
+            <h2>Создать аккаунт</h2>
 
             <input
                 v-model="form.email"
@@ -97,7 +98,7 @@ async function logout() {
                 placeholder="Пароль"
             />
 
-            <button @click="login" :disabled="loading">
+            <button :disabled="loading" @click="login">
                 {{ loading ? 'Входим...' : 'Войти' }}
             </button>
 
