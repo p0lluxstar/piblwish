@@ -9,37 +9,34 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\JsonResponse;
-use App\Http\Resources\UserResource;
+use App\Http\Resources\Auth\UserResource;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Resources\Auth\RegistrationResource;
+use App\Http\Requests\Auth\RegistrationRequest;
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
+    public function register(RegistrationRequest $request)
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'min:6'],
-        ]);
-
         $user = User::create([
-            'name' => $request->name,
+            'username' => $request->username,
             'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'password' => $request->password,
         ]);
 
-        Auth::guard('web')->login($user);
+        $code = random_int(100000, 999999);
 
-        $request->session()->regenerate();
+        $user->registrationVerificationCodes()->create([
+            'code_hash' => Hash::make($code),
+            'expires_at' => now()->addMinutes(2),
+        ]);
 
-        return response()->json([
-            'message' => 'Пользователь создан',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
-        ], 201);
+        // Тут дальше обычно:
+        // 1. генерируется код подтверждения
+        // 2. код отправляется пользователю
+        // 3. пользователь НЕ логинится до подтверждения
+
+        return RegistrationResource::make($user);
     }
 
     public function login(LoginRequest $request): UserResource
@@ -56,10 +53,6 @@ class AuthController extends Controller
         }
 
         $request->session()->regenerate();
-
-        // return response()->json([
-        //     'user' => new UserResource($request->user()),
-        // ]);
 
         return UserResource::make($request->user());
     }

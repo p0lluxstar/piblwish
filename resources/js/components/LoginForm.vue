@@ -3,8 +3,8 @@ import axios from 'axios';
 import { ref } from 'vue';
 
 interface User {
-    id: number;
-    name: string;
+    id: string;
+    username: string;
     email: string;
 }
 
@@ -108,7 +108,7 @@ async function logout(): Promise<void> {
         </div>
 
         <div v-else>
-            <h2>Привет, {{ user.name }}</h2>
+            <h2>Привет, {{ user.username }}</h2>
 
             <button @click="logout">Выход</button>
         </div>

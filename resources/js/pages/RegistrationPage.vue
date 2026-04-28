@@ -47,7 +47,7 @@ function submitForm(): void {
                 placeholder="Подтверждение пароля"
             />
 
-            <PrimaryButton>Зарегистрироваться</PrimaryButton>
+            <PrimaryButton>Продолжить</PrimaryButton>
         </form>
 
         <p class="auth-link">
