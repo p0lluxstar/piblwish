@@ -1,19 +1,20 @@
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { ref } from 'vue';
 
+import RegistrationForm from '@/components/registration/RegistrationForm.vue';
+import VerificationCodeForm from '@/components/registration/VerificationCodeForm.vue';
 import BackOnMainPage from '@/components/ui/BackOnMainPage.vue';
-import MainInputForm from '@/components/ui/MainInputForm.vue';
-import PrimaryButton from '@/components/ui/PrimaryButton.vue';
 
-const form = reactive({
-    login: '',
-    email: '',
-    password: '',
-    passwordConfirmation: '',
-});
+const step = ref<'register' | 'verify'>('register');
+const verificationEmail = ref('');
 
-function submitForm(): void {
-    console.log(form);
+function handleRegisterSuccess(email: string): void {
+    verificationEmail.value = email;
+    step.value = 'verify';
+}
+
+function handleVerificationSuccess(): void {
+    console.log('Код подтвержден');
 }
 </script>
 
@@ -21,36 +22,31 @@ function submitForm(): void {
     <div class="content">
         <div class="header">
             <BackOnMainPage />
-            <p class="eyebrow">Регистрация</p>
+            <p class="eyebrow">
+                {{ step === 'register' ? 'Регистрация' : 'Подтверждение' }}
+            </p>
         </div>
 
-        <h2>Создать аккаунт</h2>
+        <h2>
+            {{
+                step === 'register'
+                    ? 'Создать аккаунт'
+                    : 'Введите код подтверждения'
+            }}
+        </h2>
 
-        <form class="registration-form" @submit.prevent="submitForm">
-            <MainInputForm v-model="form.login" placeholder="Логин" />
+        <RegistrationForm
+            v-if="step === 'register'"
+            @success="handleRegisterSuccess"
+        />
 
-            <MainInputForm
-                v-model="form.email"
-                type="email"
-                placeholder="Email"
-            />
+        <VerificationCodeForm
+            v-else
+            :email="verificationEmail"
+            @success="handleVerificationSuccess"
+        />
 
-            <MainInputForm
-                v-model="form.password"
-                type="password"
-                placeholder="Пароль"
-            />
-
-            <MainInputForm
-                v-model="form.passwordConfirmation"
-                type="password"
-                placeholder="Подтверждение пароля"
-            />
-
-            <PrimaryButton>Продолжить</PrimaryButton>
-        </form>
-
-        <p class="auth-link">
+        <p v-if="step === 'register'" class="auth-link">
             Уже зарегистрированы?
             <router-link to="/login">Войти</router-link>
         </p>
@@ -61,14 +57,6 @@ function submitForm(): void {
 .content {
     max-width: 530px;
     animation: fadeInUp 0.6s ease;
-}
-
-.registration-form {
-    margin-top: 32px;
-    max-width: 420px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
 }
 
 .header {

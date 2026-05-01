@@ -28,6 +28,8 @@
         "vue-tsc": "^3.2.7"
     },
     "dependencies": {
+        "@lucide/vue": "^1.14.0",
+        "@tanstack/vue-query": "^5.100.6",
         "axios": "^1.15.2",
         "vue": "^3.5.32",
         "vue-router": "^5.0.6"

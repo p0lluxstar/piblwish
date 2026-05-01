@@ -1,23 +1,15 @@
-<template>
-    <input
-        :value="modelValue"
-        class="input"
-        :type="type"
-        :placeholder="placeholder"
-        @input="updateValue"
-    />
-</template>
-
 <script setup lang="ts">
 interface Props {
     modelValue: string;
     type?: string;
     placeholder?: string;
+    code?: string;
 }
 
 withDefaults(defineProps<Props>(), {
     type: 'text',
     placeholder: '',
+    code: '',
 });
 
 const emit = defineEmits<{
@@ -29,6 +21,17 @@ function updateValue(event: Event): void {
     emit('update:modelValue', target.value);
 }
 </script>
+
+<template>
+    <input
+        class="input"
+        :value="modelValue"
+        :type="type"
+        :placeholder="placeholder"
+        :code="code"
+        @input="updateValue"
+    />
+</template>
 
 <style scoped>
 .input {
