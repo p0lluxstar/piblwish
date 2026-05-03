@@ -23,10 +23,6 @@ class TransformApiResponse
 
         $statusCode = $response->getStatusCode();
 
-        if ($statusCode >= 400) {
-            return $response;
-        }
-
         $data = $response->getData(true);
 
         return response()->json([

@@ -22,6 +22,27 @@ return Application::configure(basePath: dirname(__DIR__))
             TransformApiResponse::class,
         ]);
     })
+    ->withExceptions(function (Exceptions $exceptions) {
+        $exceptions->shouldRenderJsonWhen(function (Request $request, Throwable $e) {
+            return $request->expectsJson();
+        });
+
+        // Настраиваем формат ответа при ошибках
+        $exceptions->render(function (Throwable $e, Request $request) {
+            if ($request->expectsJson()) {
+                // Определяем статус-код (по умолчанию 500)
+                $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+
+                return response()->json([
+                    'success' => false,
+                    'statusCode' => $statusCode,
+                    'message' => $e->getMessage(),
+                    // Включаем ошибки валидации, если это ValidationException
+                    'errors' => method_exists($e, 'errors') ? $e->errors() : null,
+                ], $statusCode);
+            }
+        });
+    })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();

@@ -27,13 +27,15 @@ function resetImage(): void {
 <template>
     <main class="landing" @mousemove="handleMouseMove" @mouseleave="resetImage">
         <section class="left-panel">
-            <div class="brand">
-                <div class="logo">
-                    <span class="logo-heart">♥</span>
-                    <span class="logo-spark">✦</span>
+            <router-link to="/" class="brand-link">
+                <div class="brand">
+                    <div class="logo">
+                        <span class="logo-heart">♥</span>
+                        <span class="logo-spark">✦</span>
+                    </div>
+                    <h1>PiblWish</h1>
                 </div>
-                <h1>PiblWish</h1>
-            </div>
+            </router-link>
 
             <div class="hero-content">
                 <router-view />

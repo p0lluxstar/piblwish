@@ -15,10 +15,10 @@ return new class extends Migration
             $table->ulid('id')->primary();
             $table->string('username')->unique();
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
             $table->boolean('is_active')->default(false);
+            $table->timestamp('email_verified_at')->nullable();
             $table->timestamp('deactivated_at')->nullable();
             $table->timestamps();
         });
@@ -94,7 +94,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('registration_verification_codes', function (Blueprint $table) {
+        Schema::create('verification_registration_codes', function (Blueprint $table) {
             $table->ulid('id')->primary();
             $table->foreignUlid('user_id')
                 ->constrained()

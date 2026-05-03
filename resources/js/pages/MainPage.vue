@@ -33,55 +33,6 @@ function login(): void {
     </div>
 </template>
 
-<style scoped>
-.content {
-    max-width: 530px;
-    animation: fadeInUp 0.6s ease;
-}
+<style lang="scss" scoped>
 
-.eyebrow {
-    margin: 0 0 14px;
-    color: #d9467c;
-    font-size: 14px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-}
-
-.content h2 {
-    margin: 0;
-    max-width: 580px;
-    font-size: clamp(40px, 5vw, 70px);
-    font-weight: 600;
-    line-height: 1;
-    letter-spacing: -0.075em;
-    color: #2d1836;
-}
-
-.description {
-    max-width: 460px;
-    margin: 24px 0 0;
-    color: #7c6078;
-    font-size: 22px;
-    line-height: 1.5;
-}
-
-.actions {
-    margin-top: 42px;
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
 </style>

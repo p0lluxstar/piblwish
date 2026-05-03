@@ -4,11 +4,18 @@ use App\Http\Controllers\Api\AuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
+    // Маршруты для гостей (без авторизации) с ограничением 5 запросов в минуту
     Route::middleware(['throttle:5,1'])->group(function () {
         Route::post('/register', [AuthController::class, 'register']);
         Route::post('/login', [AuthController::class, 'login']);
+
+        // Маршрут подтверждения кода
+        Route::post('/verify-registration', [AuthController::class, 'verifyRegistrationCode']);
     });
 
+
+
+    // Маршруты только для авторизованных пользователей
     Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
     });

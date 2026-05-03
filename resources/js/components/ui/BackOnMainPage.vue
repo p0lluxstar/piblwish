@@ -11,9 +11,9 @@
     text-decoration: none;
     background: white;
     color: #d9467c;
-    font-size: 24px;
     font-weight: bold;
-    width: 40px;
+    width: 30px;
+    height: 30px;
     margin-bottom: 20px;
 
     &:hover {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useMutation } from '@tanstack/vue-query';
 import { reactive } from 'vue';
+import { useRouter } from 'vue-router';
 
 import BackOnMainPage from '@/components/ui/BackOnMainPage.vue';
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
@@ -9,44 +10,35 @@ import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import PrimaryButton from '@/components/ui/PrimaryButton.vue';
 import { api } from '@/lib/api';
 
-type RegisterPayload = {
-    username: string;
+type LoginPayload = {
     email: string;
     password: string;
-    password_confirmation: string;
 };
 
-const emit = defineEmits<{
-    success: [email: string];
-}>();
+const router = useRouter();
 
 const form = reactive({
-    login: '',
     email: '',
     password: '',
-    passwordConfirmation: '',
 });
 
-const registerMutation = useMutation({
-    mutationFn: (payload: RegisterPayload) => api.post('/v1/register', payload),
-    onSuccess: (_, variables) => {
-        emit('success', variables.email);
+const loginMutation = useMutation({
+    mutationFn: (payload: LoginPayload) => api.post('/v1/login', payload),
+    onSuccess: (data) => {
+        console.log('Успешный вход:', data);
+
+        router.push('/dashboard');
     },
 });
 
-const isLoading = registerMutation.isPending;
-const isError = registerMutation.isError;
+const isLoading = loginMutation.isPending;
+const isError = loginMutation.isError;
 
 async function submitForm(): Promise<void> {
-    // Сбрасываем прошлую ошибку и статус mutation перед новой отправкой формы
-    registerMutation.reset();
-
     try {
-        await registerMutation.mutateAsync({
-            username: form.login,
+        await loginMutation.mutateAsync({
             email: form.email,
             password: form.password,
-            password_confirmation: form.passwordConfirmation,
         });
     } catch (error) {
         console.error(error);
@@ -57,13 +49,13 @@ async function submitForm(): Promise<void> {
 <template>
     <div class="header">
         <BackOnMainPage />
-        <p class="eyebrow">Регистрация</p>
+
+        <p class="eyebrow">Вход</p>
     </div>
 
-    <h2>Создать аккаунт</h2>
-    <form class="registration-form" @submit.prevent="submitForm">
-        <InputRegistationForms v-model="form.login" placeholder="Логин" />
+    <h2>Войдите в аккаунт</h2>
 
+    <form class="auth-form" @submit.prevent="submitForm">
         <InputRegistationForms
             v-model="form.email"
             type="email"
@@ -76,23 +68,22 @@ async function submitForm(): Promise<void> {
             placeholder="Пароль"
         />
 
-        <InputRegistationForms
-            v-model="form.passwordConfirmation"
-            type="password"
-            placeholder="Подтверждение пароля"
-        />
-
         <PrimaryButton :disabled="isLoading">
             <LoaderButtonSpinner v-if="isLoading" />
-            <span v-else>Продолжить</span>
+            <span v-else>Войти</span>
         </PrimaryButton>
 
         <FormErrorMessage :show="isError" />
     </form>
+
+    <p class="auth-link">
+        Нет аккаунта?
+        <router-link to="/registration">Зарегистрироваться</router-link>
+    </p>
 </template>
 
 <style scoped>
-.registration-form {
+.auth-form {
     margin-top: 32px;
     max-width: 420px;
     display: flex;

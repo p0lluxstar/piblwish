@@ -12,7 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['username', 'email', 'password', 'is_active', 'deactivated_at'])]
+#[Fillable(['username', 'email', 'password', 'is_active', 'email_verified_at', 'deactivated_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -34,8 +34,9 @@ class User extends Authenticatable
         ];
     }
 
-    public function registrationVerificationCodes()
+    public function verificationRegistrationCodes()
+
     {
-        return $this->hasMany(RegistrationVerificationCode::class);
+        return $this->hasMany(VerificationRegistrationCode::class);
     }
 }

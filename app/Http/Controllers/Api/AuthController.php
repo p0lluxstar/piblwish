@@ -12,11 +12,14 @@ use Illuminate\Http\JsonResponse;
 use App\Http\Resources\Auth\UserResource;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Resources\Auth\RegistrationResource;
+use App\Http\Resources\Auth\VerifyRegistrationCodeResource;
 use App\Http\Requests\Auth\RegistrationRequest;
+use App\Http\Requests\Auth\VerifyRegistrationCodeRequest;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
-    public function register(RegistrationRequest $request)
+    public function register(RegistrationRequest $request): RegistrationResource
     {
         $user = User::create([
             'username' => $request->username,
@@ -26,17 +29,49 @@ class AuthController extends Controller
 
         $code = random_int(100000, 999999);
 
-        $user->registrationVerificationCodes()->create([
+        // Записываем в лог
+        Log::info("Код регистрации для {$user->email}: {$code}");
+
+        $user->verificationRegistrationCodes()->create([
             'code_hash' => Hash::make($code),
             'expires_at' => now()->addMinutes(2),
         ]);
 
-        // Тут дальше обычно:
-        // 1. генерируется код подтверждения
-        // 2. код отправляется пользователю
-        // 3. пользователь НЕ логинится до подтверждения
-
         return RegistrationResource::make($user);
+    }
+
+    public function verifyRegistrationCode(VerifyRegistrationCodeRequest $request): VerifyRegistrationCodeResource
+    {
+        $user = User::where('email', $request->email)->firstOrFail();
+
+        if ($user->email_verified_at) {
+            abort(400, 'Email уже подтвержден');
+        }
+
+        $verification = $user->verificationRegistrationCodes()
+            ->latest()
+            ->first();
+
+        if (!$verification) {
+            abort(404, 'Код не найден');
+        }
+
+        if ($verification->expires_at->isPast()) {
+            abort(400, 'Код истёк');
+        }
+
+        if (!Hash::check($request->code, $verification->code_hash)) {
+            abort(400, 'Неверный код');
+        }
+
+        $user->update([
+            'email_verified_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $user->verificationRegistrationCodes()->delete();
+
+        return new VerifyRegistrationCodeResource(null);
     }
 
     public function login(LoginRequest $request): UserResource

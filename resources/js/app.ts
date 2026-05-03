@@ -1,3 +1,6 @@
+import 'normalize.css';
+import '../scss/app.scss';
+
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { createApp } from 'vue';
 

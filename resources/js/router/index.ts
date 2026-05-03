@@ -28,6 +28,12 @@ const routes: RouteRecordRaw[] = [
             },
         ],
     },
+
+    {
+        path: '/dashboard',
+        name: 'dashboard',
+        component: () => import('@/pages/DashboardPage.vue'),
+    },
 ];
 
 // Инициализация Vue Router для управления навигацией приложения

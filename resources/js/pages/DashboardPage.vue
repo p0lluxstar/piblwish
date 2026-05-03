@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import LoginForm from '@/components/login/LoginForm.vue';
+import Dashboard from '@/components/dashboard/Dashboard.vue';
 </script>
 
 <template>
     <div class="content">
-        <LoginForm />
+        <Dashboard />
     </div>
 </template>
 
