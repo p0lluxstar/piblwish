@@ -56,7 +56,7 @@ function resetImage(): void {
     </main>
 </template>
 
-<style>
+<style scoped>
 * {
     box-sizing: border-box;
 }

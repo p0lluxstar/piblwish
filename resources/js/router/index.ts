@@ -1,7 +1,9 @@
 import type { RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 
+import DashboardLayout from '@/layouts/DashboardLayout.vue';
 import LandingLayout from '@/layouts/LandingLayout.vue';
+import DashboardPage from '@/pages/DashboardPage.vue';
 import LoginPage from '@/pages/LoginPage.vue';
 import MainPage from '@/pages/MainPage.vue';
 import RegistrationPage from '@/pages/RegistrationPage.vue';
@@ -31,8 +33,14 @@ const routes: RouteRecordRaw[] = [
 
     {
         path: '/dashboard',
-        name: 'dashboard',
-        component: () => import('@/pages/DashboardPage.vue'),
+        component: DashboardLayout,
+        children: [
+            {
+                path: '',
+                name: 'dashboard',
+                component: DashboardPage,
+            },
+        ],
     },
 ];
 
