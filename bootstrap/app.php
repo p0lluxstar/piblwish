@@ -16,11 +16,6 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Включает stateful auth для Sanctum SPA, cookie auth + sessions + csrf
         $middleware->statefulApi();
-
-        // оборачивает JSON ответы в единый формат
-        $middleware->api(append: [
-            TransformApiResponse::class,
-        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->shouldRenderJsonWhen(function (Request $request, Throwable $e) {
@@ -36,9 +31,12 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'statusCode' => $statusCode,
-                    'message' => $e->getMessage(),
-                    // Включаем ошибки валидации, если это ValidationException
-                    'errors' => method_exists($e, 'errors') ? $e->errors() : null,
+                    'data' => [
+                        'message' => $e->getMessage() ?: 'Server Error',
+                        // Включаем ошибки валидации, если это ValidationException
+                        'errors' => method_exists($e, 'errors') ? $e->errors() : null,
+                    ],
+
                 ], $statusCode);
             }
         });

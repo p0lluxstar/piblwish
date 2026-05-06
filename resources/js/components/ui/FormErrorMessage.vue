@@ -3,6 +3,7 @@ defineProps<{
     show: boolean;
     message?: string;
 }>();
+
 </script>
 
 <template>

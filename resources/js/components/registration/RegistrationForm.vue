@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useMutation } from '@tanstack/vue-query';
 import { reactive } from 'vue';
 
 import BackOnMainPage from '@/components/ui/BackOnMainPage.vue';
@@ -7,14 +6,7 @@ import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import InputRegistationForms from '@/components/ui/InputRegistationForms.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import PrimaryButton from '@/components/ui/PrimaryButton.vue';
-import { api } from '@/lib/api';
-
-type RegisterPayload = {
-    username: string;
-    email: string;
-    password: string;
-    password_confirmation: string;
-};
+import { useRegister } from '@/composables/useAuth';
 
 const emit = defineEmits<{
     success: [email: string];
@@ -27,27 +19,22 @@ const form = reactive({
     passwordConfirmation: '',
 });
 
-const registerMutation = useMutation({
-    mutationFn: (payload: RegisterPayload) => api.post('/v1/register', payload),
-    onSuccess: (_, variables) => {
-        emit('success', variables.email);
-    },
-});
-
-const isLoading = registerMutation.isPending;
-const isError = registerMutation.isError;
+const registerMutation = useRegister();
+const { mutateAsync: register, isPending, isError } = registerMutation;
 
 async function submitForm(): Promise<void> {
     // Сбрасываем прошлую ошибку и статус mutation перед новой отправкой формы
     registerMutation.reset();
 
     try {
-        await registerMutation.mutateAsync({
+        await register({
             username: form.login,
             email: form.email,
             password: form.password,
             password_confirmation: form.passwordConfirmation,
         });
+
+        emit?.('success', form.email);
     } catch (error) {
         console.error(error);
     }
@@ -82,8 +69,8 @@ async function submitForm(): Promise<void> {
             placeholder="Подтверждение пароля"
         />
 
-        <PrimaryButton :disabled="isLoading">
-            <LoaderButtonSpinner v-if="isLoading" />
+        <PrimaryButton :disabled="isPending">
+            <LoaderButtonSpinner v-if="isPending" />
             <span v-else>Продолжить</span>
         </PrimaryButton>
 

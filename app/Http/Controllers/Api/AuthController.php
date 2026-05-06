@@ -16,6 +16,7 @@ use App\Http\Resources\Auth\VerifyRegistrationCodeResource;
 use App\Http\Requests\Auth\RegistrationRequest;
 use App\Http\Requests\Auth\VerifyRegistrationCodeRequest;
 use Illuminate\Support\Facades\Log;
+use App\Http\Resources\ApiResource;
 
 class AuthController extends Controller
 {
@@ -82,9 +83,7 @@ class AuthController extends Controller
         ]);
 
         if (! Auth::guard('web')->attempt($credentials)) {
-            throw ValidationException::withMessages([
-                'email' => ['Неверный email или пароль.'],
-            ]);
+            abort(401, 'Неверный email или пароль.');
         }
 
         $request->session()->regenerate();
@@ -99,7 +98,7 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return response()->json([
+        return new ApiResource([
             'message' => 'Выход выполнен',
         ]);
     }

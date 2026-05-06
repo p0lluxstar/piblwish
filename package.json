@@ -33,6 +33,7 @@
         "@tanstack/vue-query": "^5.100.6",
         "axios": "^1.15.2",
         "normalize.css": "^8.0.1",
+        "pinia": "^3.0.4",
         "vue": "^3.5.32",
         "vue-router": "^5.0.6"
     }

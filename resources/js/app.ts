@@ -2,6 +2,7 @@ import 'normalize.css';
 import '../scss/app.scss';
 
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
+import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 
 import App from './App.vue';
@@ -16,4 +17,8 @@ const queryClient = new QueryClient({
     },
 });
 
-createApp(App).use(router).use(VueQueryPlugin, { queryClient }).mount('#app');
+const app = createApp(App);
+
+const pinia = createPinia();
+
+app.use(router).use(pinia).use(VueQueryPlugin, { queryClient }).mount('#app');

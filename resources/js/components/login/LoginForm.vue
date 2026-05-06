@@ -1,42 +1,23 @@
 <script setup lang="ts">
-import { useMutation } from '@tanstack/vue-query';
 import { reactive } from 'vue';
-import { useRouter } from 'vue-router';
 
 import BackOnMainPage from '@/components/ui/BackOnMainPage.vue';
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import InputRegistationForms from '@/components/ui/InputRegistationForms.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import PrimaryButton from '@/components/ui/PrimaryButton.vue';
-import { api } from '@/lib/api';
-
-type LoginPayload = {
-    email: string;
-    password: string;
-};
-
-const router = useRouter();
+import { useLogin } from '@/composables/useAuth';
 
 const form = reactive({
     email: '',
     password: '',
 });
 
-const loginMutation = useMutation({
-    mutationFn: (payload: LoginPayload) => api.post('/v1/login', payload),
-    onSuccess: (data) => {
-        console.log('Успешный вход:', data);
-
-        router.push('/dashboard');
-    },
-});
-
-const isLoading = loginMutation.isPending;
-const isError = loginMutation.isError;
+const { mutateAsync: login, isPending, isError, errorMessage } = useLogin();
 
 async function submitForm(): Promise<void> {
     try {
-        await loginMutation.mutateAsync({
+        await login({
             email: form.email,
             password: form.password,
         });
@@ -68,12 +49,12 @@ async function submitForm(): Promise<void> {
             placeholder="Пароль"
         />
 
-        <PrimaryButton :disabled="isLoading">
-            <LoaderButtonSpinner v-if="isLoading" />
+        <PrimaryButton :disabled="isPending">
+            <LoaderButtonSpinner v-if="isPending" />
             <span v-else>Войти</span>
         </PrimaryButton>
 
-        <FormErrorMessage :show="isError" />
+        <FormErrorMessage :show="isError" :message="errorMessage" />
     </form>
 
     <p class="auth-link">

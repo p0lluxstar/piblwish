@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { useMutation } from '@tanstack/vue-query';
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import InputRegistationForms from '@/components/ui/InputRegistationForms.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import PrimaryButton from '@/components/ui/PrimaryButton.vue';
-import { api } from '@/lib/api';
+import { useVerifyRegistration } from '@/composables/useAuth';
 
 const props = defineProps<{
     email: string;
@@ -57,27 +56,21 @@ const formattedTime = computed(() => {
 onMounted(startTimer);
 onUnmounted(stopTimer);
 
-const confirmCodeMutation = useMutation({
-    mutationFn: (payload: { email: string; code: string }) =>
-        api.post('/v1/verify-registration', payload),
-    onSuccess: () => {
-        emit('success');
-    },
-});
-
-const isLoading = confirmCodeMutation.isPending;
-const isError = confirmCodeMutation.isError;
+const VerifyRegistrationMutation = useVerifyRegistration();
+const { mutateAsync: verifyRegistration, isPending, isError } = VerifyRegistrationMutation;
 
 async function submitForm(): Promise<void> {
-    confirmCodeMutation.reset();
+    VerifyRegistrationMutation.reset();
 
     if (isExpired.value) return; // защита
 
     try {
-        await confirmCodeMutation.mutateAsync({
+        await verifyRegistration({
             email: props.email,
             code: form.code,
         });
+
+        emit('success');
     } catch (error) {
         console.error(error);
     }
@@ -103,8 +96,8 @@ function resendCode(): void {
             Код действует: {{ formattedTime }}
         </p>
 
-        <PrimaryButton v-if="!isExpired" :disabled="isLoading">
-            <LoaderButtonSpinner v-if="isLoading" />
+        <PrimaryButton v-if="!isExpired" :disabled="isPending">
+            <LoaderButtonSpinner v-if="isPending" />
             <span v-else>Подтвердить</span>
         </PrimaryButton>
 
