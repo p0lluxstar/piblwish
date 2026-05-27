@@ -192,9 +192,177 @@
                     }
                 ]
             }
+        },
+        "/v1/wishlists": {
+            "get": {
+                "tags": [
+                    "Wishlists"
+                ],
+                "summary": "Получить списки желаний пользователя",
+                "operationId": "eb58ca4ba94488a41c1d0b01d61ad0cd",
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "title": {
+                                                        "type": "string",
+                                                        "example": "День рождения"
+                                                    },
+                                                    "items": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer",
+                                                                    "example": 10
+                                                                },
+                                                                "label": {
+                                                                    "type": "string",
+                                                                    "example": "Книга «Мастер и Маргарита»"
+                                                                },
+                                                                "isSelected": {
+                                                                    "type": "boolean",
+                                                                    "example": false
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Wishlists"
+                ],
+                "summary": "Создать список желаний",
+                "operationId": "1c9270c3b553e8e37291e12e66fa7413",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "title",
+                                    "items"
+                                ],
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "example": "День рождения 2"
+                                    },
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "label": {
+                                                    "type": "string",
+                                                    "example": "Книга «Мастер и Маргарита»"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Список успешно создан",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "title": {
+                                                    "type": "string",
+                                                    "example": "День рождения 2"
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "label": {
+                                                                "type": "string",
+                                                                "example": "Свеча с ароматом ванили"
+                                                            },
+                                                            "isSelected": {
+                                                                "type": "boolean",
+                                                                "example": false
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Ошибка валидации"
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "tags": [
+        {
+            "name": "Wishlists",
+            "description": "Работа со списками желаний"
+        },
         {
             "name": "Auth",
             "description": "Auth"

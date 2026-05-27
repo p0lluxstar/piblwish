@@ -16,6 +16,6 @@ class UserController extends Controller
      */
     public function user(Request $request): UserResource
     {
-        return UserResource::make($request->user());
+        return new UserResource($request->user());
     }
 }

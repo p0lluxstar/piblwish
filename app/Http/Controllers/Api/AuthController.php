@@ -27,7 +27,7 @@ class AuthController extends Controller
             $request->validated()
         );
 
-        return RegistrationResource::make($user);
+        return new RegistrationResource($user);
     }
 
     public function verifyRegistrationCode(
@@ -48,7 +48,7 @@ class AuthController extends Controller
             $request
         );
 
-        return UserResource::make($user);
+        return new UserResource($user);
     }
 
     public function logout(

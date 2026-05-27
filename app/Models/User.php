@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['username', 'email', 'password', 'is_active', 'email_verified_at', 'deactivated_at'])]
 #[Hidden(['password', 'remember_token'])]
@@ -34,9 +35,13 @@ class User extends Authenticatable
         ];
     }
 
-    public function verificationRegistrationCodes()
-
+    public function verificationRegistrationCodes(): HasMany
     {
         return $this->hasMany(VerificationRegistrationCode::class);
+    }
+
+    public function wishlists(): HasMany
+    {
+        return $this->hasMany(Wishlist::class);
     }
 }

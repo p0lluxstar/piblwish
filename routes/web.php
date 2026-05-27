@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\WishlistController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +31,8 @@ Route::prefix('v1')->middleware('throttle:5,1')->group(function () {
 
 Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:30,1'])->group(function () {
     Route::get('/user', [UserController::class, 'user']);
+    Route::get('/wishlists', [WishlistController::class, 'userWishlists']);
+    Route::post('/wishlists', [WishlistController::class, 'createWishlist']);
 });
 
 // Logout (требует авторизации)
