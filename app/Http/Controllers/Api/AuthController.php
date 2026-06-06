@@ -3,75 +3,60 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\JsonResponse;
-use App\Http\Resources\UserResource;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegistrationRequest;
+use App\Http\Requests\Auth\VerifyRegistrationCodeRequest;
+use App\Http\Resources\ApiResource;
+use App\Http\Resources\Auth\RegistrationResource;
+use App\Http\Resources\Auth\UserResource;
+use App\Http\Resources\Auth\VerifyRegistrationCodeResource;
+use App\Services\Auth\AuthService;
+use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
-    {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'min:6'],
-        ]);
+    public function __construct(
+        private AuthService $authService
+    ) {}
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
 
-        Auth::guard('web')->login($user);
+    public function register(
+        RegistrationRequest $request
+    ): RegistrationResource {
+        $user = $this->authService->register(
+            $request->validated()
+        );
 
-        $request->session()->regenerate();
-
-        return response()->json([
-            'message' => 'Пользователь создан',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
-        ], 201);
+        return new RegistrationResource($user);
     }
 
-    public function login(LoginRequest $request): UserResource
-    {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
+    public function verifyRegistrationCode(
+        VerifyRegistrationCodeRequest $request
+    ): VerifyRegistrationCodeResource {
+        $this->authService->verifyRegistrationCode(
+            $request->validated()
+        );
 
-        if (! Auth::guard('web')->attempt($credentials)) {
-            throw ValidationException::withMessages([
-                'email' => ['Неверный email или пароль.'],
-            ]);
-        }
-
-        $request->session()->regenerate();
-
-        // return response()->json([
-        //     'user' => new UserResource($request->user()),
-        // ]);
-
-        return UserResource::make($request->user());
+        return new VerifyRegistrationCodeResource(null);
     }
 
-    public function logout(Request $request)
-    {
-        Auth::guard('web')->logout();
+    public function login(
+        LoginRequest $request
+    ): UserResource {
+        $user = $this->authService->login(
+            $request->validated(),
+            $request
+        );
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        return new UserResource($user);
+    }
 
-        return response()->json([
+    public function logout(
+        Request $request
+    ): ApiResource {
+        $this->authService->logout($request);
+
+        return new ApiResource([
             'message' => 'Выход выполнен',
         ]);
     }

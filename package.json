@@ -6,7 +6,7 @@
         "build": "vite build",
         "dev": "vite",
         "format": "prettier --write .",
-        "lint": "eslint . --ext .js,.vue",
+        "lint": "eslint . --ext .js,.ts,.vue",
         "type-check": "vue-tsc --noEmit"
     },
     "devDependencies": {
@@ -17,9 +17,11 @@
         "concurrently": "^9.0.1",
         "eslint": "^10.2.1",
         "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-simple-import-sort": "^13.0.0",
         "eslint-plugin-vue": "^10.8.0",
         "laravel-vite-plugin": "^3.0.0",
         "prettier": "^3.8.3",
+        "sass": "^1.99.0",
         "tailwindcss": "^4.0.0",
         "typescript": "^6.0.3",
         "vite": "^8.0.0",
@@ -27,7 +29,11 @@
         "vue-tsc": "^3.2.7"
     },
     "dependencies": {
+        "@lucide/vue": "^1.14.0",
+        "@tanstack/vue-query": "^5.100.6",
         "axios": "^1.15.2",
+        "normalize.css": "^8.0.1",
+        "pinia": "^3.0.4",
         "vue": "^3.5.32",
         "vue-router": "^5.0.6"
     }

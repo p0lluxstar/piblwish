@@ -9,9 +9,15 @@
         "sourceMap": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
-        "lib": ["ES2020", "DOM"]
+        "allowJs": true,
+        "checkJs": true,
+        "lib": ["ES2020", "DOM"],
+        "paths": {
+            "@/*": ["./resources/js/*"]
+        }
     },
     "include": [
+        "resources/js/**/*.js",
         "resources/js/**/*.ts",
         "resources/js/**/*.d.ts",
         "resources/js/**/*.tsx",
