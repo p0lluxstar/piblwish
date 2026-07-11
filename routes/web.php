@@ -31,8 +31,10 @@ Route::prefix('v1')->middleware('throttle:5,1')->group(function () {
 
 Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:30,1'])->group(function () {
     Route::get('/user', [UserController::class, 'user']);
-    Route::get('/wishlists', [WishlistController::class, 'userWishlists']);
+    Route::get('/wishlists', [WishlistController::class, 'getUserWishlists']);
     Route::post('/wishlists', [WishlistController::class, 'createWishlist']);
+    Route::get('/wishlists/{id}', [WishlistController::class, 'getWishlistById']);
+    Route::patch('/wishlists/{id}', [WishlistController::class, 'updateWishlist']);
 });
 
 // Logout (требует авторизации)

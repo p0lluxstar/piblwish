@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import Wishlist from '../wishlist/Wishlist.vue';
+import WishlistMain from '../wishlist/WishlistMain.vue';
 </script>
 
 <template>
-    <Wishlist />
+    <WishlistMain />
 </template>
 
 <style scoped></style>

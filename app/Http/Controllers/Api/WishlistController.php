@@ -9,6 +9,8 @@ use App\Http\Resources\Wishlist\WishlistResource;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Wishlist\CreateWishlistRequest;
 use App\Services\Wishlist\WishlistService;
+use Illuminate\Support\Facades\Log;
+use App\Http\Requests\Wishlist\UpdateWishlistRequest;
 
 class WishlistController extends Controller
 {
@@ -16,7 +18,8 @@ class WishlistController extends Controller
         private readonly WishlistService $wishlistService
     ) {}
 
-    public function userWishlists(
+    // Получить все вишлисты текущего пользователя
+    public function getUserWishlists(
         Request $request
     ): WishlistCollection {
         $wishlists = $this->wishlistService
@@ -25,6 +28,7 @@ class WishlistController extends Controller
         return new WishlistCollection($wishlists);
     }
 
+    // Создать новый вишлист
     public function createWishlist(
         CreateWishlistRequest $request
     ): WishlistResource {
@@ -33,6 +37,37 @@ class WishlistController extends Controller
                 $request->user(),
                 $request->validated()
             );
+
+        return new WishlistResource($wishlist);
+    }
+
+    // Получить конкретный вишлист по ID
+    public function getWishlistById(
+        Request $request,
+        string $id
+    ): WishlistResource {
+        Log::info('Wishlist ID:', [
+            'id' => $id,
+        ]);
+
+        $wishlist = $this->wishlistService
+            ->getWishlistById(
+                $request->user(),
+                $id
+            );
+
+        return new WishlistResource($wishlist);
+    }
+
+    public function updateWishlist(
+        UpdateWishlistRequest $request,
+        string $id
+    ): WishlistResource {
+        $wishlist = $this->wishlistService->updateWishlist(
+            $request->user(),
+            $id,
+            $request->validated()
+        );
 
         return new WishlistResource($wishlist);
     }

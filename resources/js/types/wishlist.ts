@@ -1,6 +1,7 @@
 export interface WishlistItem {
+    id?: string;
+    isSelected: boolean;
     label: string;
-    isSelected?: boolean;
 }
 
 export interface Wishlist {

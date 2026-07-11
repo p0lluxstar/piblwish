@@ -19,7 +19,7 @@ class AuthController extends Controller
         private AuthService $authService
     ) {}
 
-
+    // Регистрация нового пользователя
     public function register(
         RegistrationRequest $request
     ): RegistrationResource {
@@ -30,6 +30,7 @@ class AuthController extends Controller
         return new RegistrationResource($user);
     }
 
+    // Подтверждение кода регистрации
     public function verifyRegistrationCode(
         VerifyRegistrationCodeRequest $request
     ): VerifyRegistrationCodeResource {
@@ -40,6 +41,7 @@ class AuthController extends Controller
         return new VerifyRegistrationCodeResource(null);
     }
 
+    // Вход пользователя
     public function login(
         LoginRequest $request
     ): UserResource {
@@ -51,6 +53,7 @@ class AuthController extends Controller
         return new UserResource($user);
     }
 
+    // Выход пользователя
     public function logout(
         Request $request
     ): ApiResource {
