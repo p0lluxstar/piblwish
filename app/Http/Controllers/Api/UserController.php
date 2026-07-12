@@ -14,6 +14,8 @@ class UserController extends Controller
      *
      * Требует middleware: auth:sanctum
      */
+
+    // Получить текущего пользователя
     public function user(Request $request): UserResource
     {
         return new UserResource($request->user());
