@@ -55,7 +55,7 @@ class WishlistService
     public function updateWishlist(User $user, string $id, array $data): Wishlist
     {
 
-        logger('Входные данные для обновления:', $data);
+        // logger('Входные данные для обновления:', $data);
 
         return DB::transaction(function () use ($user, $id, $data) {
             $wishlist = Wishlist::query()
@@ -83,6 +83,17 @@ class WishlistService
             }
 
             return $wishlist->load('items');
+        });
+    }
+
+    public function deleteWishlist(User $user, string $id): void
+    {
+        DB::transaction(function () use ($user, $id) {
+            $wishlist = Wishlist::query()
+                ->where('user_id', $user->id)
+                ->where('id', $id)
+                ->firstOrFail();
+            $wishlist->delete();
         });
     }
 }

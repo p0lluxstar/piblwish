@@ -59,6 +59,8 @@ class WishlistController extends Controller
         return new WishlistResource($wishlist);
     }
 
+
+    // Обновить вишлист по ID
     public function updateWishlist(
         UpdateWishlistRequest $request,
         string $id
@@ -70,5 +72,19 @@ class WishlistController extends Controller
         );
 
         return new WishlistResource($wishlist);
+    }
+
+    // Удалить список желаний
+    public function deleteWishlist(
+        Request $request,
+        string $id
+    ): \Illuminate\Http\JsonResponse {
+        $this->wishlistService->deleteWishlist(
+            $request->user(),
+            $id
+        );
+        return response()->json([
+            'message' => 'Wishlist deleted successfully',
+        ]);
     }
 }
