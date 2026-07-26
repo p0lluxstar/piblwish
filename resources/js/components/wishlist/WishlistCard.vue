@@ -9,6 +9,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     edit: [wishlist: Wishlist];
+    delete: [wishlist: Wishlist];
 }>();
 
 const edit = (): void => {
@@ -16,7 +17,10 @@ const edit = (): void => {
 };
 
 const copyLink = (): void => {};
-const deleteCard = (): void => {};
+
+const deleteCard = (): void => {
+    emit('delete', props.wishlist);
+};
 </script>
 
 <template>
@@ -84,7 +88,7 @@ const deleteCard = (): void => {};
     position: absolute;
     display: flex;
     gap: 4px;
-    top: 4px;
+    top: 6px;
     right: 10px;
     font-size: 10px;
     color: #b3b3b3;
@@ -101,6 +105,7 @@ const deleteCard = (): void => {};
     display: flex;
     align-items: center;
     justify-content: space-between;
+    margin-top: 8px;
     margin-bottom: 14px;
 }
 

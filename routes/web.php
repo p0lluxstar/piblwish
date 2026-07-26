@@ -35,6 +35,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:30,1'])->group(functi
     Route::post('/wishlists', [WishlistController::class, 'createWishlist']);
     Route::get('/wishlists/{id}', [WishlistController::class, 'getWishlistById']);
     Route::patch('/wishlists/{id}', [WishlistController::class, 'updateWishlist']);
+    Route::delete('/wishlists/{id}', [WishlistController::class, 'deleteWishlist']);
 });
 
 // Logout (требует авторизации)

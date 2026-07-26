@@ -9,11 +9,14 @@ import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
 import WishlistCard from './WishlistCard.vue';
 import WishlistCreateModal from './WishlistCreateModal.vue';
 import WishlistEditModal from './WishlistEditModal.vue';
+import WishlistDeleteModal from './WishlistDeleteModal.vue';
 
 const queryClient = useQueryClient();
 const isCreateModalOpen = ref(false);
 const isEditModalOpen = ref(false);
 const selectedWishlist = ref<Wishlist | null>(null);
+const isDeleteModalOpen = ref(false);
+const wishlistToDelete = ref<Wishlist | null>(null);
 
 const fetchWishlists = async (): Promise<Wishlist[]> => {
     const response = await axios.get('/v1/wishlists');
@@ -89,6 +92,32 @@ const updateWishlist = (updated: Partial<Wishlist>): void => {
         );
     });
 };
+
+const deleteWishlistRequest = async (id: string): Promise<void> => {
+    await axios.delete(`/v1/wishlists/${id}`);
+};
+
+const { mutate: deleteWishlist, isPending: isDeleting } = useMutation({
+    mutationFn: deleteWishlistRequest,
+    onSuccess: async () => {
+        await queryClient.invalidateQueries({
+            queryKey: ['wishlists'],
+        });
+        closeDeleteModal(); // Закрываем модальное окно при успехе
+    },
+    onError: (error) => {
+        console.error('Ошибка удаления списка', error);
+    },
+});
+
+const openDeleteModal = (wishlist: Wishlist): void => {
+    wishlistToDelete.value = wishlist;
+    isDeleteModalOpen.value = true;
+};
+const closeDeleteModal = (): void => {
+    isDeleteModalOpen.value = false;
+    wishlistToDelete.value = null;
+};
 </script>
 
 <template>
@@ -127,6 +156,7 @@ const updateWishlist = (updated: Partial<Wishlist>): void => {
             :key="wishlist.id"
             :wishlist="wishlist"
             @edit="openEditModal"
+            @delete="openDeleteModal"
         />
     </div>
 
@@ -143,6 +173,14 @@ const updateWishlist = (updated: Partial<Wishlist>): void => {
         :is-pending="isUpdating"
         @close="closeEditModal"
         @updated="updateWishlist"
+    />
+
+    <WishlistDeleteModal
+        v-if="isDeleteModalOpen && wishlistToDelete"
+        :wishlist="wishlistToDelete"
+        :is-pending="isDeleting"
+        @close="closeDeleteModal"
+        @confirm="deleteWishlist(wishlistToDelete.id)"
     />
 </template>
 
