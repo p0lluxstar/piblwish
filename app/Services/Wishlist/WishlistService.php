@@ -41,17 +41,6 @@ class WishlistService
         });
     }
 
-    public function getWishlistById(
-        User $user,
-        string $id
-    ): Wishlist {
-        return Wishlist::query()
-            ->with('items')
-            ->where('user_id', $user->id)
-            ->where('id', $id)
-            ->firstOrFail();
-    }
-
     public function updateWishlist(User $user, string $id, array $data): Wishlist
     {
 

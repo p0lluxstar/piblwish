@@ -16,7 +16,36 @@ const edit = (): void => {
     emit('edit', props.wishlist);
 };
 
-const copyLink = (): void => {};
+const copyLink = async (): Promise<void> => {
+    const id = String(props.wishlist.id ?? '');
+    if (!id) {
+        console.warn('Wishlist id is empty, nothing to copy');
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(`/wishlists/${id}`);
+        console.log('Wishlist id copied to clipboard:', id);
+    } catch (err) {
+        // fallback for older browsers / non-secure contexts
+        const textarea = document.createElement('textarea');
+        textarea.value = id;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        try {
+            document.execCommand('copy');
+            console.log('Wishlist id copied via execCommand:', id);
+        } catch (err2) {
+            console.error('Copy to clipboard failed:', err2);
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    }
+};
 
 const deleteCard = (): void => {
     emit('delete', props.wishlist);
@@ -47,10 +76,11 @@ const deleteCard = (): void => {
             :key="itemIndex"
             class="item"
         >
-            <label class="checkbox-wrapper">
+            <label class="checkbox-wrapper-disabled">
                 <input
                     type="checkbox"
                     v-model="item.isSelected"
+                    disabled
                     class="checkbox-input"
                 />
 
@@ -121,7 +151,6 @@ const deleteCard = (): void => {
     gap: 10px;
     padding: 7px 0;
     border-bottom: 1px solid rgba(226, 195, 211, 0.25);
-    cursor: pointer;
     user-select: none;
 }
 
@@ -142,7 +171,8 @@ const deleteCard = (): void => {
 }
 
 .checked-text {
-    color: #c5a4d8;
+    // color: #c5a4d8;
+    color: #94a3b8;
     text-decoration: line-through;
 }
 

@@ -7,6 +7,7 @@ import DashboardPage from '@/pages/DashboardPage.vue';
 import LoginPage from '@/pages/LoginPage.vue';
 import MainPage from '@/pages/MainPage.vue';
 import RegistrationPage from '@/pages/RegistrationPage.vue';
+import WishlistViewPage from '@/pages/WishlistViewPage.vue';
 import { useAuthStore } from '@/stores/auth';
 
 const routes: RouteRecordRaw[] = [
@@ -45,6 +46,12 @@ const routes: RouteRecordRaw[] = [
             },
         ],
     },
+
+    {
+        path: '/wishlists/:id',
+        name: 'wishlist',
+        component: WishlistViewPage,
+    },
 ];
 
 // Инициализация Vue Router для управления навигацией приложения
@@ -65,8 +72,11 @@ const router = createRouter({
 router.beforeEach(async (to) => {
     const auth = useAuthStore();
 
-    if (!auth.initialized) {
-        await auth.fetchUser();
+    // Проверка, требуется ли аутентификация или гостевой доступ для целевого маршрута
+    if (to.meta.requiresAuth || to.meta.requiresGuest) {
+        if (!auth.initialized) {
+            await auth.fetchUser();
+        }
     }
 
     const isAuth = !!auth.user;
