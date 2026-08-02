@@ -8,8 +8,8 @@ import type { Wishlist } from '../../types/wishlist';
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
 import WishlistCard from './WishlistCard.vue';
 import WishlistCreateModal from './WishlistCreateModal.vue';
-import WishlistEditModal from './WishlistEditModal.vue';
 import WishlistDeleteModal from './WishlistDeleteModal.vue';
+import WishlistEditModal from './WishlistEditModal.vue';
 
 const queryClient = useQueryClient();
 const isCreateModalOpen = ref(false);
@@ -184,7 +184,7 @@ const closeDeleteModal = (): void => {
     />
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .top {
     display: flex;
     align-items: flex-end;
@@ -212,6 +212,16 @@ const closeDeleteModal = (): void => {
     font-weight: 500;
     cursor: pointer;
     font-family: 'DM Sans', sans-serif;
+    transition: opacity 0.2s;
+
+    &:hover:not(:disabled) {
+        opacity: 0.9;
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
 }
 
 .grid {

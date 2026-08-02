@@ -41,25 +41,6 @@ class WishlistController extends Controller
         return new WishlistResource($wishlist);
     }
 
-    // Получить конкретный вишлист по ID
-    public function getWishlistById(
-        Request $request,
-        string $id
-    ): WishlistResource {
-        Log::info('Wishlist ID:', [
-            'id' => $id,
-        ]);
-
-        $wishlist = $this->wishlistService
-            ->getWishlistById(
-                $request->user(),
-                $id
-            );
-
-        return new WishlistResource($wishlist);
-    }
-
-
     // Обновить вишлист по ID
     public function updateWishlist(
         UpdateWishlistRequest $request,

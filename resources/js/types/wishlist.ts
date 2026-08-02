@@ -7,5 +7,6 @@ export interface WishlistItem {
 export interface Wishlist {
     id: string;
     title: string;
+    username: string | null;
     items: WishlistItem[];
 }

@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WishlistController;
+use App\Http\Controllers\Api\SharedWishlistController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,13 +28,15 @@ Route::prefix('v1')->middleware('throttle:5,1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/verify-registration', [AuthController::class, 'verifyRegistrationCode']);
+
+    Route::get('/wishlists/{id}', [SharedWishlistController::class, 'getWishlistById']);
 });
 
 Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:30,1'])->group(function () {
     Route::get('/user', [UserController::class, 'user']);
     Route::get('/wishlists', [WishlistController::class, 'getUserWishlists']);
     Route::post('/wishlists', [WishlistController::class, 'createWishlist']);
-    Route::get('/wishlists/{id}', [WishlistController::class, 'getWishlistById']);
+    // Route::get('/wishlists/{id}', [WishlistController::class, 'getWishlistById']);
     Route::patch('/wishlists/{id}', [WishlistController::class, 'updateWishlist']);
     Route::delete('/wishlists/{id}', [WishlistController::class, 'deleteWishlist']);
 });

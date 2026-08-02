@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue';
+
 import type { Wishlist } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 
