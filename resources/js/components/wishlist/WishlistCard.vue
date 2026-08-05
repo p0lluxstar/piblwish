@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ExternalLink, FileEdit, Trash2 } from '@lucide/vue';
+import { computed } from 'vue';
 
 import type { Wishlist } from '../../types/wishlist';
 
@@ -12,8 +13,12 @@ const emit = defineEmits<{
     delete: [wishlist: Wishlist];
 }>();
 
-const edit = (): void => {
+const editCard = (): void => {
     emit('edit', props.wishlist);
+};
+
+const deleteCard = (): void => {
+    emit('delete', props.wishlist);
 };
 
 const copyLink = async (): Promise<void> => {
@@ -24,7 +29,9 @@ const copyLink = async (): Promise<void> => {
     }
 
     try {
-        await navigator.clipboard.writeText(`/wishlists/${id}`);
+        await navigator.clipboard.writeText(
+            `http://localhost:8000/shared-wishlists/${id}`,
+        );
         console.log('Wishlist id copied to clipboard:', id);
     } catch (err) {
         // fallback for older browsers / non-secure contexts
@@ -47,15 +54,21 @@ const copyLink = async (): Promise<void> => {
     }
 };
 
-const deleteCard = (): void => {
-    emit('delete', props.wishlist);
-};
+const progress = computed(() => {
+    const items = props.wishlist.items;
+
+    if (!items.length) return 0;
+
+    const selected = items.filter((item) => item.isSelected).length;
+
+    return (selected / items.length) * 100;
+});
 </script>
 
 <template>
     <div class="card">
         <div class="card-actions">
-            <button class="card-actions-btn" @click="edit">
+            <button class="card-actions-btn" @click="editCard">
                 <FileEdit :size="14" />
             </button>
             <button class="card-actions-btn" @click="copyLink">
@@ -99,7 +112,15 @@ const deleteCard = (): void => {
             </span>
         </div>
 
-        <div class="card-progress"></div>
+        <div class="card-progress-container">
+            <span class="progress-percent">{{ progress }}%</span>
+            <div class="card-progress">
+                <div
+                    class="card-progress-fill"
+                    :style="{ width: `${progress}%` }"
+                ></div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -176,11 +197,33 @@ const deleteCard = (): void => {
     text-decoration: line-through;
 }
 
+.card-progress-container {
+    margin-top: 0px;
+}
+
 .card-progress {
-    margin-top: 14px;
+    width: 100%;
     height: 3px;
-    background: rgba(196, 181, 253, 0.2);
-    border-radius: 3px;
+    background: #e5e7eb;
+    border-radius: 999px;
     overflow: hidden;
+}
+
+.card-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff8fab, #c4b5fd);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.progress-percent {
+    display: inline-block;
+    width: 100%;
+    font-size: 10px;
+    font-weight: 600;
+    color: #898989;
+    min-width: 45px;
+    text-align: right;
+    font-style: italic;
 }
 </style>

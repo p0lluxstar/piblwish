@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import WishlistView from '@/components/wishlist/WishlistView.vue';
+import WishlistShared from '@/components/wishlist/WishlistShared.vue';
 </script>
 
 <template>
     <main class="main">
         <div class="content">
-            <WishlistView />
+            <WishlistShared />
         </div>
     </main>
 </template>

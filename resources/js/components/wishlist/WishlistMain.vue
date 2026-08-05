@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Plus, RefreshCcw } from '@lucide/vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import axios from 'axios';
 import { ref } from 'vue';
@@ -24,7 +25,7 @@ const fetchWishlists = async (): Promise<Wishlist[]> => {
     return response.data.data;
 };
 
-const { data, isLoading, error } = useQuery({
+const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ['wishlists'],
     queryFn: fetchWishlists,
 });
@@ -93,6 +94,12 @@ const updateWishlist = (updated: Partial<Wishlist>): void => {
     });
 };
 
+const updateWishlists = async (): Promise<void> => {
+    await queryClient.invalidateQueries({
+        queryKey: ['wishlists'],
+    });
+};
+
 const deleteWishlistRequest = async (id: string): Promise<void> => {
     await axios.delete(`/v1/wishlists/${id}`);
 };
@@ -132,12 +139,20 @@ const closeDeleteModal = (): void => {
                 <span v-else>Загрузка списков...</span>
             </div>
         </div>
-        <button class="add-btn" @click="openCreateModal">+ Новый список</button>
+        <div class="flex gap-2">
+            <button class="add-btn" @click="openCreateModal">
+                <Plus :size="12" />
+                Новый список
+            </button>
+            <button class="update-btn" @click="updateWishlists">
+                <RefreshCcw :size="12" />
+                Обновить
+            </button>
+        </div>
     </div>
 
-    <!-- Контент меняется в зависимости от загрузки -->
     <div
-        v-if="isLoading"
+        v-if="isLoading || isFetching"
         class="flex items-center justify-center min-h-[400px]"
     >
         <LaoderPageSpinner />
@@ -202,7 +217,11 @@ const closeDeleteModal = (): void => {
     color: #b08cbe;
     margin-top: 2px;
 }
-.add-btn {
+.add-btn,
+.update-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     background: linear-gradient(135deg, #ff8fab, #c4b5fd);
     border: none;
     color: #fff;
@@ -213,6 +232,7 @@ const closeDeleteModal = (): void => {
     cursor: pointer;
     font-family: 'DM Sans', sans-serif;
     transition: opacity 0.2s;
+    line-height: 1.5;
 
     &:hover:not(:disabled) {
         opacity: 0.9;

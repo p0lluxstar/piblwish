@@ -7,7 +7,7 @@ import DashboardPage from '@/pages/DashboardPage.vue';
 import LoginPage from '@/pages/LoginPage.vue';
 import MainPage from '@/pages/MainPage.vue';
 import RegistrationPage from '@/pages/RegistrationPage.vue';
-import WishlistViewPage from '@/pages/WishlistViewPage.vue';
+import WishlistSharedPage from '@/pages/WishlistSharedPage.vue';
 import { useAuthStore } from '@/stores/auth';
 
 const routes: RouteRecordRaw[] = [
@@ -48,9 +48,9 @@ const routes: RouteRecordRaw[] = [
     },
 
     {
-        path: '/wishlists/:id',
-        name: 'wishlist',
-        component: WishlistViewPage,
+        path: '/shared-wishlists/:id',
+        name: 'shared-wishlist',
+        component: WishlistSharedPage,
     },
 ];
 

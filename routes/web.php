@@ -23,30 +23,43 @@ use App\Http\Controllers\Api\SharedWishlistController;
 |
 */
 
-// Аутентификация (stateful, через сессии)
+// Публичные маршруты (без авторизации)
 Route::prefix('v1')->middleware('throttle:5,1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/verify-registration', [AuthController::class, 'verifyRegistrationCode']);
 
-    Route::get('/wishlists/{id}', [SharedWishlistController::class, 'getWishlistById']);
+    // Route::get('/shared-wishlists/{id}', [SharedWishlistController::class, 'getWishlistById']);
+    // Route::patch(
+    //     '/shared-wishlists/{wishlist}/items',
+    //     [SharedWishlistController::class, 'updateSharedWishlistItems']
+    // );
 });
 
+// Только для авторизованных пользователей (через Sanctum)
 Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:30,1'])->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [UserController::class, 'user']);
     Route::get('/wishlists', [WishlistController::class, 'getUserWishlists']);
     Route::post('/wishlists', [WishlistController::class, 'createWishlist']);
-    // Route::get('/wishlists/{id}', [WishlistController::class, 'getWishlistById']);
     Route::patch('/wishlists/{id}', [WishlistController::class, 'updateWishlist']);
     Route::delete('/wishlists/{id}', [WishlistController::class, 'deleteWishlist']);
 });
 
-// Logout (требует авторизации)
-Route::post('/v1/logout', [AuthController::class, 'logout'])
-    ->middleware(['auth:sanctum', 'throttle:30,1']);
-
-
-// SPA fallback (ВСЕГДА в самом конце!)
+/**
+ * SPA Fallback
+ * 
+ * Все запросы, которые не попали под API или другие маршруты,
+ * перенаправляются на главную страницу.
+ * 
+ * Это необходимо для работы клиентского роутинга (Vue Router / React Router):
+ * - Пользователь может обновить страницу на любом URL
+ * - Можно делиться ссылками на конкретные страницы
+ * - SEO-боты получают HTML (если настроен SSR)
+ * 
+ * ВАЖНО: Этот маршрут должен быть ПОСЛЕДНИМ в файле routes/web.php!
+ * Иначе он перехватит все запросы, включая API.
+ */
 Route::get('/{any}', function () {
     return view('welcome');
 })->where('any', '.*');
