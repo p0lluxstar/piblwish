@@ -14,6 +14,7 @@ const isLoading = ref(true);
 const error = ref<string | null>(null);
 const wishlistId = String(route.params.id || '');
 const selectedItems = ref<string[]>([]);
+const isSaving = ref(false);
 
 const getWishlist = async (): Promise<void> => {
     if (!wishlistId) {
@@ -27,7 +28,7 @@ const getWishlist = async (): Promise<void> => {
 
     try {
         const response = await api.get<{ data: Wishlist }>(
-            `/v1/wishlists/${wishlistId}`,
+            `/api/v1/shared-wishlists/${wishlistId}`,
         );
         wishlist.value = response.data.data;
     } catch (fetchError) {
@@ -37,13 +38,35 @@ const getWishlist = async (): Promise<void> => {
         wishlist.value = null;
     } finally {
         isLoading.value = false;
+        isSaving.value = false;
     }
 };
 
 const save = async (): Promise<void> => {
-    // отправка выбранных элементов на сервер
+    if (selectedItems.value.length === 0 || isSaving.value) {
+        return;
+    }
 
-    console.log('Selected items to save:', selectedItems.value);
+    isSaving.value = true;
+
+    try {
+        const response = await api.patch<{ data: Wishlist }>(
+            `/api/v1/shared-wishlists/${wishlistId}/items`,
+            {
+                item_ids: selectedItems.value,
+            },
+        );
+
+        // Обновляем список актуальными данными с сервера
+        wishlist.value = response.data.data;
+
+        // Очищаем локальный список выбранных элементов
+        selectedItems.value = [];
+    } catch (error) {
+        console.error('Ошибка сохранения:', error);
+    } finally {
+        isSaving.value = false;
+    }
 };
 
 const hasChanges = computed(() => selectedItems.value.length > 0);
@@ -68,7 +91,9 @@ onMounted(getWishlist);
 
 <template>
     <div class="wishlist-view">
-        <div v-if="isLoading" class="loader"><LaoderPageSpinner /></div>
+        <div v-if="isLoading || isSaving" class="loader">
+            <LaoderPageSpinner />
+        </div>
 
         <div v-else-if="error" class="error">
             <p>{{ error }}</p>
@@ -122,13 +147,12 @@ onMounted(getWishlist);
                     </span>
                 </div>
 
-                <div class="card-progress"></div>
-
                 <div class="card-actions">
                     <button
                         class="card-actions-btn"
                         v-if="hasChanges"
                         @click="save"
+                        :disabled="isSaving"
                     >
                         <Save :size="20" />
                     </button>
@@ -244,13 +268,5 @@ onMounted(getWishlist);
     // color: #c5a4d8;
     color: #94a3b8;
     text-decoration: line-through;
-}
-
-.card-progress {
-    margin-top: 14px;
-    height: 3px;
-    background: rgba(196, 181, 253, 0.2);
-    border-radius: 3px;
-    overflow: hidden;
 }
 </style>
