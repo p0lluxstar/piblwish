@@ -28,10 +28,11 @@ const copyLink = async (): Promise<void> => {
         return;
     }
 
+    const appUrl = import.meta.env.VITE_API_URL || 'http://localhost:800';
+    const fullUrl = `${appUrl}/shared-wishlists/${id}`;
+
     try {
-        await navigator.clipboard.writeText(
-            `http://localhost:8000/shared-wishlists/${id}`,
-        );
+        await navigator.clipboard.writeText(fullUrl);
         console.log('Wishlist id copied to clipboard:', id);
     } catch (err) {
         // fallback for older browsers / non-secure contexts
@@ -43,7 +44,7 @@ const copyLink = async (): Promise<void> => {
         document.body.appendChild(textarea);
         textarea.select();
 
-        try {
+        try {y
             document.execCommand('copy');
             console.log('Wishlist id copied via execCommand:', id);
         } catch (err2) {
