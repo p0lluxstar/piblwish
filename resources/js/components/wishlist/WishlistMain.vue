@@ -2,8 +2,10 @@
 import { Plus, RefreshCcw } from '@lucide/vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import axios from 'axios';
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { computed } from 'vue';
+
+import { MOTIVATIONAL_PHRASES } from '@/constants/phrases';
 
 import type { Wishlist } from '../../types/wishlist';
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
@@ -18,6 +20,7 @@ const isEditModalOpen = ref(false);
 const selectedWishlist = ref<Wishlist | null>(null);
 const isDeleteModalOpen = ref(false);
 const wishlistToDelete = ref<Wishlist | null>(null);
+const randomPhrase = ref('');
 
 const fetchWishlists = async (): Promise<Wishlist[]> => {
     const response = await axios.get('/v1/wishlists');
@@ -125,6 +128,22 @@ const closeDeleteModal = (): void => {
     isDeleteModalOpen.value = false;
     wishlistToDelete.value = null;
 };
+
+// Функция для генерации случайной фразы
+const generateRandomPhrase = (): void => {
+    const randomIndex = Math.floor(Math.random() * MOTIVATIONAL_PHRASES.length);
+    randomPhrase.value = MOTIVATIONAL_PHRASES[randomIndex];
+};
+
+// Генерируем при монтировании
+onMounted(generateRandomPhrase);
+
+// Генерируем новую фразу при обновлении списков
+// Предположим, у вас есть функция updateWishlists
+// const updateWishlists = async () => {
+//     // ... ваш код обновления
+//     generateRandomPhrase(); // меняем фразу после обновления
+// };
 </script>
 
 <template>
@@ -134,12 +153,15 @@ const closeDeleteModal = (): void => {
             <div class="heading">Мои списки</div>
             <div class="sub">
                 <span v-if="!isLoading">
-                    Cписков {{ wishLists.length }} · выбирай что хочешь
+                    Cписков {{ wishLists.length }} ·
+                    <span class="phrase-wrapper">
+                        <span class="phrase">{{ randomPhrase }}</span>
+                    </span>
                 </span>
                 <span v-else>Загрузка списков...</span>
             </div>
         </div>
-        <div class="flex gap-2">
+        <div v-if="wishLists.length > 0 || isLoading" class="flex gap-2">
             <button class="add-btn" @click="openCreateModal">
                 <Plus :size="12" />
                 Новый список
@@ -163,6 +185,19 @@ const closeDeleteModal = (): void => {
         class="flex items-center justify-center min-h-[400px]"
     >
         <p>Ошибка при загрузке</p>
+    </div>
+
+    <div
+        v-else-if="wishLists.length === 0"
+        class="flex flex-col items-center justify-center min-h-[300px] text-center"
+    >
+        <p class="text-gray-500 dark:text-gray-400 text-lg mb-4">
+            У вас пока нет списков желаний
+        </p>
+        <button class="add-btn px-6 py-2" @click="openCreateModal">
+            <Plus :size="14" class="mr-1.5" />
+            Создать список
+        </button>
     </div>
 
     <div v-else class="grid" id="grid">
@@ -248,5 +283,26 @@ const closeDeleteModal = (): void => {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 16px;
+}
+
+.phrase-wrapper {
+    display: inline-block;
+    animation: fadeSlide 0.4s ease-out;
+}
+
+.phrase {
+    color: #4b5563;
+    font-weight: 500;
+}
+
+@keyframes fadeSlide {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 </style>

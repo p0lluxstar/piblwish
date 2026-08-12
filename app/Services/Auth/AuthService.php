@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use App\Mail\VerificationCodeMail;
+use Illuminate\Support\Facades\Mail;
 
 class AuthService
 {
@@ -26,6 +28,9 @@ class AuthService
             'code_hash' => Hash::make($code),
             'expires_at' => now()->addMinutes(2),
         ]);
+
+        Mail::to($user->email)
+            ->queue(new VerificationCodeMail((string) $code));
 
         return $user;
     }
