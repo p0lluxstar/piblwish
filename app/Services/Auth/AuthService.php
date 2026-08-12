@@ -29,8 +29,19 @@ class AuthService
             'expires_at' => now()->addMinutes(2),
         ]);
 
-        Mail::to($user->email)
-            ->queue(new VerificationCodeMail((string) $code));
+        try {
+            Mail::to($user->email)
+                ->queue(new VerificationCodeMail((string) $code));
+
+            Log::info('Verification email queued', [
+                'email' => $user->email,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to queue verification email', [
+                'email' => $user->email,
+                'exception' => $e,
+            ]);
+        }
 
         return $user;
     }
