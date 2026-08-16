@@ -1,0 +1,55 @@
+services:
+  nginx:
+    image: nginx:latest
+    container_name: piblwish_nginx
+    ports:
+      - "8876:80"
+    volumes:
+      - ./:/var/www
+      - ./_docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./_docker/nginx/logs:/var/log/nginx  # логи Nginx
+    depends_on:
+      - app
+    networks:
+      - piblwish
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: _docker/app/Dockerfile
+    container_name: piblwish_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./:/var/www
+      - ./_docker/app/logs:/var/log/php  # логи PHP (опционально)
+    depends_on:
+      - db  # если используете БД
+      # - redis  # если используете Redis
+    networks:
+      - piblwish
+
+  # Добавьте БД, если её нет
+  db:
+    image: mysql:8.0
+    container_name: piblwish_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./_docker/db/data:/var/lib/mysql
+    networks:
+      - piblwish
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+networks:
+  piblwish:
+    driver: bridge

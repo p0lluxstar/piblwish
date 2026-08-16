@@ -23,29 +23,46 @@ const deleteCard = (): void => {
 
 const copyLink = async (): Promise<void> => {
     const id = String(props.wishlist.id ?? '');
+
     if (!id) {
         console.warn('Wishlist id is empty, nothing to copy');
         return;
     }
 
+    const appUrl = import.meta.env.VITE_API_URL || window.location.origin;
+
+    const fullUrl = `${appUrl}/shared-wishlists/${id}`;
+
     try {
-        await navigator.clipboard.writeText(
-            `http://localhost:8000/shared-wishlists/${id}`,
-        );
-        console.log('Wishlist id copied to clipboard:', id);
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(fullUrl);
+            console.log('Link copied:', fullUrl);
+            return;
+        }
+
+        throw new Error('Clipboard API is unavailable in this context');
     } catch (err) {
-        // fallback for older browsers / non-secure contexts
+        console.warn('Clipboard API failed, using fallback:', err);
+
         const textarea = document.createElement('textarea');
-        textarea.value = id;
+        textarea.value = fullUrl;
         textarea.style.position = 'fixed';
         textarea.style.left = '-9999px';
+        textarea.style.top = '0';
         textarea.setAttribute('aria-hidden', 'true');
+
         document.body.appendChild(textarea);
+        textarea.focus();
         textarea.select();
 
         try {
-            document.execCommand('copy');
-            console.log('Wishlist id copied via execCommand:', id);
+            const success = document.execCommand('copy');
+
+            if (success) {
+                console.log('Link copied via fallback:', fullUrl);
+            } else {
+                console.error('Fallback copy failed');
+            }
         } catch (err2) {
             console.error('Copy to clipboard failed:', err2);
         } finally {
