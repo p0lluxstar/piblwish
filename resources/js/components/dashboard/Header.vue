@@ -1,10 +1,38 @@
 <script setup lang="ts">
+import { Gift, Settings } from '@lucide/vue';
+import { ref } from 'vue';
+
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
+import UserSettingsModal from '@/components/user/UserSettingsModal.vue';
 import { useLogout } from '@/composables/useAuth';
 import { useAuthStore } from '@/stores/auth';
 
 const auth = useAuthStore();
 const { mutate: logout, isPending } = useLogout();
+
+const isSettingsModalOpen = ref(false);
+
+const openSettingsModal = (): void => {
+    isSettingsModalOpen.value = true;
+};
+
+const closeSettingsModal = (): void => {
+    isSettingsModalOpen.value = false;
+};
+
+const handleChangePassword = (payload: {
+    currentPassword: string;
+    newPassword: string;
+    newPasswordConfirmation: string;
+}): void => {
+    // TODO: подключить запрос к API после реализации бэкенда
+    console.log('changePassword', payload);
+};
+
+const handleDeleteAccount = (): void => {
+    // TODO: подключить запрос к API после реализации бэкенда
+    console.log('Пользователь удален');
+};
 </script>
 
 <template>
@@ -12,7 +40,7 @@ const { mutate: logout, isPending } = useLogout();
         <div class="container">
             <div class="logo">
                 <div class="logo-icon">
-                    ♡
+                    <Gift :size="18" color="#fff" />
                     <span class="logo-spark">✦</span>
                 </div>
                 <span class="logo-title">PiblWish</span>
@@ -22,8 +50,18 @@ const { mutate: logout, isPending } = useLogout();
                     <span class="user-username">{{ auth.user.username }}</span>
                     <span class="user-email">{{ auth.user.email }}</span>
                 </div>
-                <div class="avatar">
-                    {{ auth.user?.username?.charAt(0).toUpperCase() }}
+                <div class="avatar-wrapper">
+                    <div class="avatar">
+                        {{ auth.user?.username?.charAt(0).toUpperCase() }}
+                    </div>
+                    <button
+                        class="settings-btn"
+                        type="button"
+                        aria-label="Настройки аккаунта"
+                        @click="openSettingsModal"
+                    >
+                        <Settings :size="11" />
+                    </button>
                 </div>
                 <button
                     class="logout-btn"
@@ -35,6 +73,13 @@ const { mutate: logout, isPending } = useLogout();
                 </button>
             </div>
         </div>
+
+        <UserSettingsModal
+            v-if="isSettingsModalOpen"
+            @close="closeSettingsModal"
+            @change-password="handleChangePassword"
+            @delete-account="handleDeleteAccount"
+        />
     </header>
 </template>
 
@@ -103,6 +148,10 @@ const { mutate: logout, isPending } = useLogout();
     color: #9b7caa;
 }
 
+.avatar-wrapper {
+    position: relative;
+}
+
 .avatar {
     width: 30px;
     height: 30px;
@@ -113,6 +162,26 @@ const { mutate: logout, isPending } = useLogout();
     font-size: 12px;
     font-weight: 600;
     color: #fff;
+}
+
+.settings-btn {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1.5px solid #fff7fb;
+    background: #c4b5fd;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+.settings-btn:hover {
+    background: #ff8fab;
 }
 
 .logout-btn {
