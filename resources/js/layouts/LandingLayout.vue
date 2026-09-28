@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { Gift } from '@lucide/vue';
 import { computed, ref } from 'vue';
+
+import giftHeroImage from '../../images/gift-hero.png';
 
 const offsetX = ref(0);
 const offsetY = ref(0);
@@ -30,7 +33,7 @@ function resetImage(): void {
             <router-link to="/" class="brand-link">
                 <div class="brand">
                     <div class="logo">
-                        <span class="logo-heart">♥</span>
+                        <Gift :size="30" color="#fff" />
                         <span class="logo-spark">✦</span>
                     </div>
                     <h1>PiblWish</h1>
@@ -45,11 +48,12 @@ function resetImage(): void {
         <section class="right-panel">
             <div class="floating-card card-one">🎁 Подарки</div>
             <div class="floating-card card-two">✨ Мечты</div>
+            <div class="floating-card card-three">💌 Списки</div>
             <div class="image-glow"></div>
             <img
                 class="hero-image"
-                src="https://images.unsplash.com/photo-1513201099705-a9746e1e201f?auto=format&fit=crop&w=1100&q=80"
-                alt="Wishlist moodboard"
+                :src="giftHeroImage"
+                alt="Подарок с лентой"
                 :style="imageStyle"
             />
         </section>
@@ -66,8 +70,11 @@ function resetImage(): void {
     display: grid;
     grid-template-columns: minmax(320px, 42%) 1fr;
     overflow: hidden;
-    background: #fff8fb;
-    color: #34233c;
+    background:
+        radial-gradient(circle at 24% 22%, #ff8fab47, #0000 34%),
+        radial-gradient(circle at 76% 72%, #c4b5fd57, #0000 38%),
+        linear-gradient(135deg, #fffafd 0%, #f7f3ff 100%);
+    color: var(--ink);
     font-family:
         Inter,
         system-ui,
@@ -85,7 +92,7 @@ function resetImage(): void {
     min-height: 100vh;
     padding: 56px;
     background: linear-gradient(135deg, #fff7fb 0%, #fff1f5 48%, #f5f3ff 100%);
-    border-right: 1px solid rgba(226, 195, 211, 0.45);
+    border-right: 1px solid #e2c3d373;
 }
 
 .brand {
@@ -112,16 +119,15 @@ function resetImage(): void {
     display: grid;
     place-items: center;
     border-radius: 22px;
-    background: linear-gradient(135deg, #ff8fab, #c4b5fd);
+    background: var(--brand-gradient);
     color: #ffffff;
     font-weight: 900;
-    box-shadow: 0 18px 38px rgba(255, 143, 171, 0.32);
+    box-shadow: var(--shadow-glow-lg);
+    transition: transform 0.25s ease;
 }
 
-.logo-heart {
-    font-size: 40px;
-    line-height: 1;
-    transform: translateY(1px);
+.brand-link:hover .logo {
+    transform: rotate(-6deg) scale(1.05);
 }
 
 .logo-spark {
@@ -129,14 +135,31 @@ function resetImage(): void {
     top: 8px;
     right: 9px;
     font-size: 13px;
-    color: #fff7ad;
+    color: var(--brand-amber);
+    animation: sparkle 2.4s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+    0%,
+    100% {
+        opacity: 0.5;
+        transform: scale(0.85);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.15);
+    }
 }
 
 .brand h1 {
     margin: 0;
     font-size: 30px;
+    font-weight: 800;
     letter-spacing: -0.05em;
-    color: #3b2146;
+    background: var(--brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
 }
 
 .right-panel {
@@ -144,17 +167,10 @@ function resetImage(): void {
     display: grid;
     place-items: center;
     padding: 56px;
+    overflow: hidden;
     background:
-        radial-gradient(
-            circle at 24% 22%,
-            rgba(255, 143, 171, 0.28),
-            transparent 34%
-        ),
-        radial-gradient(
-            circle at 76% 72%,
-            rgba(196, 181, 253, 0.34),
-            transparent 38%
-        ),
+        radial-gradient(circle at 24% 22%, #ff8fab47, #0000 34%),
+        radial-gradient(circle at 76% 72%, #c4b5fd57, #0000 38%),
         linear-gradient(135deg, #fffafd 0%, #f7f3ff 100%);
 }
 
@@ -163,12 +179,9 @@ function resetImage(): void {
     width: min(52vw, 660px);
     height: min(52vw, 660px);
     border-radius: 50%;
-    background: linear-gradient(
-        135deg,
-        rgba(255, 143, 171, 0.28),
-        rgba(196, 181, 253, 0.32)
-    );
-    filter: blur(46px);
+    background: var(--brand-gradient);
+    opacity: 0.28;
+    filter: blur(56px);
 }
 
 .hero-image {
@@ -176,9 +189,9 @@ function resetImage(): void {
     width: min(46vw, 620px);
     height: min(62vh, 620px);
     object-fit: cover;
-    border: 12px solid rgba(255, 255, 255, 0.82);
-    border-radius: 42px;
-    box-shadow: 0 34px 80px rgba(134, 86, 116, 0.24);
+    border: 12px solid rgba(255, 255, 255, 0.9);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-glow-lg);
     transition: transform 0.16s ease-out;
     will-change: transform;
 }
@@ -188,17 +201,17 @@ function resetImage(): void {
     z-index: 2;
     padding: 14px 20px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.82);
-    color: #56345e;
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--ink);
     font-size: 15px;
     font-weight: 800;
-    box-shadow: 0 18px 34px rgba(134, 86, 116, 0.16);
+    box-shadow: var(--shadow-glow);
     backdrop-filter: blur(14px);
     border: 1px solid rgba(255, 255, 255, 0.9);
 }
 
 .card-one {
-    top: 18%;
+    top: 30%;
     left: 13%;
     animation: float 4.5s ease-in-out infinite;
 }
@@ -207,6 +220,12 @@ function resetImage(): void {
     right: 13%;
     bottom: 19%;
     animation: float 5.2s ease-in-out infinite reverse;
+}
+
+.card-three {
+    right: 8%;
+    top: 12%;
+    animation: float 5.8s ease-in-out infinite;
 }
 
 @keyframes float {
@@ -238,7 +257,7 @@ function resetImage(): void {
         min-height: 58vh;
         padding: 32px;
         border-right: 0;
-        border-bottom: 1px solid rgba(226, 195, 211, 0.45);
+        border-bottom: 1px solid var(--surface-border);
     }
 
     .right-panel {
