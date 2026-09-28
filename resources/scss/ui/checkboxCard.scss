@@ -9,7 +9,7 @@
 
     &:hover {
         transform: none;
-        border-color: rgba(196, 181, 253, 0.6);
+        border-color: rgba(139, 92, 246, 0.35);
     }
 }
 
@@ -20,10 +20,10 @@
 }
 
 .checkbox-custom {
-    width: 18px;
-    height: 18px;
-    border-radius: 6px;
-    border: 1.5px solid rgba(196, 181, 253, 0.6);
+    width: 19px;
+    height: 19px;
+    border-radius: 7px;
+    border: 1.5px solid rgba(139, 92, 246, 0.35);
     display: grid;
     place-items: center;
     flex-shrink: 0;
@@ -34,7 +34,7 @@
 }
 
 .checkbox-input:checked + .checkbox-custom {
-    background: linear-gradient(135deg, #ff8fab, #c4b5fd);
+    background: var(--brand-gradient, linear-gradient(135deg, #8b5cf6, #ec4899));
     border-color: transparent;
 }
 
@@ -51,6 +51,6 @@
 }
 
 .checkbox-custom:hover {
-    border-color: #ff8fab;
-    transform: scale(1.05);
+    border-color: #ec4899;
+    transform: scale(1.08);
 }

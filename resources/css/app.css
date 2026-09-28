@@ -12,6 +12,27 @@
         'Noto Color Emoji';
 }
 
+:root {
+    --brand-violet: #8b5cf6;
+    --brand-pink: #ec4899;
+    --brand-coral: #fb7185;
+    --brand-amber: #fbbf24;
+    --brand-gradient: linear-gradient(
+        135deg,
+        var(--brand-violet) 0%,
+        var(--brand-pink) 60%,
+        var(--brand-coral) 100%
+    );
+    --ink: #241533;
+    --ink-soft: #6b5878;
+    --surface: rgba(255, 255, 255, 0.82);
+    --surface-border: rgba(139, 92, 246, 0.14);
+    --shadow-glow: 0 14px 34px -12px rgba(139, 92, 246, 0.38);
+    --shadow-glow-lg: 0 22px 48px -16px rgba(139, 92, 246, 0.4);
+    --radius-lg: 22px;
+    --radius-xl: 26px;
+}
+
 body.modal-open {
     overflow: hidden;
     position: fixed;

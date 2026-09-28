@@ -121,55 +121,68 @@ const closeModal = (): void => {
 @use '../../../scss/ui/wishlistModal.scss';
 
 .modal {
-    max-width: 340px;
-    padding: 20px;
+    max-width: 360px;
+    padding: 24px;
 }
 
 .section-title {
     font-size: 13px;
-    font-weight: 600;
-    color: #3b2146;
-    margin: 0 0 10px;
+    font-weight: 700;
+    color: var(--ink, #241533);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 12px;
 }
 
 .password-form {
     .form-row {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        margin-bottom: 12px;
+        gap: 10px;
+        margin-bottom: 14px;
     }
 
     input {
-        padding: 9px 12px;
-        border: 1px solid #ddd;
-        border-radius: 10px;
+        padding: 11px 14px;
+        border: 1.5px solid rgba(139, 92, 246, 0.15);
+        border-radius: 14px;
         width: 100%;
         font-size: 13px;
         font-family: inherit;
+        background: #faf8ff;
+        transition: all 0.18s ease;
+
+        &:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
+        }
     }
 }
 
 .danger-zone {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(226, 195, 211, 0.45);
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px dashed rgba(139, 92, 246, 0.2);
 }
 
 .delete-account-btn {
     width: 100%;
-    padding: 10px;
-    border: 1px solid rgba(209, 67, 67, 0.35);
+    padding: 11px;
+    border: 1.5px solid rgba(225, 29, 72, 0.25);
     border-radius: 18px;
     background: transparent;
-    color: #d14343;
-    font-size: 12px;
-    font-weight: 500;
-    font-family: 'DM Sans', sans-serif;
+    color: #e11d48;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
     cursor: pointer;
-    transition: all 0.18s;
+    transition: all 0.2s ease;
 }
 .delete-account-btn:hover {
-    background: rgba(209, 67, 67, 0.08);
+    background: #e11d48;
+    color: #fff;
+    border-color: transparent;
 }
 </style>

@@ -146,24 +146,43 @@ const progress = computed(() => {
 
 .card {
     position: relative;
-    background: linear-gradient(145deg, #fff 60%, #fff7fd);
-    border: 1px solid rgba(226, 195, 211, 0.5);
-    border-radius: 18px;
-    padding: 18px;
+    background: var(--surface);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: 0 8px 24px -14px rgba(139, 92, 246, 0.25);
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+.card:hover {
+    transform: translateY(-6px) scale(1.015);
+    box-shadow: var(--shadow-glow-lg);
 }
 
 .card-actions {
     position: absolute;
     display: flex;
-    gap: 4px;
-    top: 6px;
-    right: 10px;
+    gap: 6px;
+    top: 10px;
+    right: 12px;
     font-size: 10px;
     color: #b3b3b3;
 
     .card-actions-btn {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 8px;
+        transition: all 0.18s ease;
+
         &:hover {
-            color: #ff8fab;
+            color: #fff;
+            background: var(--brand-gradient);
             cursor: pointer;
         }
     }
@@ -173,14 +192,14 @@ const progress = computed(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 8px;
-    margin-bottom: 14px;
+    margin-top: 10px;
+    margin-bottom: 16px;
 }
 
 .card-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #3b2146;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
 }
 
 .item {
@@ -188,7 +207,7 @@ const progress = computed(() => {
     align-items: center;
     gap: 10px;
     padding: 7px 0;
-    border-bottom: 1px solid rgba(226, 195, 211, 0.25);
+    border-bottom: 1px solid rgba(139, 92, 246, 0.1);
     user-select: none;
 }
 
@@ -203,44 +222,42 @@ const progress = computed(() => {
 
 .item-label {
     font-size: 13px;
-    color: #4a3356;
+    color: var(--ink);
     transition: color 0.15s;
     line-height: 1.35;
 }
 
 .checked-text {
-    // color: #c5a4d8;
     color: #94a3b8;
     text-decoration: line-through;
 }
 
 .card-progress-container {
-    margin-top: 0px;
+    margin-top: 10px;
 }
 
 .card-progress {
     width: 100%;
-    height: 3px;
-    background: #e5e7eb;
+    height: 5px;
+    background: rgba(139, 92, 246, 0.1);
     border-radius: 999px;
     overflow: hidden;
 }
 
 .card-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #ff8fab, #c4b5fd);
-    border-radius: 3px;
+    background: var(--brand-gradient);
+    border-radius: 999px;
     transition: width 0.3s ease;
 }
 
 .progress-percent {
     display: inline-block;
     width: 100%;
-    font-size: 10px;
-    font-weight: 600;
-    color: #898989;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--brand-violet);
     min-width: 45px;
     text-align: right;
-    font-style: italic;
 }
 </style>

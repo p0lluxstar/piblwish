@@ -85,10 +85,15 @@ const handleDeleteAccount = (): void => {
 
 <style scoped>
 .header {
-    background: linear-gradient(135deg, #fff7fb 0%, #fff1f5 48%, #f5f3ff 100%);
-    border-bottom: 1px solid rgba(226, 195, 211, 0.45);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--surface);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--surface-border);
     padding: 0 28px;
-    height: 60px;
+    height: 68px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -97,55 +102,77 @@ const handleDeleteAccount = (): void => {
     display: flex;
     width: 1200px;
     justify-content: space-between;
+    align-items: center;
 }
 
 .logo {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 .logo-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #ff8fab, #c4b5fd);
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+    background: var(--brand-gradient);
     display: grid;
     place-items: center;
     font-size: 18px;
     position: relative;
+    box-shadow: var(--shadow-glow);
+    transition: transform 0.25s ease;
+}
+.logo:hover .logo-icon {
+    transform: rotate(-6deg) scale(1.05);
 }
 .logo-spark {
     position: absolute;
-    top: 3px;
-    right: 4px;
-    font-size: 8px;
-    color: #fff7ad;
+    top: 2px;
+    right: 3px;
+    font-size: 9px;
+    color: var(--brand-amber);
+    animation: sparkle 2.4s ease-in-out infinite;
+}
+@keyframes sparkle {
+    0%,
+    100% {
+        opacity: 0.5;
+        transform: scale(0.85);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.15);
+    }
 }
 .logo-title {
-    font-size: 19px;
-    font-weight: 600;
-    color: #3b2146;
+    font-size: 20px;
+    font-weight: 800;
+    background: var(--brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
     letter-spacing: -0.04em;
 }
 .user-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     font-size: 14px;
-    color: #3b2146;
+    color: var(--ink);
 }
 
 .user-details {
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
 }
 
 .user-username {
-    font-weight: 600;
+    font-weight: 700;
 }
 .user-email {
     font-size: 12px;
-    color: #9b7caa;
+    color: var(--ink-soft);
 }
 
 .avatar-wrapper {
@@ -153,59 +180,60 @@ const handleDeleteAccount = (): void => {
 }
 
 .avatar {
-    width: 30px;
-    height: 30px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #ff8fab, #c4b5fd);
+    background: var(--brand-gradient);
     display: grid;
     place-items: center;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 700;
     color: #fff;
+    box-shadow: var(--shadow-glow);
+    border: 2px solid #fff;
 }
 
 .settings-btn {
     position: absolute;
-    top: -3px;
-    right: -3px;
+    bottom: -2px;
+    right: -2px;
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
-    border: 1.5px solid #fff7fb;
-    background: #c4b5fd;
-    color: #fff;
+    border: 2px solid #fff;
+    background: var(--brand-amber);
+    color: #4a2e00;
     cursor: pointer;
-    transition: all 0.18s;
+    transition: all 0.2s ease;
 }
 .settings-btn:hover {
-    background: #ff8fab;
+    transform: scale(1.15) rotate(45deg);
 }
 
 .logout-btn {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: none;
-    border: none;
-    padding: 6px 14px;
+    gap: 6px;
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid transparent;
+    padding: 6px 16px;
     border-radius: 20px;
     font-size: 13px;
-    color: #9b7caa;
+    font-weight: 600;
+    color: var(--brand-violet);
     cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    transition: all 0.18s;
-    background: rgba(255, 143, 171, 0.13);
-    width: 80px;
-    height: 30px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    height: 36px;
 }
-.logout-btn.active {
-    color: #c4697e;
-    font-weight: 500;
-}
-.logout-btn:hover:not(.active) {
-    background: rgba(196, 181, 253, 0.12);
+.logout-btn:hover:not(:disabled) {
+    background: var(--brand-gradient);
+    color: #fff;
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-1px);
 }
 </style>
