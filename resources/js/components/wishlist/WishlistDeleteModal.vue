@@ -45,7 +45,7 @@ onUnmounted(() => {
         <div class="modal">
             <div class="modal-header">
                 <h2>Удаление списка</h2>
-                <button class="close-btn" @click="closeModal">×</button>
+                <button class="close-btn" @click="closeModal"></button>
             </div>
 
             <div class="modal-body">

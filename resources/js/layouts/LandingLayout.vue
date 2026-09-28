@@ -119,7 +119,7 @@ function resetImage(): void {
     display: grid;
     place-items: center;
     border-radius: 22px;
-    background: var(--brand-gradient);
+    background: var(--logo-gradient);
     color: #ffffff;
     font-weight: 900;
     box-shadow: var(--shadow-glow-lg);
@@ -156,7 +156,7 @@ function resetImage(): void {
     font-size: 30px;
     font-weight: 800;
     letter-spacing: -0.05em;
-    background: var(--brand-gradient);
+    background: var(--logo-gradient);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;

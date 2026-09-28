@@ -114,7 +114,7 @@ const handleDeleteAccount = (): void => {
     width: 38px;
     height: 38px;
     border-radius: 14px;
-    background: var(--brand-gradient);
+    background: var(--logo-gradient);
     display: grid;
     place-items: center;
     font-size: 18px;
@@ -147,7 +147,7 @@ const handleDeleteAccount = (): void => {
 .logo-title {
     font-size: 20px;
     font-weight: 800;
-    background: var(--brand-gradient);
+    background: var(--logo-gradient);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;

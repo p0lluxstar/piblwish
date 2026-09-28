@@ -114,7 +114,7 @@ const closeModal = (): void => {
             <div class="modal-header">
                 <h2>Редактировать список</h2>
 
-                <button class="close-btn" @click="closeModal">×</button>
+                <button class="close-btn" @click="closeModal"></button>
             </div>
 
             <form @submit.prevent="handleSubmit">

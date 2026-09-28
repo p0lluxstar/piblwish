@@ -17,7 +17,8 @@
     --brand-pink: #ec4899;
     --brand-coral: #fb7185;
     --brand-amber: #fbbf24;
-    --brand-gradient: linear-gradient(
+    --brand-gradient: linear-gradient(135deg, #ff7aa8, #a78bfa);
+    --logo-gradient: linear-gradient(
         135deg,
         var(--brand-violet) 0%,
         var(--brand-pink) 60%,
