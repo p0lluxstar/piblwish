@@ -45,7 +45,7 @@ onUnmounted(() => {
         <div class="modal">
             <div class="modal-header">
                 <h2>Удаление списка</h2>
-                <button class="close-btn" @click="closeModal">×</button>
+                <button class="close-btn" @click="closeModal"></button>
             </div>
 
             <div class="modal-body">
@@ -85,7 +85,7 @@ onUnmounted(() => {
 
 .modal-body {
     margin-bottom: 24px;
-    color: #4a3356;
+    color: var(--ink, #241533);
     font-size: 14px;
     line-height: 1.5;
 
@@ -95,7 +95,8 @@ onUnmounted(() => {
 
     .warning-text {
         font-size: 12px;
-        color: #ff8fab;
+        font-weight: 600;
+        color: #ec4899;
         margin-bottom: 0;
     }
 }
@@ -109,20 +110,20 @@ onUnmounted(() => {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #f3f0f5;
+    background: rgba(139, 92, 246, 0.08);
     border: none;
-    color: #4a3356;
+    color: var(--ink, #241533);
     border-radius: 18px;
-    font-size: 12px;
-    font-weight: 500;
-    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
     flex: 1;
     padding: 12px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s ease;
 
     &:hover:not(:disabled) {
-        background: #e9e4ed;
+        background: rgba(139, 92, 246, 0.14);
     }
 
     &:disabled {
@@ -135,25 +136,28 @@ onUnmounted(() => {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, #ff8fab, #c4b5fd);
+    background: linear-gradient(135deg, #fb7185, #ec4899);
     border: none;
     color: #fff;
     border-radius: 18px;
-    font-size: 12px;
-    font-weight: 500;
-    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
     flex: 1;
     padding: 12px;
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: all 0.2s ease;
+    box-shadow: 0 14px 30px -12px rgba(236, 72, 153, 0.5);
 
     &:hover:not(:disabled) {
-        opacity: 0.9;
+        transform: translateY(-2px);
+        box-shadow: 0 18px 36px -12px rgba(236, 72, 153, 0.55);
     }
 
     &:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+        transform: none;
     }
 }
 </style>

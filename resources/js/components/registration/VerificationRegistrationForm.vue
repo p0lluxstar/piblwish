@@ -126,9 +126,9 @@ function resendCode(): void {
     max-width: 420px;
     top: -20px;
     right: 10px;
-    color: #6b7280;
-    font-size: 14px;
+    color: var(--brand-violet);
+    font-weight: 600;
+    font-size: 13px;
     text-align: right;
-    font-style: italic;
 }
 </style>

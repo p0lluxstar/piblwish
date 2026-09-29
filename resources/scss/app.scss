@@ -12,29 +12,36 @@
 
 .eyebrow {
     margin: 0 0 14px;
-    color: #d9467c;
-    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--brand-violet, #8b5cf6);
+    font-size: 13px;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.14em;
+    width: fit-content;
 }
 
 .content h2 {
     margin: 0;
     max-width: 580px;
-    font-size: clamp(40px, 5vw, 50px);
-    font-weight: 600;
-    line-height: 1;
-    letter-spacing: -0.075em;
-    color: #2d1836;
+    font-size: clamp(40px, 5vw, 52px);
+    font-weight: 800;
+    line-height: 1.02;
+    letter-spacing: -0.04em;
+    color: var(--ink, #241533);
 }
 
 .description {
     max-width: 460px;
     margin: 24px 0 0;
-    color: #7c6078;
-    font-size: 20px;
-    line-height: 1.2;
+    color: var(--ink-soft, #6b5878);
+    font-size: 19px;
+    line-height: 1.35;
 }
 
 .actions {
@@ -48,12 +55,12 @@
     max-width: 420px;
     margin-top: 24px;
     text-align: center;
-    color: #7c6078;
+    color: var(--ink-soft, #6b5878);
 }
 
 .auth-link a {
     margin-left: 6px;
-    color: #d9467c;
+    color: var(--brand-pink, #ec4899);
     font-weight: 700;
     text-decoration: none;
 }

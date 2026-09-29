@@ -18,6 +18,6 @@ import PrimaryButton from '@/components/ui/PrimaryButton.vue';
 <style scoped>
 h2 {
     margin-bottom: 50px;
-    color: #3b2146;
+    color: var(--ink);
 }
 </style>

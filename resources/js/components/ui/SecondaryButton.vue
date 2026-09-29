@@ -23,18 +23,19 @@ defineEmits(['click']);
 }
 
 .btn:hover {
-    transform: translateY(-3px);
+    transform: translateY(-3px) scale(1.02);
 }
 
 .secondary {
-    color: #56345e;
-    background: rgba(255, 255, 255, 0.72);
-    border: 1px solid rgba(181, 139, 166, 0.26);
+    color: var(--brand-violet, #8b5cf6);
+    background: var(--surface, rgba(255, 255, 255, 0.82));
+    border: 1.5px solid var(--surface-border, rgba(139, 92, 246, 0.14));
     box-shadow: 0 14px 30px rgba(92, 62, 97, 0.08);
     backdrop-filter: blur(12px);
 }
 
 .secondary:hover {
     background: #ffffff;
+    box-shadow: var(--shadow-glow, 0 14px 34px -12px rgba(139, 92, 246, 0.38));
 }
 </style>
