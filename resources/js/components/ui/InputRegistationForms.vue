@@ -36,11 +36,11 @@ function updateValue(event: Event): void {
 <style scoped>
 .input {
     width: 100%;
-    border: 1px solid rgba(181, 139, 166, 0.28);
-    border-radius: 18px;
+    border: 1.5px solid var(--surface-border, rgba(139, 92, 246, 0.14));
+    border-radius: 16px;
     padding: 16px 18px;
     background: rgba(255, 255, 255, 0.78);
-    color: #3b2146;
+    color: var(--ink, #241533);
     font-size: 16px;
     outline: none;
     box-shadow: 0 12px 28px rgba(92, 62, 97, 0.06);
@@ -55,9 +55,8 @@ function updateValue(event: Event): void {
 }
 
 .input:focus {
-    border-color: #ff8fab;
+    border-color: var(--brand-violet, #8b5cf6);
     background: #ffffff;
-
-    box-shadow: 0 0 0 4px rgba(255, 143, 171, 0.16);
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.14);
 }
 </style>

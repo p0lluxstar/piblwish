@@ -30,13 +30,18 @@ defineEmits(['click']);
         background 0.2s ease;
 }
 
-.btn:hover {
-    transform: translateY(-3px);
+.btn:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.02);
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .primary {
     color: white;
-    background: linear-gradient(135deg, #ff7aa8, #a78bfa);
-    box-shadow: 0 18px 34px rgba(255, 122, 168, 0.32);
+    background: var(--brand-gradient, linear-gradient(135deg, #8b5cf6, #ec4899));
+    box-shadow: var(--shadow-glow-lg, 0 22px 48px -16px rgba(139, 92, 246, 0.4));
 }
 </style>

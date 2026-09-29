@@ -11,13 +11,12 @@
 <style scoped>
 .main {
     flex: 1;
-    padding: 28px;
-    background: #fff8fb;
+    padding: 36px 28px;
 }
 
 .conteiner {
     max-width: 1200px;
     margin: 0 auto;
-    color: #2d1836;
+    color: var(--ink);
 }
 </style>

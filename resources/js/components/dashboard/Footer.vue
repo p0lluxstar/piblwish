@@ -12,12 +12,14 @@
 
 <style scoped>
 .footer {
-    border-top: 1px solid rgba(226, 195, 211, 0.35);
-    padding: 14px 28px;
+    border-top: 1px solid var(--surface-border);
+    padding: 16px 28px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #fff7fb 0%, #f5f3ff 100%);
+    background: var(--surface);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }
 
 .container {
@@ -28,18 +30,25 @@
 }
 
 .footer-copy {
-    font-size: 11px;
-    color: #c5a8d4;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
 }
 
 .footer-links {
     display: flex;
-    gap: 14px;
+    gap: 18px;
 }
 
 .footer-links a {
-    font-size: 11px;
-    color: #c5a8d4;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
     text-decoration: none;
+    transition: color 0.18s ease;
+}
+
+.footer-links a:hover {
+    color: var(--brand-pink);
 }
 </style>

@@ -239,50 +239,65 @@ onMounted(generateRandomPhrase);
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    margin-bottom: 22px;
+    margin-bottom: 26px;
 }
 .heading {
-    font-size: 20px;
-    font-weight: 600;
-    color: #3b2146;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--ink);
     letter-spacing: -0.03em;
 }
 .sub {
-    font-size: 12px;
-    color: #b08cbe;
-    margin-top: 2px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 4px;
 }
 .add-btn,
 .update-btn {
     display: flex;
     align-items: center;
-    gap: 4px;
-    background: linear-gradient(135deg, #ff8fab, #c4b5fd);
+    gap: 6px;
+    background: var(--brand-gradient);
     border: none;
     color: #fff;
-    padding: 7px 16px;
-    border-radius: 18px;
-    font-size: 12px;
-    font-weight: 500;
+    padding: 9px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    transition: opacity 0.2s;
+    font-family: inherit;
+    transition: all 0.2s ease;
     line-height: 1.5;
+    box-shadow: var(--shadow-glow);
 
     &:hover:not(:disabled) {
-        opacity: 0.9;
+        transform: translateY(-2px) scale(1.02);
+        box-shadow: var(--shadow-glow-lg);
     }
 
     &:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+        transform: none;
+    }
+}
+
+.update-btn {
+    background: #fff;
+    color: var(--brand-violet);
+    border: 1.5px solid var(--surface-border);
+    box-shadow: none;
+
+    &:hover:not(:disabled) {
+        box-shadow: var(--shadow-glow);
+        background: #fff;
     }
 }
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
 }
 
 .phrase-wrapper {
@@ -291,8 +306,8 @@ onMounted(generateRandomPhrase);
 }
 
 .phrase {
-    color: #4b5563;
-    font-weight: 500;
+    color: var(--brand-pink);
+    font-weight: 600;
 }
 
 @keyframes fadeSlide {

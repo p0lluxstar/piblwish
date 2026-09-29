@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Trash2 } from '@lucide/vue';
-import { ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 
 import type { Wishlist, WishlistItem } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
@@ -49,9 +49,25 @@ const handleSubmit = (): void => {
     });
 };
 
+const disableBodyScroll = (): void => {
+    document.body.classList.add('modal-open');
+};
+
+const enableBodyScroll = (): void => {
+    document.body.classList.remove('modal-open');
+};
+
+onMounted(() => {
+    disableBodyScroll();
+});
+
+onUnmounted(() => {
+    enableBodyScroll();
+});
+
 const closeModal = (): void => {
     form.value = defaultForm();
-
+    enableBodyScroll();
     emit('close');
 };
 </script>
@@ -62,7 +78,7 @@ const closeModal = (): void => {
             <div class="modal-header">
                 <h2>Создать список</h2>
 
-                <button class="close-btn" @click="closeModal">×</button>
+                <button class="close-btn" @click="closeModal"></button>
             </div>
 
             <form @submit.prevent="handleSubmit">
