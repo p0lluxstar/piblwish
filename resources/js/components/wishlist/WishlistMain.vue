@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Plus, RefreshCcw } from '@lucide/vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import axios from 'axios';
 import { onMounted, ref } from 'vue';
 import { computed } from 'vue';
 
 import { MOTIVATIONAL_PHRASES } from '@/constants/phrases';
+import { api } from '@/lib/api';
 
 import type { Wishlist } from '../../types/wishlist';
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
@@ -23,7 +23,7 @@ const wishlistToDelete = ref<Wishlist | null>(null);
 const randomPhrase = ref('');
 
 const fetchWishlists = async (): Promise<Wishlist[]> => {
-    const response = await axios.get('/v1/wishlists');
+    const response = await api.get<{ data: Wishlist[] }>('/v1/wishlists');
 
     return response.data.data;
 };
@@ -46,7 +46,10 @@ const closeCreateModal = (): void => {
 const createWishlistRequest = async (
     payload: Omit<Wishlist, 'id'>,
 ): Promise<Wishlist> => {
-    const response = await axios.post('/v1/wishlists', payload);
+    const response = await api.post<{ data: Wishlist }>(
+        '/v1/wishlists',
+        payload,
+    );
 
     return response.data.data;
 };
@@ -104,7 +107,7 @@ const updateWishlists = async (): Promise<void> => {
 };
 
 const deleteWishlistRequest = async (id: string): Promise<void> => {
-    await axios.delete(`/v1/wishlists/${id}`);
+    await api.delete(`/v1/wishlists/${id}`);
 };
 
 const { mutate: deleteWishlist, isPending: isDeleting } = useMutation({
