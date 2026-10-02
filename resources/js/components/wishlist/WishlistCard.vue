@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ExternalLink, FileEdit, Trash2 } from '@lucide/vue';
-import { computed } from 'vue';
+import { Check, FileEdit, Link, Trash2 } from '@lucide/vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 
 import type { Wishlist } from '../../types/wishlist';
 
@@ -21,55 +21,82 @@ const deleteCard = (): void => {
     emit('delete', props.wishlist);
 };
 
+// Сколько миллисекунд показывать результат копирования
+const COPY_FEEDBACK_DURATION = 2000;
+
+const copyStatus = ref<'idle' | 'copied' | 'error'>('idle');
+let copyFeedbackTimer: number | null = null;
+
+const showCopyFeedback = (status: 'copied' | 'error'): void => {
+    copyStatus.value = status;
+
+    // Повторное нажатие продлевает показ сообщения, а не накапливает таймеры
+    if (copyFeedbackTimer) {
+        window.clearTimeout(copyFeedbackTimer);
+    }
+
+    copyFeedbackTimer = window.setTimeout(() => {
+        copyStatus.value = 'idle';
+        copyFeedbackTimer = null;
+    }, COPY_FEEDBACK_DURATION);
+};
+
+// Запасной способ копирования для небезопасного контекста (HTTP), где Clipboard API недоступен
+const copyWithFallback = (text: string): boolean => {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    textarea.setAttribute('aria-hidden', 'true');
+
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        return document.execCommand('copy');
+    } catch {
+        return false;
+    } finally {
+        document.body.removeChild(textarea);
+    }
+};
+
+const copyToClipboard = async (text: string): Promise<boolean> => {
+    if (window.navigator.clipboard && window.isSecureContext) {
+        try {
+            await window.navigator.clipboard.writeText(text);
+            return true;
+        } catch {
+            // Пробуем запасной способ ниже
+        }
+    }
+
+    return copyWithFallback(text);
+};
+
 const copyLink = async (): Promise<void> => {
     const id = String(props.wishlist.id ?? '');
 
     if (!id) {
-        console.warn('Wishlist id is empty, nothing to copy');
+        showCopyFeedback('error');
         return;
     }
 
     const appUrl = import.meta.env.VITE_API_URL || window.location.origin;
-
     const fullUrl = `${appUrl}/shared-wishlists/${id}`;
 
-    try {
-        if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(fullUrl);
-            console.log('Link copied:', fullUrl);
-            return;
-        }
+    const isCopied = await copyToClipboard(fullUrl);
 
-        throw new Error('Clipboard API is unavailable in this context');
-    } catch (err) {
-        console.warn('Clipboard API failed, using fallback:', err);
-
-        const textarea = document.createElement('textarea');
-        textarea.value = fullUrl;
-        textarea.style.position = 'fixed';
-        textarea.style.left = '-9999px';
-        textarea.style.top = '0';
-        textarea.setAttribute('aria-hidden', 'true');
-
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-
-        try {
-            const success = document.execCommand('copy');
-
-            if (success) {
-                console.log('Link copied via fallback:', fullUrl);
-            } else {
-                console.error('Fallback copy failed');
-            }
-        } catch (err2) {
-            console.error('Copy to clipboard failed:', err2);
-        } finally {
-            document.body.removeChild(textarea);
-        }
-    }
+    showCopyFeedback(isCopied ? 'copied' : 'error');
 };
+
+onBeforeUnmount(() => {
+    if (copyFeedbackTimer) {
+        window.clearTimeout(copyFeedbackTimer);
+    }
+});
 
 const progress = computed(() => {
     const items = props.wishlist.items;
@@ -88,9 +115,40 @@ const progress = computed(() => {
             <button class="card-actions-btn" @click="editCard">
                 <FileEdit :size="14" />
             </button>
-            <button class="card-actions-btn" @click="copyLink">
-                <ExternalLink :size="14" />
-            </button>
+            <div class="copy-action">
+                <button
+                    :class="[
+                        'card-actions-btn',
+                        {
+                            'card-actions-btn--success':
+                                copyStatus === 'copied',
+                        },
+                    ]"
+                    type="button"
+                    aria-label="Скопировать ссылку на список"
+                    @click="copyLink"
+                >
+                    <Check v-if="copyStatus === 'copied'" :size="14" />
+                    <Link v-else :size="14" />
+                </button>
+
+                <Transition name="copy-tooltip">
+                    <span
+                        v-if="copyStatus !== 'idle'"
+                        :class="[
+                            'copy-tooltip',
+                            { 'copy-tooltip--error': copyStatus === 'error' },
+                        ]"
+                        role="status"
+                    >
+                        {{
+                            copyStatus === 'copied'
+                                ? 'Ссылка скопирована'
+                                : 'Не удалось скопировать'
+                        }}
+                    </span>
+                </Transition>
+            </div>
             <button class="card-actions-btn" @click="deleteCard">
                 <Trash2 :size="14" />
             </button>
@@ -180,12 +238,50 @@ const progress = computed(() => {
         border-radius: 8px;
         transition: all 0.18s ease;
 
-        &:hover {
+        &:hover,
+        &--success {
             color: #fff;
             background: var(--brand-gradient);
             cursor: pointer;
         }
     }
+}
+
+.copy-action {
+    position: relative;
+}
+
+.copy-tooltip {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 5;
+    padding: 5px 10px;
+    border-radius: 8px;
+    background: var(--brand-gradient);
+    box-shadow: var(--shadow-glow);
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.copy-tooltip--error {
+    background: #ef4444;
+}
+
+.copy-tooltip-enter-active,
+.copy-tooltip-leave-active {
+    transition:
+        opacity 0.18s ease,
+        transform 0.18s ease;
+}
+
+.copy-tooltip-enter-from,
+.copy-tooltip-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
 }
 
 .card-header {

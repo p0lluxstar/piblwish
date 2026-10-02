@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Gift, Settings } from '@lucide/vue';
-import { ref } from 'vue';
+import { Gift, LayoutList, Settings } from '@lucide/vue';
+import { computed, ref } from 'vue';
+import { useRoute } from 'vue-router';
 
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import UserSettingsModal from '@/components/user/UserSettingsModal.vue';
@@ -8,6 +9,10 @@ import { useDeleteAccount, useLogout } from '@/composables/useAuth';
 import { useAuthStore } from '@/stores/auth';
 
 const auth = useAuthStore();
+const route = useRoute();
+
+// Ссылка на свои списки нужна везде, кроме самого дашборда (например, на странице общего списка)
+const showMyListsLink = computed(() => route.name !== 'dashboard');
 const { mutate: logout, isPending } = useLogout();
 const { mutate: deleteAccount, isPending: isDeletingAccount } =
     useDeleteAccount();
@@ -46,8 +51,16 @@ const handleDeleteAccount = (): void => {
                 </div>
                 <span class="logo-title">PiblWish</span>
             </div>
-            <div class="user-info">
-                <div v-if="auth.user" class="user-details">
+            <div v-if="auth.user" class="user-info">
+                <router-link
+                    v-if="showMyListsLink"
+                    to="/dashboard"
+                    class="my-lists-btn"
+                >
+                    <LayoutList :size="16" />
+                    <span>Мои списки</span>
+                </router-link>
+                <div class="user-details">
                     <span class="user-username">{{ auth.user.username }}</span>
                     <span class="user-email">{{ auth.user.email }}</span>
                 </div>
@@ -73,10 +86,18 @@ const handleDeleteAccount = (): void => {
                     <span v-else>Выход</span>
                 </button>
             </div>
+            <div v-else class="guest-actions">
+                <router-link to="/registration" class="guest-btn">
+                    Регистрация
+                </router-link>
+                <router-link to="/login" class="guest-btn guest-btn--primary">
+                    Войти
+                </router-link>
+            </div>
         </div>
 
         <UserSettingsModal
-            v-if="isSettingsModalOpen"
+            v-if="auth.user && isSettingsModalOpen"
             :is-deleting-account="isDeletingAccount"
             @close="closeSettingsModal"
             @change-password="handleChangePassword"
@@ -237,5 +258,61 @@ const handleDeleteAccount = (): void => {
     color: #fff;
     box-shadow: var(--shadow-glow);
     transform: translateY(-1px);
+}
+.my-lists-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 6px 16px;
+    margin-right: 6px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brand-violet);
+    background: rgba(139, 92, 246, 0.08);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+.my-lists-btn:hover {
+    background: var(--brand-gradient);
+    color: #fff;
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-1px);
+}
+
+.guest-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.guest-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 36px;
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brand-violet);
+    background: rgba(139, 92, 246, 0.08);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+.guest-btn:hover {
+    background: rgba(139, 92, 246, 0.14);
+    transform: translateY(-1px);
+}
+
+.guest-btn--primary {
+    color: #fff;
+    background: var(--brand-gradient);
+    box-shadow: var(--shadow-glow);
+}
+.guest-btn--primary:hover {
+    background: var(--brand-gradient);
+    filter: brightness(1.05);
 }
 </style>

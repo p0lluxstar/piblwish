@@ -102,9 +102,16 @@ onMounted(getWishlist);
         <div v-else-if="wishlist" class="content">
             <div class="card">
                 <div class="card-header">
-                    <span class="card-author">
-                        Автор: {{ wishlist.username }}
-                    </span>
+                    <div class="card-author">
+                        <span class="card-author-avatar">
+                            {{ wishlist.username?.charAt(0).toUpperCase() }}
+                        </span>
+                        <span>
+                            <span class="card-author-name">
+                                {{ wishlist.username }}
+                            </span>
+                        </span>
+                    </div>
                     <span class="card-title">
                         {{ wishlist.title }}
                     </span>
@@ -189,6 +196,9 @@ onMounted(getWishlist);
 
 .card {
     position: relative;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
     background: linear-gradient(145deg, #fff 60%, #fff7fd);
     border: 1px solid rgba(226, 195, 211, 0.5);
     border-radius: 18px;
@@ -206,8 +216,16 @@ onMounted(getWishlist);
     color: #b3b3b3;
 
     .card-actions-btn {
-        &:hover {
-            color: #ff8fab;
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        transition: all 0.18s ease;
+
+        &:hover:not(:disabled) {
+            color: #fff;
+            background: var(--brand-gradient);
             cursor: pointer;
         }
     }
@@ -218,14 +236,35 @@ onMounted(getWishlist);
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
+    gap: 6px;
     margin-top: 8px;
     margin-bottom: 14px;
 }
 
 .card-author {
-    font-size: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
     color: #b08cbe;
-    margin-bottom: 4px;
+}
+
+.card-author-avatar {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--brand-gradient);
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    box-shadow: var(--shadow-glow);
+}
+
+.card-author-name {
+    font-weight: 600;
+    color: #8b5cf6;
 }
 
 .card-title {

@@ -3,26 +3,16 @@ import WishlistShared from '@/components/wishlist/WishlistShared.vue';
 </script>
 
 <template>
-    <main class="main">
-        <div class="content">
-            <WishlistShared />
-        </div>
-    </main>
+    <div class="shared-page">
+        <WishlistShared />
+    </div>
 </template>
 
 <style scoped>
-.main {
+/* Не используем класс .content: в app.scss для него задан глобальный max-width лендинга */
+.shared-page {
     display: flex;
     justify-content: center;
-    background: #fff8fb;
-}
-
-.content {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    max-width: 1200px;
-    padding-top: 0px;
+    width: 100%;
 }
 </style>
