@@ -4,7 +4,6 @@ use App\Http\Controllers\Api\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WishlistController;
-use App\Http\Controllers\Api\SharedWishlistController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,21 +22,19 @@ use App\Http\Controllers\Api\SharedWishlistController;
 |
 */
 
-// Публичные маршруты (без авторизации)
-Route::prefix('v1')->middleware('throttle:5,1')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/verify-registration', [AuthController::class, 'verifyRegistrationCode']);
-
-    // Route::get('/shared-wishlists/{id}', [SharedWishlistController::class, 'getWishlistById']);
-    // Route::patch(
-    //     '/shared-wishlists/{wishlist}/items',
-    //     [SharedWishlistController::class, 'updateSharedWishlistItems']
-    // );
+// Публичные маршруты (без авторизации).
+// Лимитеры описаны в AppServiceProvider::configureRateLimiting()
+Route::prefix('v1')->group(function () {
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle:login');
+    Route::post('/register', [AuthController::class, 'register'])
+        ->middleware('throttle:registration');
+    Route::post('/verify-registration', [AuthController::class, 'verifyRegistrationCode'])
+        ->middleware('throttle:verify-code');
 });
 
 // Только для авторизованных пользователей (через Sanctum)
-Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:30,1'])->group(function () {
+Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [UserController::class, 'user']);
     Route::get('/wishlists', [WishlistController::class, 'getUserWishlists']);
@@ -59,7 +56,11 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:30,1'])->group(functi
  * 
  * ВАЖНО: Этот маршрут должен быть ПОСЛЕДНИМ в файле routes/web.php!
  * Иначе он перехватит все запросы, включая API.
+ *
+ * Префиксы API (api/, v1/, sanctum/) исключены из шаблона: иначе запрос
+ * к несуществующему эндпоинту получил бы HTML-страницу с кодом 200
+ * вместо JSON-ответа с кодом 404.
  */
 Route::get('/{any}', function () {
     return view('welcome');
-})->where('any', '.*');
+})->where('any', '^(?!(api|v1|sanctum)(/|$)).*');
