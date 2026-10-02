@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\TransformApiResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,25 +23,27 @@ return Application::configure(basePath: dirname(__DIR__))
             return $request->expectsJson();
         });
 
-        // Настраиваем формат ответа при ошибках
-        $exceptions->render(function (Throwable $e, Request $request) {
-            if ($request->expectsJson()) {
-                // Определяем статус-код (по умолчанию 500)
-                $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
-
-                return response()->json([
-                    'success' => false,
-                    'statusCode' => $statusCode,
-                    'data' => [
-                        'message' => $e->getMessage() ?: 'Server Error',
-                        // Включаем ошибки валидации, если это ValidationException
-                        'errors' => method_exists($e, 'errors') ? $e->errors() : null,
-                    ],
-
-                ], $statusCode);
+        // Приводим JSON-ответ об ошибке к формату { success, statusCode, data }.
+        // respond() вызывается после стандартного рендеринга Laravel, поэтому
+        // статус уже определён фреймворком (401, 403, 404, 422, 429...),
+        // заголовки (например, Retry-After) сохранены, а текст ошибок 5xx
+        // скрыт при APP_DEBUG=false.
+        $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
+            if (! $request->expectsJson()) {
+                return $response;
             }
+
+            $statusCode = $response->getStatusCode();
+            $payload = json_decode((string) $response->getContent(), true);
+
+            return response()->json([
+                'success' => false,
+                'statusCode' => $statusCode,
+                'data' => [
+                    'message' => $payload['message'] ?? 'Server Error',
+                    // Заполняется только для ошибок валидации (422)
+                    'errors' => $payload['errors'] ?? null,
+                ],
+            ], $statusCode, $response->headers->all());
         });
-    })
-    ->withExceptions(function (Exceptions $exceptions): void {
-        //
     })->create();
