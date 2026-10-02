@@ -4,11 +4,13 @@ import { ref } from 'vue';
 
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import UserSettingsModal from '@/components/user/UserSettingsModal.vue';
-import { useLogout } from '@/composables/useAuth';
+import { useDeleteAccount, useLogout } from '@/composables/useAuth';
 import { useAuthStore } from '@/stores/auth';
 
 const auth = useAuthStore();
 const { mutate: logout, isPending } = useLogout();
+const { mutate: deleteAccount, isPending: isDeletingAccount } =
+    useDeleteAccount();
 
 const isSettingsModalOpen = ref(false);
 
@@ -30,8 +32,7 @@ const handleChangePassword = (payload: {
 };
 
 const handleDeleteAccount = (): void => {
-    // TODO: подключить запрос к API после реализации бэкенда
-    console.log('Пользователь удален');
+    deleteAccount();
 };
 </script>
 
@@ -76,6 +77,7 @@ const handleDeleteAccount = (): void => {
 
         <UserSettingsModal
             v-if="isSettingsModalOpen"
+            :is-deleting-account="isDeletingAccount"
             @close="closeSettingsModal"
             @change-password="handleChangePassword"
             @delete-account="handleDeleteAccount"

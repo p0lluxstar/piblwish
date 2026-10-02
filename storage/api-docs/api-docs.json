@@ -118,7 +118,10 @@
                         "description": "Успешная авторизация"
                     },
                     "401": {
-                        "description": "Неверные данные"
+                        "description": "Неверные данные или аккаунт деактивирован"
+                    },
+                    "403": {
+                        "description": "Аккаунт не подтверждён (email не подтверждён)"
                     }
                 }
             }
@@ -184,6 +187,58 @@
                     },
                     "401": {
                         "description": "Не авторизован"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/v1/user": {
+            "delete": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Удалить аккаунт текущего пользователя",
+                "description": "Деактивирует аккаунт (проставляет deactivated_at), удаляет вишлисты пользователя и их позиции, завершает все его сессии. Войти в деактивированный аккаунт нельзя.",
+                "operationId": "461dc63a1194a0e23e4491704ba5cd6a",
+                "responses": {
+                    "200": {
+                        "description": "Аккаунт удалён",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "example": "Аккаунт удалён"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    },
+                    "429": {
+                        "description": "Слишком много запросов"
                     }
                 },
                 "security": [

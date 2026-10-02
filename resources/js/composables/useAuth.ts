@@ -1,4 +1,10 @@
-import { useMutation, useQuery } from '@tanstack/vue-query';
+import {
+    useMutation,
+    type UseMutationReturnType,
+    useQuery,
+    useQueryClient,
+} from '@tanstack/vue-query';
+import type { AxiosResponse } from 'axios';
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -53,6 +59,28 @@ export const useLogout = (): any => {
 
         onSuccess: () => {
             authStore.setUser(null);
+            router.push('/');
+        },
+    });
+};
+
+export const useDeleteAccount = (): UseMutationReturnType<
+    AxiosResponse,
+    Error,
+    void,
+    unknown
+> => {
+    const router = useRouter();
+    const authStore = useAuthStore();
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: () => api.delete('/v1/user'),
+
+        onSuccess: () => {
+            authStore.setUser(null);
+            // Сбрасываем кэш, чтобы данные удалённого аккаунта не остались в памяти
+            queryClient.clear();
             router.push('/');
         },
     });
