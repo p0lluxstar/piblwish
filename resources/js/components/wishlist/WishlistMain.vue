@@ -156,7 +156,9 @@ onMounted(generateRandomPhrase);
             <div class="heading">Мои списки</div>
             <div class="sub">
                 <span v-if="!isLoading">
-                    Cписков {{ wishLists.length }} ·
+                    <span>Списков {{ wishLists.length }}</span>
+                    <!-- Отступы вокруг точки заданы в CSS: пробелы между тегами Vue удаляет -->
+                    <span class="separator">·</span>
                     <span class="phrase-wrapper">
                         <span class="phrase">{{ randomPhrase }}</span>
                     </span>
@@ -165,13 +167,21 @@ onMounted(generateRandomPhrase);
             </div>
         </div>
         <div v-if="wishLists.length > 0 || isLoading" class="flex gap-2">
-            <button class="add-btn" @click="openCreateModal">
+            <button
+                class="add-btn"
+                aria-label="Новый список"
+                @click="openCreateModal"
+            >
                 <Plus :size="12" />
-                Новый список
+                <span class="btn-text">Новый список</span>
             </button>
-            <button class="update-btn" @click="updateWishlists">
+            <button
+                class="update-btn"
+                aria-label="Обновить"
+                @click="updateWishlists"
+            >
                 <RefreshCcw :size="12" />
-                Обновить
+                <span class="btn-text">Обновить</span>
             </button>
         </div>
     </div>
@@ -271,6 +281,7 @@ onMounted(generateRandomPhrase);
     font-family: inherit;
     transition: all 0.2s ease;
     line-height: 1.5;
+    white-space: nowrap;
     box-shadow: var(--shadow-glow);
 
     &:hover:not(:disabled) {
@@ -297,6 +308,31 @@ onMounted(generateRandomPhrase);
     }
 }
 
+/* Узкий экран: кнопки «Новый список» и «Обновить» — круглые, только с иконками.
+   Кнопка «Создать список» (нет ни одного списка) не затрагивается: она вне .top */
+@media (max-width: 599px) {
+    .top .add-btn,
+    .top .update-btn {
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        padding: 0;
+
+        svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .btn-text {
+            display: none;
+        }
+    }
+}
+
+.separator {
+    margin: 0 0.35em;
+}
+
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -321,6 +357,17 @@ onMounted(generateRandomPhrase);
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* Очень узкий экран: количество списков и фраза на отдельных строках, без точки.
+   Медиазапрос стоит в конце, иначе .phrase-wrapper { display: inline-block } выше по файлу перекрывает его */
+@media (max-width: 399px) {
+    .separator {
+        display: none;
+    }
+    .phrase-wrapper {
+        display: block;
     }
 }
 </style>

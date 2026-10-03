@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Gift, LayoutList, Settings } from '@lucide/vue';
+import { Gift, LayoutList, LogOut, Settings } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
@@ -17,6 +17,7 @@ const route = useRoute();
 
 // Ссылка на свои списки нужна везде, кроме самого дашборда (например, на странице общего списка)
 const showMyListsLink = computed(() => route.name !== 'dashboard');
+const logoLink = computed(() => (auth.user ? '/dashboard' : '/'));
 const { mutate: logout, isPending } = useLogout();
 const { mutate: deleteAccount, isPending: isDeletingAccount } =
     useDeleteAccount();
@@ -60,21 +61,23 @@ const handleDeleteAccount = (): void => {
 <template>
     <header class="header">
         <div class="container">
-            <div class="logo">
+            <!-- Авторизованный пользователь попадает на свои списки, гость — на главную -->
+            <router-link :to="logoLink" class="logo">
                 <div class="logo-icon">
                     <Gift :size="18" color="#fff" />
                     <span class="logo-spark">✦</span>
                 </div>
                 <span class="logo-title">PiblWish</span>
-            </div>
+            </router-link>
             <div v-if="auth.user" class="user-info">
                 <router-link
                     v-if="showMyListsLink"
                     to="/dashboard"
                     class="my-lists-btn"
+                    aria-label="Мои списки"
                 >
                     <LayoutList :size="16" />
-                    <span>Мои списки</span>
+                    <span class="btn-text">Мои списки</span>
                 </router-link>
                 <div class="user-details">
                     <span class="user-username">{{ auth.user.username }}</span>
@@ -95,11 +98,24 @@ const handleDeleteAccount = (): void => {
                 </div>
                 <button
                     class="logout-btn"
+                    aria-label="Выход"
                     :disabled="isPending"
                     @click="logout"
                 >
-                    <LoaderButtonSpinner v-if="isPending" :size="18" />
-                    <span v-else>Выход</span>
+                    <!-- Содержимое остаётся в разметке и задаёт ширину кнопки,
+                         во время выхода оно скрыто, а спиннер выводится поверх -->
+                    <span
+                        class="logout-content"
+                        :class="{ 'is-hidden': isPending }"
+                    >
+                        <LogOut :size="16" />
+                        <span class="btn-text">Выход</span>
+                    </span>
+                    <LoaderButtonSpinner
+                        v-if="isPending"
+                        class="logout-spinner"
+                        :size="18"
+                    />
                 </button>
             </div>
             <div v-else class="guest-actions">
@@ -151,6 +167,7 @@ const handleDeleteAccount = (): void => {
     display: flex;
     align-items: center;
     gap: 12px;
+    text-decoration: none;
 }
 .logo-icon {
     width: 38px;
@@ -272,6 +289,23 @@ const handleDeleteAccount = (): void => {
     transition: all 0.2s ease;
     height: 36px;
 }
+.logout-btn {
+    position: relative;
+}
+.logout-content {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.logout-content.is-hidden {
+    visibility: hidden;
+}
+/* Центрирование через inset и margin: transform занят анимацией вращения спиннера */
+.logout-spinner {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+}
 .logout-btn:hover:not(:disabled) {
     background: var(--brand-gradient);
     color: #fff;
@@ -333,5 +367,38 @@ const handleDeleteAccount = (): void => {
 .guest-btn--primary:hover {
     background: var(--brand-gradient);
     filter: brightness(1.05);
+}
+
+/* Узкий экран: одна строка, имя и email скрыты, кнопки только с иконками */
+@media (max-width: 599px) {
+    .header {
+        height: 60px;
+        padding: 0 16px;
+    }
+    .container {
+        width: 100%;
+    }
+    .user-info {
+        gap: 10px;
+    }
+    .user-details,
+    .btn-text {
+        display: none;
+    }
+    .logout-btn,
+    .my-lists-btn {
+        width: 36px;
+        padding: 0;
+        justify-content: center;
+    }
+    .my-lists-btn {
+        margin-right: 0;
+    }
+    .guest-actions {
+        gap: 8px;
+    }
+    .guest-btn {
+        padding: 6px 14px;
+    }
 }
 </style>

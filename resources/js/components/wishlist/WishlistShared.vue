@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Save } from '@lucide/vue';
+import { Gift, Save } from '@lucide/vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
@@ -120,23 +120,31 @@ onMounted(getWishlist);
                 <div
                     v-for="(item, itemIndex) in wishlist.items"
                     :key="itemIndex"
-                    :class="['item', { disabled: item.isSelected }]"
+                    :class="[
+                        'item',
+                        {
+                            disabled: item.isSelected,
+                            'item--mine': selectedItems.includes(item.id),
+                        },
+                    ]"
+                    :title="item.isSelected ? 'Уже выбрано' : undefined"
                 >
-                    <label
-                        :class="[
-                            'checkbox-wrapper',
-                            { 'checkbox-wrapper-disabled': item.isSelected },
-                        ]"
+                    <!-- Позицию уже выбрал другой гость: серый значок подарка вместо чекбокса -->
+                    <span
+                        v-if="item.isSelected"
+                        class="reserved-icon"
+                        role="img"
+                        aria-label="Уже выбрано"
                     >
+                        <Gift :size="11" />
+                    </span>
+
+                    <label v-else class="checkbox-wrapper">
                         <input
                             type="checkbox"
-                            :checked="
-                                item.isSelected ||
-                                selectedItems.includes(item.id)
-                            "
-                            :disabled="item.isSelected"
-                            @change="toggleItem(item)"
                             class="checkbox-input"
+                            :checked="selectedItems.includes(item.id)"
+                            @change="toggleItem(item)"
                         />
 
                         <span class="checkbox-custom"></span>
@@ -145,9 +153,7 @@ onMounted(getWishlist);
                     <span
                         :class="[
                             'item-label',
-                            {
-                                'checked-text': item.isSelected,
-                            },
+                            { 'reserved-text': item.isSelected },
                         ]"
                     >
                         {{ item.label }}
@@ -274,6 +280,10 @@ onMounted(getWishlist);
 }
 
 .item {
+    position: relative;
+    // Свой контекст наложения: фон выбранной строки (::before, z-index: -1)
+    // выводится под содержимым строки, но поверх фона карточки
+    isolation: isolate;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -303,9 +313,38 @@ onMounted(getWishlist);
     cursor: default;
 }
 
-.checked-text {
-    // color: #c5a4d8;
+/* Позиция, выбранная этим гостем (ещё не сохранена): тот же розовый фон,
+   что у забронированных позиций на /dashboard.
+   Фон задан псевдоэлементом, а не самой строкой: он не меняет размер строки
+   (строка не прыгает при выборе). Отступ 1px сверху; снизу фон доходит до края
+   строки, ещё 1px даёт прозрачная нижняя граница. Между соседними выбранными
+   строками остаётся зазор 2px, как на /dashboard */
+.item.item--mine {
+    border-bottom-color: transparent;
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 1px -8px 0;
+        z-index: -1;
+        border-radius: 10px;
+        background: rgba(236, 72, 153, 0.06);
+    }
+}
+
+/* Позиция, выбранная другим гостем: приглушённый значок и текст */
+.reserved-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 19px;
+    height: 19px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+    color: #fff;
+}
+
+.reserved-text {
     color: #94a3b8;
-    text-decoration: line-through;
 }
 </style>

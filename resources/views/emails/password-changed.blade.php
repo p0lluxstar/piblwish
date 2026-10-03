@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,7 +21,8 @@
         был изменён.
     </p>
 
-    <div style="
+    <div
+        style="
         margin: 20px 0;
         padding: 15px;
         background-color: #f4f6f8;
@@ -48,10 +50,10 @@
     " />
 
     <p style="font-size: 0.85em; color: #777;">
-        Если это были вы, ничего делать не нужно.
         Если вы не меняли пароль, срочно свяжитесь с поддержкой
         «PiblWish»: доступ к вашему аккаунту мог получить кто-то другой.
     </p>
 
 </body>
+
 </html>

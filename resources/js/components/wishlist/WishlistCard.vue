@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, FileEdit, Link, Trash2 } from '@lucide/vue';
+import { Check, FileEdit, Gift, Link, Trash2 } from '@lucide/vue';
 import { computed, onBeforeUnmount, ref } from 'vue';
 
 import type { Wishlist } from '../../types/wishlist';
@@ -162,9 +162,20 @@ const progress = computed(() => {
         <div
             v-for="(item, itemIndex) in wishlist.items"
             :key="itemIndex"
-            class="item"
+            :class="['item', { 'item--reserved': item.isSelected }]"
         >
-            <label class="checkbox-wrapper-disabled">
+            <!-- Позицию выбрал гость: вместо чекбокса значок подарка -->
+            <span
+                v-if="item.isSelected"
+                class="reserved-icon"
+                role="img"
+                aria-label="Забронировано"
+                title="Забронировано"
+            >
+                <Gift :size="11" />
+            </span>
+
+            <label v-else class="checkbox-wrapper-disabled">
                 <input
                     type="checkbox"
                     v-model="item.isSelected"
@@ -175,14 +186,7 @@ const progress = computed(() => {
                 <span class="checkbox-custom"></span>
             </label>
 
-            <span
-                :class="[
-                    'item-label',
-                    {
-                        'checked-text': item.isSelected,
-                    },
-                ]"
-            >
+            <span class="item-label">
                 {{ item.label }}
             </span>
         </div>
@@ -317,15 +321,34 @@ const progress = computed(() => {
 }
 
 .item-label {
+    flex: 1;
+    min-width: 0;
     font-size: 13px;
     color: var(--ink);
     transition: color 0.15s;
     line-height: 1.35;
+    overflow-wrap: anywhere;
 }
 
-.checked-text {
-    color: #94a3b8;
-    text-decoration: line-through;
+/* Забронированная позиция: строка с лёгким розовым фоном.
+   Отрицательный отступ сохраняет выравнивание значка с чекбоксами соседних строк */
+.item.item--reserved {
+    margin: 2px -8px;
+    padding: 7px 8px;
+    border-bottom-color: transparent;
+    border-radius: 10px;
+    background: rgba(236, 72, 153, 0.06);
+}
+
+.reserved-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 19px;
+    height: 19px;
+    border-radius: 7px;
+    background: var(--brand-gradient);
+    color: #fff;
 }
 
 .card-progress-container {
