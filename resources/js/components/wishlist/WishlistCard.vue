@@ -110,7 +110,7 @@ const progress = computed(() => {
 </script>
 
 <template>
-    <div class="card">
+    <div :class="['card', `wishlist-color--${wishlist.color}`]">
         <div class="card-actions">
             <button class="card-actions-btn" @click="editCard">
                 <FileEdit :size="14" />
@@ -205,10 +205,12 @@ const progress = computed(() => {
 
 <style scoped lang="scss">
 @use '../../../scss/ui/checkboxCard.scss';
+@use '../../../scss/ui/wishlistColors.scss';
 
 .card {
     position: relative;
-    background: var(--surface);
+    // Цвет списка; без него (white) — прежний полупрозрачный белый фон
+    background: var(--wishlist-bg, var(--surface));
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid var(--surface-border);

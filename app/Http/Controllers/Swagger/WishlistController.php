@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Swagger;
 
+use App\Enums\WishlistColor;
 use App\Http\Controllers\Controller;
 use OpenApi\Attributes as OA;
 
@@ -36,6 +37,14 @@ use OpenApi\Attributes as OA;
                                     property: 'title',
                                     type: 'string',
                                     example: 'День рождения'
+                                ),
+
+                                new OA\Property(
+                                    property: 'color',
+                                    description: 'Ключ цвета фона списка',
+                                    type: 'string',
+                                    enum: WishlistColor::class,
+                                    example: 'lavender'
                                 ),
 
                                 new OA\Property(
@@ -98,6 +107,14 @@ use OpenApi\Attributes as OA;
                 ),
 
                 new OA\Property(
+                    property: 'color',
+                    description: 'Ключ цвета фона списка. Необязателен, по умолчанию white',
+                    type: 'string',
+                    enum: WishlistColor::class,
+                    example: 'mint'
+                ),
+
+                new OA\Property(
                     property: 'items',
                     type: 'array',
                     items: new OA\Items(
@@ -135,6 +152,14 @@ use OpenApi\Attributes as OA;
                                 property: 'title',
                                 type: 'string',
                                 example: 'День рождения 2'
+                            ),
+
+                            new OA\Property(
+                                property: 'color',
+                                description: 'Ключ цвета фона списка',
+                                type: 'string',
+                                enum: WishlistColor::class,
+                                example: 'mint'
                             ),
 
                             new OA\Property(

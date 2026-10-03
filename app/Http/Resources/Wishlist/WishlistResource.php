@@ -13,6 +13,8 @@ class WishlistResource extends ApiResource
         return [
             'id' => $this->id,
             'title' => $this->title,
+            // Ключ цвета фона списка (white, lavender, …), см. App\Enums\WishlistColor
+            'color' => $this->color->value,
             'items' => WishlistItemResource::collection($this->whenLoaded('items')),
         ];
     }

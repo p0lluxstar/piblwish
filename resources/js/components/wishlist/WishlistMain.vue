@@ -7,7 +7,7 @@ import { computed } from 'vue';
 import { MOTIVATIONAL_PHRASES } from '@/constants/phrases';
 import { api } from '@/lib/api';
 
-import type { Wishlist } from '../../types/wishlist';
+import type { Wishlist, WishlistForm } from '../../types/wishlist';
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
 import WishlistCard from './WishlistCard.vue';
 import WishlistCreateModal from './WishlistCreateModal.vue';
@@ -44,7 +44,7 @@ const closeCreateModal = (): void => {
 };
 
 const createWishlistRequest = async (
-    payload: Omit<Wishlist, 'id'>,
+    payload: WishlistForm,
 ): Promise<Wishlist> => {
     const response = await api.post<{ data: Wishlist }>(
         '/v1/wishlists',
@@ -84,21 +84,40 @@ const closeEditModal = (): void => {
     selectedWishlist.value = null;
 };
 
-// Цепочка обновения списка: PATCH → emit('updated') → updateWishlist() → queryClient.setQueryData() → vue-query обновляет data.value → computed wishLists пересчитывается → WishlistCard получает новые props
-const updateWishlist = (updated: Partial<Wishlist>): void => {
-    queryClient.setQueryData<Wishlist[]>(['wishlists'], (oldData) => {
-        if (!oldData) return [];
+const updateWishlistRequest = async ({
+    id,
+    ...payload
+}: WishlistForm & { id: string }): Promise<Wishlist> => {
+    const response = await api.patch<{ data: Wishlist }>(
+        `/v1/wishlists/${id}`,
+        payload,
+    );
 
-        return oldData.map((wishlist) =>
-            wishlist.id === updated.id
-                ? {
-                      ...wishlist,
-                      ...updated,
-                  }
-                : wishlist,
-        );
-    });
+    return response.data.data;
 };
+
+// Цепочка обновления списка: emit('update') → мутация (PATCH) → queryClient.setQueryData() с ответом сервера → computed wishLists пересчитывается → WishlistCard получает новые props
+const { mutate: updateWishlist, isPending: isUpdating } = useMutation({
+    mutationFn: updateWishlistRequest,
+
+    onSuccess: (updated) => {
+        queryClient.setQueryData<Wishlist[]>(['wishlists'], (oldData) => {
+            if (!oldData) return [];
+
+            return oldData.map((wishlist) =>
+                wishlist.id === updated.id
+                    ? { ...wishlist, ...updated }
+                    : wishlist,
+            );
+        });
+
+        closeEditModal();
+    },
+
+    onError: (error) => {
+        console.error('Ошибка обновления списка', error);
+    },
+});
 
 const updateWishlists = async (): Promise<void> => {
     await queryClient.invalidateQueries({
@@ -235,7 +254,7 @@ onMounted(generateRandomPhrase);
         :wishlist="selectedWishlist"
         :is-pending="isUpdating"
         @close="closeEditModal"
-        @updated="updateWishlist"
+        @update="updateWishlist"
     />
 
     <WishlistDeleteModal

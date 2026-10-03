@@ -1,0 +1,22 @@
+// Цвета фона списка.
+//
+// Ключи совпадают с App\Enums\WishlistColor на бэкенде.
+// Класс .wishlist-color--<ключ> задаёт переменную --wishlist-bg,
+// компонент берёт её как фон: background: var(--wishlist-bg, <прежний фон>).
+// Для white переменная не задаётся, поэтому список выглядит как раньше.
+// Новый цвет нужно добавить и сюда, и в enum, и в тип WishlistColor.
+
+$wishlist-colors: (
+    lavender: #f3eeff,
+    pink: #fdeef6,
+    peach: #fff1e8,
+    lemon: #fffae0,
+    mint: #e9f9f1,
+    sky: #dbeafe,
+);
+
+@each $name, $color in $wishlist-colors {
+    .wishlist-color--#{$name} {
+        --wishlist-bg: #{$color};
+    }
+}

@@ -393,6 +393,20 @@
                                                         "type": "string",
                                                         "example": "День рождения"
                                                     },
+                                                    "color": {
+                                                        "description": "Ключ цвета фона списка",
+                                                        "type": "string",
+                                                        "example": "lavender",
+                                                        "enum": [
+                                                            "white",
+                                                            "lavender",
+                                                            "pink",
+                                                            "peach",
+                                                            "lemon",
+                                                            "mint",
+                                                            "sky"
+                                                        ]
+                                                    },
                                                     "items": {
                                                         "type": "array",
                                                         "items": {
@@ -453,6 +467,20 @@
                                         "type": "string",
                                         "example": "День рождения 2"
                                     },
+                                    "color": {
+                                        "description": "Ключ цвета фона списка. Необязателен, по умолчанию white",
+                                        "type": "string",
+                                        "example": "mint",
+                                        "enum": [
+                                            "white",
+                                            "lavender",
+                                            "pink",
+                                            "peach",
+                                            "lemon",
+                                            "mint",
+                                            "sky"
+                                        ]
+                                    },
                                     "items": {
                                         "type": "array",
                                         "items": {
@@ -487,6 +515,20 @@
                                                 "title": {
                                                     "type": "string",
                                                     "example": "День рождения 2"
+                                                },
+                                                "color": {
+                                                    "description": "Ключ цвета фона списка",
+                                                    "type": "string",
+                                                    "example": "mint",
+                                                    "enum": [
+                                                        "white",
+                                                        "lavender",
+                                                        "pink",
+                                                        "peach",
+                                                        "lemon",
+                                                        "mint",
+                                                        "sky"
+                                                    ]
                                                 },
                                                 "items": {
                                                     "type": "array",

@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Wishlist;
 
+use App\Enums\WishlistColor;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CreateWishlistRequest extends FormRequest
 {
@@ -15,6 +17,9 @@ class CreateWishlistRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
+
+            // Необязателен: без него список получает white
+            'color' => ['sometimes', Rule::enum(WishlistColor::class)],
 
             'items' => ['required', 'array', 'min:1'],
 
@@ -30,6 +35,8 @@ class CreateWishlistRequest extends FormRequest
     {
         return [
             'title.required' => 'Название обязательно',
+
+            'color.enum' => 'Недопустимый цвет списка',
 
             'items.required' => 'Добавьте хотя бы один элемент',
 

@@ -2,8 +2,9 @@
 import { Trash2 } from '@lucide/vue';
 import { onMounted, onUnmounted, ref } from 'vue';
 
-import type { Wishlist, WishlistItem } from '../../types/wishlist';
+import type { WishlistForm } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
+import WishlistColorPicker from './WishlistColorPicker.vue';
 
 const props = defineProps<{
     isPending: boolean;
@@ -11,16 +12,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     close: [];
-    create: [
-        payload: {
-            title: string;
-            items: WishlistItem[];
-        },
-    ];
+    create: [payload: WishlistForm];
 }>();
 
-const defaultForm = (): Omit<Wishlist, 'id'> => ({
+const defaultForm = (): WishlistForm => ({
     title: '',
+    color: 'white',
     items: [
         {
             label: '',
@@ -45,6 +42,7 @@ const removeItem = (index: number): void => {
 const handleSubmit = (): void => {
     emit('create', {
         title: form.value.title,
+        color: form.value.color,
         items: form.value.items.filter((item) => item.label.trim()),
     });
 };
@@ -74,7 +72,8 @@ const closeModal = (): void => {
 
 <template>
     <div class="modal-overlay">
-        <div class="modal">
+        <!-- Фон модалки окрашивается в выбранный цвет: превью цвета списка -->
+        <div :class="['modal', `wishlist-color--${form.color}`]">
             <div class="modal-header">
                 <h2>Создать список</h2>
 
@@ -90,6 +89,12 @@ const closeModal = (): void => {
                         type="text"
                         placeholder="Например: День рождения"
                     />
+                </div>
+
+                <div class="form-group">
+                    <label>Цвет списка</label>
+
+                    <WishlistColorPicker v-model="form.color" />
                 </div>
 
                 <div class="form-group">
@@ -136,4 +141,11 @@ const closeModal = (): void => {
 
 <style scoped lang="scss">
 @use '../../../scss/ui/wishlistModal.scss';
+@use '../../../scss/ui/wishlistColors.scss';
+
+// Превью цвета списка; для white — прежний белый фон модалки
+.modal {
+    background: var(--wishlist-bg, #fff);
+    transition: background-color 0.2s ease;
+}
 </style>

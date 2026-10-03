@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Wishlist;
 
+use App\Enums\WishlistColor;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateWishlistRequest extends FormRequest
 {
@@ -15,6 +17,7 @@ class UpdateWishlistRequest extends FormRequest
     {
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
+            'color' => ['sometimes', Rule::enum(WishlistColor::class)],
             'items' => ['sometimes', 'array'],
             'items.*.label' => ['required_with:items', 'string', 'max:1000'],
             'items.*.isSelected' => ['sometimes', 'boolean'],
@@ -24,6 +27,7 @@ class UpdateWishlistRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'color.enum' => 'Недопустимый цвет списка',
             'items.required' => 'Добавьте хотя бы один элемент',
             'items.*.label.required_with' => 'Описание элемента обязательно',
         ];
