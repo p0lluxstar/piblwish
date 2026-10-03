@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 
+import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 
 const props = defineProps<{
     isPending?: boolean;
     isDeletingAccount?: boolean;
+    passwordErrorMessage?: string | null;
+    isPasswordChanged?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -20,7 +23,13 @@ const emit = defineEmits<{
     deleteAccount: [];
 }>();
 
-const defaultForm = () => ({
+type PasswordForm = {
+    currentPassword: string;
+    newPassword: string;
+    newPasswordConfirmation: string;
+};
+
+const defaultForm = (): PasswordForm => ({
     currentPassword: '',
     newPassword: '',
     newPasswordConfirmation: '',
@@ -31,6 +40,16 @@ const form = ref(defaultForm());
 const handleSubmit = (): void => {
     emit('changePassword', { ...form.value });
 };
+
+// После успешной смены пароля очищаем поля формы
+watch(
+    () => props.isPasswordChanged,
+    (isChanged) => {
+        if (isChanged) {
+            form.value = defaultForm();
+        }
+    },
+);
 
 // Показ подтверждения удаления аккаунта вместо кнопки «Удалить аккаунт»
 const isDeleteConfirmVisible = ref(false);
@@ -89,6 +108,7 @@ const closeModal = (): void => {
                             v-model="form.currentPassword"
                             type="password"
                             autocomplete="current-password"
+                            required
                             placeholder="Текущий пароль"
                         />
 
@@ -97,6 +117,7 @@ const closeModal = (): void => {
                             type="password"
                             autocomplete="new-password"
                             placeholder="Новый пароль"
+                            required
                         />
 
                         <input
@@ -104,8 +125,22 @@ const closeModal = (): void => {
                             type="password"
                             autocomplete="new-password"
                             placeholder="Повторите новый пароль"
+                            required
                         />
                     </div>
+
+                    <FormErrorMessage
+                        class="form-message"
+                        :show="!!props.passwordErrorMessage"
+                        :message="props.passwordErrorMessage ?? undefined"
+                    />
+
+                    <p
+                        v-if="props.isPasswordChanged"
+                        class="form-message success-message"
+                    >
+                        Пароль изменён
+                    </p>
 
                     <button
                         type="submit"
@@ -211,6 +246,17 @@ const closeModal = (): void => {
             box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
         }
     }
+}
+
+.form-message {
+    margin: 0 0 12px;
+    font-size: 13px;
+}
+
+.success-message {
+    color: #16a34a;
+    line-height: 1.4;
+    text-align: center;
 }
 
 .danger-zone {

@@ -38,6 +38,8 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard'])->group(f
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [UserController::class, 'user']);
     Route::delete('/user', [UserController::class, 'deleteAccount']);
+    Route::put('/user/password', [UserController::class, 'changePassword'])
+        ->middleware('throttle:password-change');
     Route::get('/wishlists', [WishlistController::class, 'getUserWishlists']);
     Route::post('/wishlists', [WishlistController::class, 'createWishlist']);
     Route::patch('/wishlists/{id}', [WishlistController::class, 'updateWishlist']);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\User\ChangePasswordRequest;
 use App\Http\Resources\ApiResource;
 use App\Http\Resources\Auth\UserResource;
 use App\Services\User\UserService;
@@ -24,6 +25,20 @@ class UserController extends Controller
     public function user(Request $request): UserResource
     {
         return new UserResource($request->user());
+    }
+
+    // Сменить пароль текущего пользователя
+    public function changePassword(
+        ChangePasswordRequest $request
+    ): ApiResource {
+        $this->userService->changePassword(
+            $request,
+            $request->validated('password')
+        );
+
+        return new ApiResource([
+            'message' => 'Пароль изменён',
+        ]);
     }
 
     // Удалить аккаунт текущего пользователя

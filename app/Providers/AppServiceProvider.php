@@ -64,5 +64,11 @@ class AppServiceProvider extends ServiceProvider
 
         // Дашборд: маршруты под auth:sanctum
         RateLimiter::for('dashboard', fn (Request $request): Limit => Limit::perMinute(60)->by($byUserOrIp($request)));
+
+        // Смена пароля: подбор текущего пароля из захваченной сессии
+        RateLimiter::for('password-change', fn (Request $request): array => [
+            Limit::perMinute(5)->by($byUserOrIp($request)),
+            Limit::perHour(20)->by($byUserOrIp($request)),
+        ]);
     }
 }
