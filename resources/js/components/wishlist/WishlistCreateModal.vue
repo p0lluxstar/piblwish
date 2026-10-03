@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Link, Trash2 } from '@lucide/vue';
+import { ChevronDown, ChevronUp, Link, Trash2 } from '@lucide/vue';
 import { onMounted, onUnmounted, ref } from 'vue';
 
+import { useItemReorder } from '../../composables/useItemReorder';
 import { isValidItemUrl, normalizeItemUrl } from '../../lib/itemUrl';
 import type { WishlistForm, WishlistItem } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
@@ -32,6 +33,8 @@ const form = ref(defaultForm());
 
 // Индексы позиций с некорректной ссылкой; ошибка снимается, когда ссылку начинают править
 const urlErrors = ref<boolean[]>([]);
+
+const { itemKey, moveItem } = useItemReorder(() => form.value.items, urlErrors);
 
 const addItem = (): void => {
     form.value.items.push({
@@ -133,7 +136,7 @@ const closeModal = (): void => {
 
                     <div
                         v-for="(item, index) in form.items"
-                        :key="index"
+                        :key="itemKey(item)"
                         class="wishlist-item"
                     >
                         <div class="wishlist-item-fields">
@@ -178,6 +181,29 @@ const closeModal = (): void => {
                             >
                                 Некорректная ссылка
                             </span>
+                        </div>
+
+                        <!-- Перестановка позиций: порядок сохраняется на сервере -->
+                        <div v-if="form.items.length > 1" class="move-btns">
+                            <button
+                                class="move-btn"
+                                type="button"
+                                aria-label="Переместить выше"
+                                :disabled="index === 0"
+                                @click="moveItem(index, -1, $event)"
+                            >
+                                <ChevronUp :size="16" />
+                            </button>
+
+                            <button
+                                class="move-btn"
+                                type="button"
+                                aria-label="Переместить ниже"
+                                :disabled="index === form.items.length - 1"
+                                @click="moveItem(index, 1, $event)"
+                            >
+                                <ChevronDown :size="16" />
+                            </button>
                         </div>
 
                         <button

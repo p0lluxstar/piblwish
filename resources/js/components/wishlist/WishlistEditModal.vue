@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Link, Trash2 } from '@lucide/vue';
+import { ChevronDown, ChevronUp, Link, Trash2 } from '@lucide/vue';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 
+import { useItemReorder } from '../../composables/useItemReorder';
 import { isValidItemUrl, normalizeItemUrl } from '../../lib/itemUrl';
 import type {
     Wishlist,
@@ -58,6 +59,8 @@ watch(
         immediate: true,
     },
 );
+
+const { itemKey, moveItem } = useItemReorder(() => form.value.items, urlErrors);
 
 const addItem = (): void => {
     form.value.items.push({
@@ -163,7 +166,7 @@ const closeModal = (): void => {
 
                     <div
                         v-for="(item, index) in form.items"
-                        :key="index"
+                        :key="itemKey(item)"
                         class="wishlist-item"
                     >
                         <label class="checkbox-wrapper">
@@ -218,6 +221,29 @@ const closeModal = (): void => {
                             >
                                 Некорректная ссылка
                             </span>
+                        </div>
+
+                        <!-- Перестановка позиций: порядок сохраняется на сервере -->
+                        <div v-if="form.items.length > 1" class="move-btns">
+                            <button
+                                class="move-btn"
+                                type="button"
+                                aria-label="Переместить выше"
+                                :disabled="index === 0"
+                                @click="moveItem(index, -1, $event)"
+                            >
+                                <ChevronUp :size="16" />
+                            </button>
+
+                            <button
+                                class="move-btn"
+                                type="button"
+                                aria-label="Переместить ниже"
+                                :disabled="index === form.items.length - 1"
+                                @click="moveItem(index, 1, $event)"
+                            >
+                                <ChevronDown :size="16" />
+                            </button>
                         </div>
 
                         <button

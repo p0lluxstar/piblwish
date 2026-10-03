@@ -165,6 +165,46 @@
         flex-shrink: 0;
         margin-top: 8px;
     }
+
+    // Две кнопки по 22px занимают высоту поля описания (44px)
+    > .move-btns {
+        flex-shrink: 0;
+    }
+}
+
+// Кнопки «вверх» и «вниз» друг под другом
+.move-btns {
+    display: flex;
+    flex-direction: column;
+}
+
+.move-btn {
+    border: none;
+    background: transparent;
+    color: #b3b3b3;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 22px;
+    padding: 0;
+    border-radius: 6px;
+    transition: all 0.18s ease;
+
+    &:hover:not(:disabled) {
+        color: var(--brand-violet);
+        background: rgba(139, 92, 246, 0.1);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--brand-violet);
+        outline-offset: -2px;
+    }
+
+    &:disabled {
+        opacity: 0.35;
+        cursor: default;
+    }
 }
 
 .wishlist-item-fields {

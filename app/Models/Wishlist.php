@@ -34,6 +34,7 @@ class Wishlist extends Model
 
     public function items(): HasMany
     {
-        return $this->hasMany(WishlistItem::class);
+        // Позиции всегда отдаются в порядке, заданном владельцем списка
+        return $this->hasMany(WishlistItem::class)->orderBy('position');
     }
 }

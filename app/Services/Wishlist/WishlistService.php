@@ -14,6 +14,7 @@ class WishlistService
     {
         return $user->wishlists()
             ->with('items')
+            ->latest()
             ->get();
     }
 
@@ -30,12 +31,15 @@ class WishlistService
                 Arr::only($data, ['title', 'color'])
             );
 
+            // Порядок позиций задаётся порядком массива items
             $wishlist->items()->createMany(
                 collect($data['items'])
-                    ->map(fn($item) => [
+                    ->values()
+                    ->map(fn($item, $index) => [
                         'description' => $item['label'],
                         'url' => $item['url'] ?? null,
                         'is_selected' => false,
+                        'position' => $index,
                     ])
                     ->toArray()
             );
@@ -65,11 +69,14 @@ class WishlistService
             if (array_key_exists('items', $data)) {
                 $wishlist->items()->delete();
 
+                // Порядок позиций задаётся порядком массива items
                 $items = collect($data['items'])
-                    ->map(fn($item) => [
+                    ->values()
+                    ->map(fn($item, $index) => [
                         'description' => $item['label'],
                         'url' => $item['url'] ?? null,
                         'is_selected' => (bool) ($item['isSelected'] ?? false),
+                        'position' => $index,
                     ])
                     ->toArray();
 
