@@ -18,6 +18,8 @@ export interface Wishlist {
     id: string;
     title: string;
     color: WishlistColor;
+    // Дата создания (ISO 8601); приходит только в дашборде, в общем списке её нет
+    createdAt?: string;
     username: string | null;
     items: WishlistItem[];
 }

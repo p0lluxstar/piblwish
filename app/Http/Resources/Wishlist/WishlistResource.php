@@ -15,6 +15,8 @@ class WishlistResource extends ApiResource
             'title' => $this->title,
             // Ключ цвета фона списка (white, lavender, …), см. App\Enums\WishlistColor
             'color' => $this->color->value,
+            // Дата создания списка
+            'createdAt' => $this->created_at?->toIso8601String(),
             'items' => WishlistItemResource::collection($this->whenLoaded('items')),
         ];
     }

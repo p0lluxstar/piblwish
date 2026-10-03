@@ -48,6 +48,14 @@ use OpenApi\Attributes as OA;
                                 ),
 
                                 new OA\Property(
+                                    property: 'createdAt',
+                                    description: 'Дата создания списка (ISO 8601)',
+                                    type: 'string',
+                                    format: 'date-time',
+                                    example: '2026-09-12T14:30:00+00:00'
+                                ),
+
+                                new OA\Property(
                                     property: 'items',
                                     type: 'array',
                                     items: new OA\Items(
@@ -160,6 +168,14 @@ use OpenApi\Attributes as OA;
                                 type: 'string',
                                 enum: WishlistColor::class,
                                 example: 'mint'
+                            ),
+
+                            new OA\Property(
+                                property: 'createdAt',
+                                description: 'Дата создания списка (ISO 8601)',
+                                type: 'string',
+                                format: 'date-time',
+                                example: '2026-09-12T14:30:00+00:00'
                             ),
 
                             new OA\Property(

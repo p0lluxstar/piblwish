@@ -107,6 +107,18 @@ const progress = computed(() => {
 
     return (selected / items.length) * 100;
 });
+
+// «Создан 12 сентября 2026 г.»
+const createdAtLabel = computed(() => {
+    if (!props.wishlist.createdAt) return '';
+
+    const formatted = new Date(props.wishlist.createdAt).toLocaleDateString(
+        'ru-RU',
+        { day: 'numeric', month: 'long', year: 'numeric' },
+    );
+
+    return `Создан ${formatted}`;
+});
 </script>
 
 <template>
@@ -191,14 +203,25 @@ const progress = computed(() => {
             </span>
         </div>
 
-        <div class="card-progress-container">
-            <span class="progress-percent">{{ progress }}%</span>
-            <div class="card-progress">
-                <div
-                    class="card-progress-fill"
-                    :style="{ width: `${progress}%` }"
-                ></div>
+        <!-- Прижат к низу карточки, даже если в ней мало позиций -->
+        <div class="card-footer">
+            <div class="card-progress-container">
+                <span class="progress-percent">{{ progress }}%</span>
+                <div class="card-progress">
+                    <div
+                        class="card-progress-fill"
+                        :style="{ width: `${progress}%` }"
+                    ></div>
+                </div>
             </div>
+
+            <time
+                v-if="createdAtLabel"
+                class="card-created-at"
+                :datetime="wishlist.createdAt"
+            >
+                {{ createdAtLabel }}
+            </time>
         </div>
     </div>
 </template>
@@ -209,6 +232,9 @@ const progress = computed(() => {
 
 .card {
     position: relative;
+    // Колонка, чтобы .card-footer прижимался к низу; высоту карточек в ряду выравнивает grid
+    display: flex;
+    flex-direction: column;
     // Цвет списка; без него (white) — прежний полупрозрачный белый фон
     background: var(--wishlist-bg, var(--surface));
     backdrop-filter: blur(10px);
@@ -353,8 +379,9 @@ const progress = computed(() => {
     color: #fff;
 }
 
-.card-progress-container {
-    margin-top: 10px;
+.card-footer {
+    margin-top: auto;
+    padding-top: 10px;
 }
 
 .card-progress {
@@ -380,5 +407,12 @@ const progress = computed(() => {
     color: var(--brand-violet);
     min-width: 45px;
     text-align: right;
+}
+
+.card-created-at {
+    display: block;
+    margin-top: 10px;
+    font-size: 11px;
+    color: #baa7c7;
 }
 </style>
