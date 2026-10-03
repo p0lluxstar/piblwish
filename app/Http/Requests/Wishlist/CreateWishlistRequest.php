@@ -28,6 +28,15 @@ class CreateWishlistRequest extends FormRequest
                 'string',
                 'max:1000',
             ],
+
+            // Ссылка на товар необязательна; только http(s), чтобы на общей странице
+            // нельзя было подставить javascript: и другие опасные схемы
+            'items.*.url' => [
+                'nullable',
+                'string',
+                'max:2048',
+                'url:http,https',
+            ],
         ];
     }
 
@@ -41,6 +50,9 @@ class CreateWishlistRequest extends FormRequest
             'items.required' => 'Добавьте хотя бы один элемент',
 
             'items.*.label.required' => 'Описание элемента обязательно',
+
+            'items.*.url.url' => 'Некорректная ссылка на товар',
+            'items.*.url.max' => 'Ссылка на товар слишком длинная',
         ];
     }
 }

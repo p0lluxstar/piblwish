@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Check, FileEdit, Gift, Link, Trash2 } from '@lucide/vue';
+import { Check, ExternalLink, FileEdit, Gift, Link, Trash2 } from '@lucide/vue';
 import { computed, onBeforeUnmount, ref } from 'vue';
 
+import { getItemUrlHost } from '../../lib/itemUrl';
 import type { Wishlist } from '../../types/wishlist';
 
 const props = defineProps<{
@@ -201,6 +202,18 @@ const createdAtLabel = computed(() => {
             <span class="item-label">
                 {{ item.label }}
             </span>
+
+            <a
+                v-if="item.url"
+                :href="item.url"
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                class="item-link"
+                :title="getItemUrlHost(item.url)"
+                :aria-label="`Ссылка на товар: ${getItemUrlHost(item.url)}`"
+            >
+                <ExternalLink :size="13" />
+            </a>
         </div>
 
         <!-- Прижат к низу карточки, даже если в ней мало позиций -->
@@ -366,6 +379,22 @@ const createdAtLabel = computed(() => {
     border-bottom-color: transparent;
     border-radius: 10px;
     background: rgba(236, 72, 153, 0.06);
+}
+
+.item-link {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    color: var(--brand-violet);
+    transition: all 0.18s ease;
+
+    &:hover {
+        color: #fff;
+        background: var(--brand-gradient);
+    }
 }
 
 .reserved-icon {

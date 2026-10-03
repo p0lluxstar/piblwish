@@ -2,6 +2,8 @@ export interface WishlistItem {
     id?: string;
     isSelected: boolean;
     label: string;
+    // Ссылка на товар (http или https); null, если не указана
+    url?: string | null;
 }
 
 // Ключ цвета фона списка, совпадает с App\Enums\WishlistColor на бэкенде

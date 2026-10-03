@@ -73,6 +73,16 @@ use OpenApi\Attributes as OA;
                                             ),
 
                                             new OA\Property(
+                                                property: 'url',
+                                                description: 'Ссылка на товар (http или https), необязательна',
+                                                type: 'string',
+                                                format: 'uri',
+                                                maxLength: 2048,
+                                                nullable: true,
+                                                example: 'https://example.com/books/master-i-margarita'
+                                            ),
+
+                                            new OA\Property(
                                                 property: 'isSelected',
                                                 type: 'boolean',
                                                 example: false
@@ -131,6 +141,16 @@ use OpenApi\Attributes as OA;
                                 property: 'label',
                                 type: 'string',
                                 example: 'Книга «Мастер и Маргарита»'
+                            ),
+
+                            new OA\Property(
+                                property: 'url',
+                                description: 'Ссылка на товар (http или https), необязательна',
+                                type: 'string',
+                                format: 'uri',
+                                maxLength: 2048,
+                                nullable: true,
+                                example: 'https://example.com/books/master-i-margarita'
                             ),
                         ],
                         type: 'object'
@@ -193,6 +213,16 @@ use OpenApi\Attributes as OA;
                                             property: 'label',
                                             type: 'string',
                                             example: 'Свеча с ароматом ванили'
+                                        ),
+
+                                        new OA\Property(
+                                            property: 'url',
+                                            description: 'Ссылка на товар (http или https), необязательна',
+                                            type: 'string',
+                                            format: 'uri',
+                                            maxLength: 2048,
+                                            nullable: true,
+                                            example: 'https://example.com/books/master-i-margarita'
                                         ),
 
                                         new OA\Property(

@@ -21,6 +21,8 @@ class UpdateWishlistRequest extends FormRequest
             'items' => ['sometimes', 'array'],
             'items.*.label' => ['required_with:items', 'string', 'max:1000'],
             'items.*.isSelected' => ['sometimes', 'boolean'],
+            // Только http(s): см. CreateWishlistRequest
+            'items.*.url' => ['nullable', 'string', 'max:2048', 'url:http,https'],
         ];
     }
 
@@ -30,6 +32,8 @@ class UpdateWishlistRequest extends FormRequest
             'color.enum' => 'Недопустимый цвет списка',
             'items.required' => 'Добавьте хотя бы один элемент',
             'items.*.label.required_with' => 'Описание элемента обязательно',
+            'items.*.url.url' => 'Некорректная ссылка на товар',
+            'items.*.url.max' => 'Ссылка на товар слишком длинная',
         ];
     }
 }

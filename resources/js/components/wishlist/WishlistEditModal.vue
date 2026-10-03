@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { Trash2 } from '@lucide/vue';
+import { Link, Trash2 } from '@lucide/vue';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 
-import type { Wishlist, WishlistForm } from '../../types/wishlist';
+import { isValidItemUrl, normalizeItemUrl } from '../../lib/itemUrl';
+import type {
+    Wishlist,
+    WishlistForm,
+    WishlistItem,
+} from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import WishlistColorPicker from './WishlistColorPicker.vue';
 
@@ -33,6 +38,9 @@ const form = ref<WishlistForm>({
     items: [],
 });
 
+// Индексы позиций с некорректной ссылкой; ошибка снимается, когда ссылку начинают править
+const urlErrors = ref<boolean[]>([]);
+
 watch(
     () => props.wishlist,
     (wishlist) => {
@@ -41,6 +49,7 @@ watch(
             color: wishlist.color,
             items: wishlist.items.map((item) => ({
                 label: item.label,
+                url: item.url ?? '',
                 isSelected: item.isSelected ?? false,
             })),
         };
@@ -54,21 +63,46 @@ const addItem = (): void => {
     form.value.items.push({
         isSelected: false,
         label: '',
+        url: '',
     });
 };
 
 const removeItem = (index: number): void => {
     form.value.items.splice(index, 1);
+    urlErrors.value.splice(index, 1);
+};
+
+const clearUrlError = (index: number): void => {
+    urlErrors.value[index] = false;
+};
+
+// Пустые позиции отбрасываются, ссылки нормализуются; null — в форме есть некорректная ссылка
+const prepareItems = (): WishlistItem[] | null => {
+    urlErrors.value = form.value.items.map((item) => {
+        const url = normalizeItemUrl(item.url);
+
+        return Boolean(item.label.trim() && url && !isValidItemUrl(url));
+    });
+
+    if (urlErrors.value.some(Boolean)) return null;
+
+    return form.value.items
+        .filter((item) => item.label.trim())
+        .map((item) => ({ ...item, url: normalizeItemUrl(item.url) }));
 };
 
 // Запрос выполняет WishlistMain (мутация updateWishlist): там же состояние
 // загрузки для кнопки и закрытие модалки после успешного сохранения
 const handleSubmit = (): void => {
+    const items = prepareItems();
+
+    if (!items) return;
+
     emit('update', {
         id: props.wishlist.id,
         title: form.value.title,
         color: form.value.color,
-        items: form.value.items.filter((item) => item.label.trim()),
+        items,
     });
 };
 
@@ -91,6 +125,7 @@ onUnmounted(() => {
 
 const closeModal = (): void => {
     form.value = defaultForm();
+    urlErrors.value = [];
     enableBodyScroll();
     emit('close');
 };
@@ -141,11 +176,49 @@ const closeModal = (): void => {
                             <span class="checkbox-custom"></span>
                         </label>
 
-                        <input
-                            v-model="item.label"
-                            type="text"
-                            placeholder="Например: Книга"
-                        />
+                        <div class="wishlist-item-fields">
+                            <input
+                                v-model="item.label"
+                                type="text"
+                                placeholder="Например: Книга"
+                            />
+
+                            <!-- Линия-уголок от поля описания: ссылка относится к этой позиции -->
+                            <div class="item-url-row">
+                                <Link
+                                    :size="13"
+                                    class="item-url-icon"
+                                    aria-hidden="true"
+                                />
+
+                                <!-- type="text", а не "url": иначе браузер не пропустит адрес без https:// -->
+                                <input
+                                    v-model="item.url"
+                                    type="text"
+                                    inputmode="url"
+                                    autocomplete="off"
+                                    :class="[
+                                        'item-url-input',
+                                        {
+                                            'item-url-input--error':
+                                                urlErrors[index],
+                                        },
+                                    ]"
+                                    placeholder="Ссылка на товар (необязательно)"
+                                    :aria-invalid="
+                                        urlErrors[index] || undefined
+                                    "
+                                    @input="clearUrlError(index)"
+                                />
+                            </div>
+
+                            <span
+                                v-if="urlErrors[index]"
+                                class="item-url-error"
+                            >
+                                Некорректная ссылка
+                            </span>
+                        </div>
 
                         <button
                             class="remove-btn"
@@ -189,5 +262,11 @@ const closeModal = (): void => {
 .wishlist-item input[type='text'] {
     flex-grow: 1;
     width: auto;
+}
+
+// По центру поля описания (см. .wishlist-item в wishlistModal.scss)
+.wishlist-item > .checkbox-wrapper {
+    flex-shrink: 0;
+    margin-top: 12px;
 }
 </style>

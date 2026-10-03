@@ -153,12 +153,81 @@
     }
 }
 
+// Позиция: описание и ссылка друг под другом, кнопки выровнены по полю описания
 .wishlist-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
+
+    > .remove-btn {
+        flex-shrink: 0;
+        margin-top: 8px;
+    }
+}
+
+.wishlist-item-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+// Поле ссылки сдвинуто вправо и соединено с полем описания линией-уголком (└)
+.item-url-row {
+    position: relative;
+    display: flex;
+    padding-left: 20px;
+
+    &::before {
+        content: '';
+        position: absolute;
+        left: 8px;
+        // Линия начинается от нижнего края поля описания (промежуток .wishlist-item-fields — 6px)
+        top: -6px;
+        width: 12px;
+        height: calc(50% + 6px);
+        border-left: 1.5px solid rgba(139, 92, 246, 0.3);
+        border-bottom: 1.5px solid rgba(139, 92, 246, 0.3);
+        border-bottom-left-radius: 8px;
+        pointer-events: none;
+    }
+
+    input {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+.item-url-icon {
+    position: absolute;
+    left: 31px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(139, 92, 246, 0.55);
+    pointer-events: none;
+}
+
+.form-group input.item-url-input {
+    padding: 8px 12px 8px 30px;
+    border-radius: 12px;
+    font-size: 13px;
+}
+
+.form-group input.item-url-input--error {
+    border-color: #ef4444;
+
+    &:focus {
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+    }
+}
+
+.item-url-error {
+    padding-left: 20px;
+    font-size: 12px;
+    color: #ef4444;
 }
 
 .remove-btn {

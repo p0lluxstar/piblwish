@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Gift, Save } from '@lucide/vue';
+import { ExternalLink, Gift, Save } from '@lucide/vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { api } from '@/lib/api';
+import { getItemUrlHost } from '@/lib/itemUrl';
 import type { Wishlist, WishlistItem } from '@/types/wishlist';
 
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
@@ -158,6 +159,23 @@ onMounted(getWishlist);
                     >
                         {{ item.label }}
                     </span>
+
+                    <a
+                        v-if="item.url"
+                        :href="item.url"
+                        target="_blank"
+                        rel="noopener noreferrer nofollow"
+                        :class="[
+                            'item-link',
+                            { 'item-link--muted': item.isSelected },
+                        ]"
+                        :title="item.url"
+                    >
+                        <ExternalLink :size="12" />
+                        <span class="item-link-host">
+                            {{ getItemUrlHost(item.url) }}
+                        </span>
+                    </a>
                 </div>
 
                 <div class="card-actions">
@@ -303,10 +321,53 @@ onMounted(getWishlist);
 }
 
 .item-label {
+    flex: 1;
+    min-width: 0;
     font-size: 13px;
     color: #4a3356;
     transition: color 0.15s;
     line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.item-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    max-width: 40%;
+    padding: 3px 8px;
+    border-radius: 8px;
+    background: rgba(139, 92, 246, 0.08);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--brand-violet);
+    text-decoration: none;
+    transition: all 0.18s ease;
+
+    &:hover {
+        color: #fff;
+        background: var(--brand-gradient);
+    }
+}
+
+/* Подарок уже выбран: ссылка остаётся (выбравшему гостю она нужна для покупки),
+   но приглушена в тон серому тексту позиции, чтобы не зазывать купить повторно */
+.item-link.item-link--muted {
+    background: rgba(148, 163, 184, 0.12);
+    font-weight: 500;
+    color: #94a3b8;
+
+    &:hover {
+        color: #64748b;
+        background: rgba(148, 163, 184, 0.22);
+    }
+}
+
+.item-link-host {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .item.disabled {

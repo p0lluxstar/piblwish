@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Trash2 } from '@lucide/vue';
+import { Link, Trash2 } from '@lucide/vue';
 import { onMounted, onUnmounted, ref } from 'vue';
 
-import type { WishlistForm } from '../../types/wishlist';
+import { isValidItemUrl, normalizeItemUrl } from '../../lib/itemUrl';
+import type { WishlistForm, WishlistItem } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import WishlistColorPicker from './WishlistColorPicker.vue';
 
@@ -21,6 +22,7 @@ const defaultForm = (): WishlistForm => ({
     items: [
         {
             label: '',
+            url: '',
             isSelected: false,
         },
     ],
@@ -28,22 +30,50 @@ const defaultForm = (): WishlistForm => ({
 
 const form = ref(defaultForm());
 
+// Индексы позиций с некорректной ссылкой; ошибка снимается, когда ссылку начинают править
+const urlErrors = ref<boolean[]>([]);
+
 const addItem = (): void => {
     form.value.items.push({
         label: '',
+        url: '',
         isSelected: false,
     });
 };
 
 const removeItem = (index: number): void => {
     form.value.items.splice(index, 1);
+    urlErrors.value.splice(index, 1);
+};
+
+const clearUrlError = (index: number): void => {
+    urlErrors.value[index] = false;
+};
+
+// Пустые позиции отбрасываются, ссылки нормализуются; null — в форме есть некорректная ссылка
+const prepareItems = (): WishlistItem[] | null => {
+    urlErrors.value = form.value.items.map((item) => {
+        const url = normalizeItemUrl(item.url);
+
+        return Boolean(item.label.trim() && url && !isValidItemUrl(url));
+    });
+
+    if (urlErrors.value.some(Boolean)) return null;
+
+    return form.value.items
+        .filter((item) => item.label.trim())
+        .map((item) => ({ ...item, url: normalizeItemUrl(item.url) }));
 };
 
 const handleSubmit = (): void => {
+    const items = prepareItems();
+
+    if (!items) return;
+
     emit('create', {
         title: form.value.title,
         color: form.value.color,
-        items: form.value.items.filter((item) => item.label.trim()),
+        items,
     });
 };
 
@@ -65,6 +95,7 @@ onUnmounted(() => {
 
 const closeModal = (): void => {
     form.value = defaultForm();
+    urlErrors.value = [];
     enableBodyScroll();
     emit('close');
 };
@@ -105,11 +136,49 @@ const closeModal = (): void => {
                         :key="index"
                         class="wishlist-item"
                     >
-                        <input
-                            v-model="item.label"
-                            type="text"
-                            placeholder="Например: Книга"
-                        />
+                        <div class="wishlist-item-fields">
+                            <input
+                                v-model="item.label"
+                                type="text"
+                                placeholder="Например: Книга"
+                            />
+
+                            <!-- Линия-уголок от поля описания: ссылка относится к этой позиции -->
+                            <div class="item-url-row">
+                                <Link
+                                    :size="13"
+                                    class="item-url-icon"
+                                    aria-hidden="true"
+                                />
+
+                                <!-- type="text", а не "url": иначе браузер не пропустит адрес без https:// -->
+                                <input
+                                    v-model="item.url"
+                                    type="text"
+                                    inputmode="url"
+                                    autocomplete="off"
+                                    :class="[
+                                        'item-url-input',
+                                        {
+                                            'item-url-input--error':
+                                                urlErrors[index],
+                                        },
+                                    ]"
+                                    placeholder="Ссылка на товар (необязательно)"
+                                    :aria-invalid="
+                                        urlErrors[index] || undefined
+                                    "
+                                    @input="clearUrlError(index)"
+                                />
+                            </div>
+
+                            <span
+                                v-if="urlErrors[index]"
+                                class="item-url-error"
+                            >
+                                Некорректная ссылка
+                            </span>
+                        </div>
 
                         <button
                             class="remove-btn"

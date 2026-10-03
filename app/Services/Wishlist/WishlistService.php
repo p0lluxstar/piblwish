@@ -34,6 +34,7 @@ class WishlistService
                 collect($data['items'])
                     ->map(fn($item) => [
                         'description' => $item['label'],
+                        'url' => $item['url'] ?? null,
                         'is_selected' => false,
                     ])
                     ->toArray()
@@ -67,6 +68,7 @@ class WishlistService
                 $items = collect($data['items'])
                     ->map(fn($item) => [
                         'description' => $item['label'],
+                        'url' => $item['url'] ?? null,
                         'is_selected' => (bool) ($item['isSelected'] ?? false),
                     ])
                     ->toArray();

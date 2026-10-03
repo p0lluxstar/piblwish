@@ -425,6 +425,14 @@
                                                                     "type": "string",
                                                                     "example": "Книга «Мастер и Маргарита»"
                                                                 },
+                                                                "url": {
+                                                                    "description": "Ссылка на товар (http или https), необязательна",
+                                                                    "type": "string",
+                                                                    "format": "uri",
+                                                                    "example": "https://example.com/books/master-i-margarita",
+                                                                    "nullable": true,
+                                                                    "maxLength": 2048
+                                                                },
                                                                 "isSelected": {
                                                                     "type": "boolean",
                                                                     "example": false
@@ -494,6 +502,14 @@
                                                 "label": {
                                                     "type": "string",
                                                     "example": "Книга «Мастер и Маргарита»"
+                                                },
+                                                "url": {
+                                                    "description": "Ссылка на товар (http или https), необязательна",
+                                                    "type": "string",
+                                                    "format": "uri",
+                                                    "example": "https://example.com/books/master-i-margarita",
+                                                    "nullable": true,
+                                                    "maxLength": 2048
                                                 }
                                             },
                                             "type": "object"
@@ -553,6 +569,14 @@
                                                             "label": {
                                                                 "type": "string",
                                                                 "example": "Свеча с ароматом ванили"
+                                                            },
+                                                            "url": {
+                                                                "description": "Ссылка на товар (http или https), необязательна",
+                                                                "type": "string",
+                                                                "format": "uri",
+                                                                "example": "https://example.com/books/master-i-margarita",
+                                                                "nullable": true,
+                                                                "maxLength": 2048
                                                             },
                                                             "isSelected": {
                                                                 "type": "boolean",

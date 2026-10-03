@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'wishlist_id',
     'description',
+    'url',
     'is_selected'
 ])]
 class WishlistItem extends Model
