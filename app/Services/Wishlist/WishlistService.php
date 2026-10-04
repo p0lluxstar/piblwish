@@ -68,32 +68,72 @@ class WishlistService
             }
 
             if (array_key_exists('items', $data)) {
-                // Выбор гостей по id прежних позиций этого списка. Блокировка строк
-                // не даёт гостю отметить позицию между чтением и удалением
-                $previousSelections = $wishlist->items()
-                    ->lockForUpdate()
-                    ->pluck('is_selected', 'id');
-
-                $wishlist->items()->delete();
-
-                // Порядок позиций задаётся порядком массива items
-                $items = collect($data['items'])
-                    ->values()
-                    ->map(fn($item, $index) => [
-                        'description' => $item['label'],
-                        'url' => $item['url'] ?? null,
-                        'is_selected' => $selectionsHidden
-                            ? (bool) $previousSelections->get((string) ($item['id'] ?? ''), false)
-                            : (bool) ($item['isSelected'] ?? false),
-                        'position' => $index,
-                    ])
-                    ->toArray();
-
-                $wishlist->items()->createMany($items);
+                $this->syncItems($wishlist, $data['items'], $selectionsHidden);
             }
 
             return $wishlist->load('items');
         });
+    }
+
+    /**
+     * Позиции изменяются на месте, а не пересоздаются: у них сохраняются id,
+     * а с ними выбор гостей и брони, по которым гость может отменить выбор.
+     *
+     * Позиция с id существующей позиции списка обновляется, позиция без id
+     * (или с чужим id) создаётся, позиции, которых нет в запросе, удаляются.
+     * Порядок позиций задаётся порядком массива items.
+     */
+    private function syncItems(Wishlist $wishlist, array $items, bool $selectionsHidden): void
+    {
+        // Блокировка строк не даёт гостю отметить позицию, пока владелец её сохраняет
+        $existing = $wishlist->items()->lockForUpdate()->get()->keyBy('id');
+        $keptIds = [];
+
+        // validated() собирает items в порядке правил: позиции с id (правило items.*.id)
+        // идут раньше позиций без id. Исходный порядок восстанавливается по индексам
+        ksort($items);
+
+        foreach (array_values($items) as $index => $item) {
+            $attributes = [
+                'description' => $item['label'],
+                'url' => $item['url'] ?? null,
+                'position' => $index,
+            ];
+
+            $isSelected = (bool) ($item['isSelected'] ?? false);
+            $current = $existing->get((string) ($item['id'] ?? ''));
+
+            // Повтор одного id в запросе создаёт новую позицию, а не перезаписывает ту же
+            if ($current === null || in_array($current->id, $keptIds, true)) {
+                // В режиме сюрприза владелец не видит выбор, поэтому новая позиция не выбрана
+                $created = $wishlist->items()->create($attributes + [
+                    'is_selected' => ! $selectionsHidden && $isSelected,
+                ]);
+
+                $keptIds[] = $created->id;
+
+                continue;
+            }
+
+            // В режиме сюрприза isSelected из запроса не учитывается: владелец его не видел
+            if (! $selectionsHidden) {
+                $attributes['is_selected'] = $isSelected;
+
+                // Владелец снял отметку: бронь гостя на эту позицию больше не действует
+                if (! $isSelected) {
+                    $attributes['reservation_id'] = null;
+                }
+            }
+
+            $current->update($attributes);
+            $keptIds[] = $current->id;
+        }
+
+        $removedIds = $existing->keys()->diff($keptIds);
+
+        if ($removedIds->isNotEmpty()) {
+            $wishlist->items()->whereIn('id', $removedIds)->delete();
+        }
     }
 
     // Поля списка из запроса в атрибуты модели; непереданные поля не попадают в результат

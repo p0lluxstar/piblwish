@@ -41,6 +41,17 @@ Route::prefix('v1')->group(function () {
         '/shared-wishlists/{wishlist}/items',
         [SharedWishlistController::class, 'updateSharedWishlistItems']
     )->middleware('throttle:shared-write');
+
+    // Брони гостя: POST, а не GET, чтобы токены не попадали в адрес и логи сервера
+    Route::post(
+        '/shared-wishlists/{wishlist}/reservations/lookup',
+        [SharedWishlistController::class, 'getReservations']
+    )->middleware('throttle:shared-read');
+
+    Route::post(
+        '/shared-wishlists/{wishlist}/reservations/cancel',
+        [SharedWishlistController::class, 'cancelReservation']
+    )->middleware('throttle:shared-write');
 });
 
 // Только для авторизованных пользователей (через Sanctum)

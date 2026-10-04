@@ -1,21 +1,59 @@
 <script setup lang="ts">
-import { ExternalLink, Gift, Save } from '@lucide/vue';
-import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { Check, Copy, ExternalLink, Gift, Save, X } from '@lucide/vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
+import { useGuestReservations } from '@/composables/useGuestReservations';
 import { api } from '@/lib/api';
+import { copyToClipboard } from '@/lib/clipboard';
 import { getItemUrlHost } from '@/lib/itemUrl';
 import type { Wishlist, WishlistItem } from '@/types/wishlist';
 
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
+import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 
 const route = useRoute();
+const router = useRouter();
 const wishlist = ref<Wishlist | null>(null);
 const isLoading = ref(true);
 const error = ref<string | null>(null);
 const wishlistId = String(route.params.id || '');
 const selectedItems = ref<string[]>([]);
 const isSaving = ref(false);
+
+const {
+    tokenForItem,
+    load: loadReservations,
+    remember,
+} = useGuestReservations(wishlistId);
+
+// Ссылка для отмены выбора с другого устройства; показывается после сохранения
+const reservationLink = ref<string | null>(null);
+const linkCopyStatus = ref<'idle' | 'copied' | 'error'>('idle');
+let linkCopyTimer: number | null = null;
+
+// Позиция, выбор которой сейчас отменяется
+const cancellingItemId = ref<string | null>(null);
+// Ошибка сохранения или отмены выбора
+const actionError = ref<string | null>(null);
+
+// Идёт сохранение или отмена: выбор в списке временно недоступен
+const isBusy = computed(
+    () => isSaving.value || cancellingItemId.value !== null,
+);
+
+// Токен брони из ссылки для отмены (?reservation=…)
+const tokenFromLink = (): string | null => {
+    const value = route.query.reservation;
+
+    return typeof value === 'string' ? value : null;
+};
+
+const buildReservationLink = (token: string): string => {
+    const appUrl = import.meta.env.VITE_API_URL || window.location.origin;
+
+    return `${appUrl}/shared-wishlists/${wishlistId}?reservation=${token}`;
+};
 
 const getWishlist = async (): Promise<void> => {
     if (!wishlistId) {
@@ -32,6 +70,16 @@ const getWishlist = async (): Promise<void> => {
             `/api/v1/shared-wishlists/${wishlistId}`,
         );
         wishlist.value = response.data.data;
+
+        // Токен из ссылки сохраняется в браузере, а из адреса убирается,
+        // чтобы не остаться в истории и не уйти дальше при пересылке адреса страницы
+        const linkToken = tokenFromLink();
+
+        await loadReservations(linkToken);
+
+        if (linkToken) {
+            void router.replace({ query: {} });
+        }
     } catch (fetchError) {
         console.error('Ошибка загрузки списка:', fetchError);
         error.value =
@@ -44,11 +92,13 @@ const getWishlist = async (): Promise<void> => {
 };
 
 const save = async (): Promise<void> => {
-    if (selectedItems.value.length === 0 || isSaving.value) {
+    if (selectedItems.value.length === 0 || isBusy.value) {
         return;
     }
 
+    // Список остаётся на экране: спиннер выводится только на кнопке сохранения
     isSaving.value = true;
+    actionError.value = null;
 
     try {
         const response = await api.patch<{ data: Wishlist }>(
@@ -61,20 +111,102 @@ const save = async (): Promise<void> => {
         // Обновляем список актуальными данными с сервера
         wishlist.value = response.data.data;
 
+        const { reservation } = response.data.data;
+
+        if (reservation) {
+            remember(reservation);
+            reservationLink.value = buildReservationLink(reservation.token);
+            linkCopyStatus.value = 'idle';
+        }
+
         // Очищаем локальный список выбранных элементов
         selectedItems.value = [];
     } catch (error) {
         console.error('Ошибка сохранения:', error);
+        actionError.value =
+            'Не удалось сохранить выбор. Обновите страницу и попробуйте снова.';
     } finally {
         isSaving.value = false;
     }
 };
 
+// Отмена выбора одной позиции; остальные подарки брони остаются за гостем
+const cancelItem = async (item: WishlistItem): Promise<void> => {
+    const token = tokenForItem(item.id);
+
+    if (!token || !item.id || isBusy.value) return;
+
+    cancellingItemId.value = item.id;
+    actionError.value = null;
+
+    try {
+        const response = await api.post<{ data: Wishlist }>(
+            `/api/v1/shared-wishlists/${wishlistId}/reservations/cancel`,
+            { token, item_ids: [item.id] },
+        );
+
+        wishlist.value = response.data.data;
+
+        const { reservation } = response.data.data;
+
+        if (reservation) {
+            remember(reservation);
+
+            // Все подарки брони отменены: ссылка для отмены больше не нужна
+            if (reservation.itemIds.length === 0) {
+                reservationLink.value = null;
+            }
+        }
+    } catch (cancelRequestError) {
+        console.error('Ошибка отмены выбора:', cancelRequestError);
+        actionError.value =
+            'Не удалось отменить выбор. Обновите страницу и попробуйте снова.';
+    } finally {
+        cancellingItemId.value = null;
+    }
+};
+
+const copyReservationLink = async (): Promise<void> => {
+    if (!reservationLink.value) return;
+
+    linkCopyStatus.value = (await copyToClipboard(reservationLink.value))
+        ? 'copied'
+        : 'error';
+
+    if (linkCopyTimer) {
+        window.clearTimeout(linkCopyTimer);
+    }
+
+    linkCopyTimer = window.setTimeout(() => {
+        linkCopyStatus.value = 'idle';
+        linkCopyTimer = null;
+    }, 2000);
+};
+
+const selectLinkInput = (event: { target: unknown }): void => {
+    if (event.target instanceof window.HTMLInputElement) {
+        event.target.select();
+    }
+};
+
+onBeforeUnmount(() => {
+    if (linkCopyTimer) {
+        window.clearTimeout(linkCopyTimer);
+    }
+});
+
 const hasChanges = computed(() => selectedItems.value.length > 0);
 
+// Все подарки уже выбраны гостями: выбирать больше нечего
+const allSelected = computed(() => {
+    const items = wishlist.value?.items ?? [];
+
+    return items.length > 0 && items.every((item) => item.isSelected);
+});
+
 const toggleItem = (item: WishlistItem): void => {
-    // Уже выбран кем-то другим — ничего не делаем
-    if (item.isSelected) {
+    // Уже выбран кем-то другим или идёт сохранение — ничего не делаем
+    if (item.isSelected || isBusy.value) {
         return;
     }
 
@@ -92,7 +224,8 @@ onMounted(getWishlist);
 
 <template>
     <div class="wishlist-view">
-        <div v-if="isLoading || isSaving" class="loader">
+        <!-- Только первая загрузка: при сохранении список остаётся на экране -->
+        <div v-if="isLoading" class="loader">
             <LaoderPageSpinner />
         </div>
 
@@ -101,6 +234,80 @@ onMounted(getWishlist);
         </div>
 
         <div v-else-if="wishlist" class="content">
+            <!-- Пояснение для гостя: чей это список подарков -->
+            <section class="intro" aria-labelledby="shared-intro-title">
+                <h1 id="shared-intro-title" class="intro-title">
+                    {{
+                        wishlist.username
+                            ? `${wishlist.username} делится с вами списком подарков`
+                            : 'С вами поделились списком подарков'
+                    }}
+                </h1>
+
+                <p v-if="allSelected" class="intro-note">
+                    Все подарки из этого списка уже выбраны
+                </p>
+            </section>
+
+            <!-- После сохранения: ссылка для отмены выбора с другого устройства -->
+            <div
+                v-if="reservationLink"
+                class="reservation-notice"
+                role="status"
+            >
+                <button
+                    class="reservation-notice-close"
+                    type="button"
+                    aria-label="Закрыть"
+                    @click="reservationLink = null"
+                >
+                    <X :size="14" />
+                </button>
+
+                <p class="reservation-notice-title">Подарки выбраны</p>
+
+                <p class="reservation-notice-text">
+                    В этом браузере выбор можно отменить прямо в списке. Чтобы
+                    отменить его с другого устройства, сохраните ссылку:
+                </p>
+
+                <div class="reservation-notice-link">
+                    <input
+                        :value="reservationLink"
+                        type="text"
+                        readonly
+                        aria-label="Ссылка для отмены выбора"
+                        @focus="selectLinkInput"
+                    />
+
+                    <button
+                        :class="[
+                            'reservation-notice-copy',
+                            {
+                                'reservation-notice-copy--error':
+                                    linkCopyStatus === 'error',
+                            },
+                        ]"
+                        type="button"
+                        @click="copyReservationLink"
+                    >
+                        <Check v-if="linkCopyStatus === 'copied'" :size="14" />
+                        <Copy v-else :size="14" />
+                        {{
+                            linkCopyStatus === 'copied'
+                                ? 'Скопировано'
+                                : linkCopyStatus === 'error'
+                                  ? 'Не удалось'
+                                  : 'Скопировать'
+                        }}
+                    </button>
+                </div>
+            </div>
+
+            <p v-if="actionError" class="cancel-error" role="alert">
+                {{ actionError }}
+            </p>
+
             <div class="card">
                 <div class="card-header">
                     <div class="card-author">
@@ -125,14 +332,32 @@ onMounted(getWishlist);
                         'item',
                         {
                             disabled: item.isSelected,
-                            'item--mine': selectedItems.includes(item.id),
+                            'item--mine':
+                                selectedItems.includes(item.id) ||
+                                (item.isSelected && tokenForItem(item.id)),
                         },
                     ]"
-                    :title="item.isSelected ? 'Уже выбрано' : undefined"
+                    :title="
+                        item.isSelected
+                            ? tokenForItem(item.id)
+                                ? 'Ваш выбор'
+                                : 'Уже выбрано'
+                            : undefined
+                    "
                 >
+                    <!-- Позицию выбрал этот гость: цветной значок подарка, выбор можно отменить -->
+                    <span
+                        v-if="item.isSelected && tokenForItem(item.id)"
+                        class="reserved-icon reserved-icon--mine"
+                        role="img"
+                        aria-label="Ваш выбор"
+                    >
+                        <Gift :size="11" />
+                    </span>
+
                     <!-- Позицию уже выбрал другой гость: серый значок подарка вместо чекбокса -->
                     <span
-                        v-if="item.isSelected"
+                        v-else-if="item.isSelected"
                         class="reserved-icon"
                         role="img"
                         aria-label="Уже выбрано"
@@ -145,6 +370,7 @@ onMounted(getWishlist);
                             type="checkbox"
                             class="checkbox-input"
                             :checked="selectedItems.includes(item.id)"
+                            :disabled="isBusy"
                             @change="toggleItem(item)"
                         />
 
@@ -154,7 +380,10 @@ onMounted(getWishlist);
                     <span
                         :class="[
                             'item-label',
-                            { 'reserved-text': item.isSelected },
+                            {
+                                'reserved-text':
+                                    item.isSelected && !tokenForItem(item.id),
+                            },
                         ]"
                     >
                         {{ item.label }}
@@ -167,7 +396,10 @@ onMounted(getWishlist);
                         rel="noopener noreferrer nofollow"
                         :class="[
                             'item-link',
-                            { 'item-link--muted': item.isSelected },
+                            {
+                                'item-link--muted':
+                                    item.isSelected && !tokenForItem(item.id),
+                            },
                         ]"
                         :title="item.url"
                     >
@@ -176,16 +408,36 @@ onMounted(getWishlist);
                             {{ getItemUrlHost(item.url) }}
                         </span>
                     </a>
+
+                    <button
+                        v-if="item.isSelected && tokenForItem(item.id)"
+                        class="cancel-btn"
+                        type="button"
+                        :disabled="isBusy"
+                        :aria-label="`Отменить выбор: ${item.label}`"
+                        @click="cancelItem(item)"
+                    >
+                        {{
+                            cancellingItemId === item.id
+                                ? 'Отмена…'
+                                : 'Отменить'
+                        }}
+                    </button>
                 </div>
 
                 <div class="card-actions">
                     <button
-                        class="card-actions-btn"
                         v-if="hasChanges"
+                        class="card-actions-btn"
+                        :disabled="isBusy"
+                        :aria-label="
+                            isSaving ? 'Сохранение…' : 'Сохранить выбор'
+                        "
+                        :aria-busy="isSaving"
                         @click="save"
-                        :disabled="isSaving"
                     >
-                        <Save :size="20" />
+                        <LoaderButtonSpinner v-if="isSaving" :size="18" />
+                        <Save v-else :size="20" />
                     </button>
                 </div>
             </div>
@@ -204,6 +456,30 @@ onMounted(getWishlist);
     max-width: 800px;
     margin: 0 auto;
     padding: 24px;
+}
+
+.intro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.intro-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--ink, #241533);
+    overflow-wrap: anywhere;
+}
+
+.intro-note {
+    margin: 0;
+    font-size: 12px;
+    color: var(--ink-soft, #6b5878);
 }
 
 .loader,
@@ -407,5 +683,128 @@ onMounted(getWishlist);
 
 .reserved-text {
     color: #94a3b8;
+}
+
+/* Позиция, выбранная этим гостем: значок в фирменных цветах, как у выбора до сохранения */
+.reserved-icon.reserved-icon--mine {
+    background: var(--brand-gradient);
+}
+
+/* Чекбоксы недоступны только на время сохранения: отмеченные остаются в фирменных
+   цветах, а не становятся серыми, как задано для disabled в checkboxCard.scss */
+.checkbox-input:disabled + .checkbox-custom {
+    cursor: default;
+}
+
+.checkbox-input:disabled:checked + .checkbox-custom {
+    background: var(--brand-gradient);
+}
+
+.cancel-btn {
+    flex-shrink: 0;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #db2777;
+    cursor: pointer;
+    transition: all 0.18s ease;
+
+    &:hover:not(:disabled) {
+        color: #fff;
+        background: #ec4899;
+    }
+
+    &:disabled {
+        cursor: default;
+        opacity: 0.6;
+    }
+}
+
+.reservation-notice {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+    padding: 14px 16px;
+    border: 1px solid rgba(236, 72, 153, 0.25);
+    border-radius: 14px;
+    background: rgba(236, 72, 153, 0.05);
+}
+
+.reservation-notice-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    color: #b08cbe;
+    cursor: pointer;
+
+    &:hover {
+        color: var(--ink, #241533);
+        background: rgba(139, 92, 246, 0.08);
+    }
+}
+
+.reservation-notice-title {
+    margin: 0;
+    padding-right: 24px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink, #241533);
+}
+
+.reservation-notice-text {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--ink-soft, #6b5878);
+}
+
+.reservation-notice-link {
+    display: flex;
+    gap: 6px;
+    margin-top: 2px;
+
+    input {
+        flex: 1;
+        min-width: 0;
+        padding: 6px 10px;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        border-radius: 10px;
+        background: #fff;
+        font-size: 12px;
+        color: var(--ink-soft, #6b5878);
+    }
+}
+
+.reservation-notice-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border-radius: 10px;
+    background: var(--brand-gradient);
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+}
+
+.reservation-notice-copy--error {
+    background: #ef4444;
+}
+
+.cancel-error {
+    margin: 0 0 10px;
+    font-size: 12px;
+    text-align: center;
+    color: #dc2626;
 }
 </style>

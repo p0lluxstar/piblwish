@@ -39,4 +39,10 @@ class Wishlist extends Model
         // Позиции всегда отдаются в порядке, заданном владельцем списка
         return $this->hasMany(WishlistItem::class)->orderBy('position');
     }
+
+    // Брони гостей, по которым они могут отменить свой выбор
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(WishlistReservation::class);
+    }
 }

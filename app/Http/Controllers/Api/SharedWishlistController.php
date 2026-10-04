@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\SharedWishlist\CancelReservationRequest;
+use App\Http\Requests\SharedWishlist\GetReservationsRequest;
+use App\Http\Requests\SharedWishlist\UpdateSharedWishlistItemsRequest;
 use App\Http\Resources\SharedWishlist\SharedWishlistResource;
 use App\Services\SharedWishlist\SharedWishlistService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use App\Http\Requests\Wishlist\UpdateWishlistRequest;
-use App\Http\Requests\SharedWishlist\UpdateSharedWishlistItemsRequest;
 
 class SharedWishlistController extends Controller
 {
@@ -31,7 +33,7 @@ class SharedWishlistController extends Controller
         return new SharedWishlistResource($wishlist);
     }
 
-    // Обновить выбранные элементы в списке желаний
+    // Обновить выбранные элементы в списке желаний; в ответе токен брони для отмены выбора
     public function updateSharedWishlistItems(
         UpdateSharedWishlistItemsRequest $request,
         string $wishlistId
@@ -41,11 +43,46 @@ class SharedWishlistController extends Controller
             'wishlist_id' => $wishlistId
         ]);
 
-        $wishlist = $this->sharedWishlistService->updateSharedWishlistItems(
+        $result = $this->sharedWishlistService->updateSharedWishlistItems(
             $wishlistId,
             $request->validated()['item_ids']
         );
 
-        return new SharedWishlistResource($wishlist);
+        return (new SharedWishlistResource($result['wishlist']))
+            ->withReservation($result['reservation']);
+    }
+
+    // Позиции броней гостя по токенам из его браузера или из ссылки для отмены
+    public function getReservations(
+        GetReservationsRequest $request,
+        string $wishlistId
+    ): JsonResponse {
+        $reservations = $this->sharedWishlistService->getReservations(
+            $wishlistId,
+            $request->validated()['tokens']
+        );
+
+        return response()->json([
+            'success' => true,
+            'statusCode' => 200,
+            'data' => $reservations,
+        ]);
+    }
+
+    // Отменить выбор позиций брони
+    public function cancelReservation(
+        CancelReservationRequest $request,
+        string $wishlistId
+    ): SharedWishlistResource {
+        $validated = $request->validated();
+
+        $result = $this->sharedWishlistService->cancelReservation(
+            $wishlistId,
+            $validated['token'],
+            $validated['item_ids']
+        );
+
+        return (new SharedWishlistResource($result['wishlist']))
+            ->withReservation($result['reservation']);
     }
 }

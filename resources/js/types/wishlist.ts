@@ -27,6 +27,14 @@ export interface Wishlist {
     hideSelections?: boolean;
     username: string | null;
     items: WishlistItem[];
+    // Бронь гостя: приходит на общей странице после сохранения или отмены выбора
+    reservation?: WishlistReservation;
+}
+
+// Бронь гостя: позиции, выбранные за одно сохранение. По токену выбор можно отменить
+export interface WishlistReservation {
+    token: string;
+    itemIds: string[];
 }
 
 // Данные формы создания и редактирования списка

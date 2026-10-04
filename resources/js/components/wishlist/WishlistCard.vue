@@ -11,6 +11,7 @@ import {
 } from '@lucide/vue';
 import { computed, onBeforeUnmount, ref } from 'vue';
 
+import { copyToClipboard } from '../../lib/clipboard';
 import { getItemUrlHost } from '../../lib/itemUrl';
 import type { Wishlist } from '../../types/wishlist';
 
@@ -49,41 +50,6 @@ const showCopyFeedback = (status: 'copied' | 'error'): void => {
         copyStatus.value = 'idle';
         copyFeedbackTimer = null;
     }, COPY_FEEDBACK_DURATION);
-};
-
-// Запасной способ копирования для небезопасного контекста (HTTP), где Clipboard API недоступен
-const copyWithFallback = (text: string): boolean => {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    textarea.style.top = '0';
-    textarea.setAttribute('aria-hidden', 'true');
-
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-
-    try {
-        return document.execCommand('copy');
-    } catch {
-        return false;
-    } finally {
-        document.body.removeChild(textarea);
-    }
-};
-
-const copyToClipboard = async (text: string): Promise<boolean> => {
-    if (window.navigator.clipboard && window.isSecureContext) {
-        try {
-            await window.navigator.clipboard.writeText(text);
-            return true;
-        } catch {
-            // Пробуем запасной способ ниже
-        }
-    }
-
-    return copyWithFallback(text);
 };
 
 const copyLink = async (): Promise<void> => {

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'description',
     'url',
     'is_selected',
+    'reservation_id',
     'position',
 ])]
 class WishlistItem extends Model
@@ -29,5 +30,11 @@ class WishlistItem extends Model
     public function wishlist(): BelongsTo
     {
         return $this->belongsTo(Wishlist::class);
+    }
+
+    // Бронь гостя; null, если позицию отметил владелец или её выбрали до появления броней
+    public function reservation(): BelongsTo
+    {
+        return $this->belongsTo(WishlistReservation::class, 'reservation_id');
     }
 }
