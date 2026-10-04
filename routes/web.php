@@ -31,6 +31,10 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:registration');
     Route::post('/verify-registration', [AuthController::class, 'verifyRegistrationCode'])
         ->middleware('throttle:verify-code');
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])
+        ->middleware('throttle:password-reset-request');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])
+        ->middleware('throttle:password-reset');
 });
 
 // Только для авторизованных пользователей (через Sanctum)

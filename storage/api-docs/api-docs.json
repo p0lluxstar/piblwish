@@ -126,6 +126,104 @@
                 }
             }
         },
+        "/v1/forgot-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Запрос кода восстановления пароля",
+                "description": "Код отправляется только подтверждённому и не удалённому аккаунту. Ответ одинаков для любого email.",
+                "operationId": "9d75b8d9a1771fa9588f9b46fc5c5cf3",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "example": "test@example.com"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Запрос принят"
+                    },
+                    "422": {
+                        "description": "Ошибка валидации"
+                    },
+                    "429": {
+                        "description": "Слишком частые запросы (не чаще одного в минуту для email)"
+                    }
+                }
+            }
+        },
+        "/v1/reset-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Установка нового пароля по коду",
+                "description": "Код действует 10 минут. После смены пароля все сессии и токены пользователя завершаются.",
+                "operationId": "3900632a0e8b776a145bee67e1947ccf",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "code",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "example": "test@example.com"
+                                    },
+                                    "code": {
+                                        "type": "string",
+                                        "example": "123456"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "new-password"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "example": "new-password"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Пароль изменён"
+                    },
+                    "400": {
+                        "description": "Неверный или просроченный код"
+                    },
+                    "422": {
+                        "description": "Ошибка валидации"
+                    },
+                    "429": {
+                        "description": "Слишком много попыток"
+                    }
+                }
+            }
+        },
         "/api/logout": {
             "post": {
                 "tags": [

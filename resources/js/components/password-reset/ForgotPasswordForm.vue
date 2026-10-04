@@ -6,21 +6,35 @@ import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import InputRegistationForms from '@/components/ui/InputRegistationForms.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import PrimaryButton from '@/components/ui/PrimaryButton.vue';
-import { useLogin } from '@/composables/useAuth';
+import { useForgotPassword } from '@/composables/useAuth';
+
+const props = defineProps<{
+    initialEmail?: string;
+}>();
+
+const emit = defineEmits<{
+    success: [email: string];
+}>();
 
 const form = reactive({
-    email: '',
-    password: '',
+    email: props.initialEmail ?? '',
 });
 
-const { mutateAsync: login, isPending, isError, errorMessage } = useLogin();
+const forgotPasswordMutation = useForgotPassword();
+const {
+    mutateAsync: forgotPassword,
+    isPending,
+    isError,
+    errorMessage,
+} = forgotPasswordMutation;
 
 async function submitForm(): Promise<void> {
+    forgotPasswordMutation.reset();
+
     try {
-        await login({
-            email: form.email,
-            password: form.password,
-        });
+        await forgotPassword({ email: form.email });
+
+        emit('success', form.email);
     } catch (error) {
         console.error(error);
     }
@@ -31,10 +45,15 @@ async function submitForm(): Promise<void> {
     <div class="header">
         <BackOnMainPage />
 
-        <p class="eyebrow">Вход</p>
+        <p class="eyebrow">Восстановление пароля</p>
     </div>
 
-    <h2>Войдите в аккаунт</h2>
+    <h2>Забыли пароль?</h2>
+
+    <p class="hint">
+        Укажите email, с которым вы регистрировались. Мы отправим на него код
+        для смены пароля.
+    </p>
 
     <form class="auth-form" @submit.prevent="submitForm">
         <InputRegistationForms
@@ -43,31 +62,26 @@ async function submitForm(): Promise<void> {
             placeholder="Email"
         />
 
-        <InputRegistationForms
-            v-model="form.password"
-            type="password"
-            placeholder="Пароль"
-        />
-
         <PrimaryButton :disabled="isPending">
             <LoaderButtonSpinner v-if="isPending" />
-            <span v-else>Войти</span>
+            <span v-else>Получить код</span>
         </PrimaryButton>
 
-        <FormErrorMessage :show="isError" :message="errorMessage" />
+        <FormErrorMessage
+            :show="isError"
+            :message="errorMessage ?? undefined"
+        />
     </form>
-
-    <p class="auth-link">
-        <router-link to="/forgot-password">Забыли пароль?</router-link>
-    </p>
-
-    <p class="auth-link">
-        Нет аккаунта?
-        <router-link to="/registration">Зарегистрироваться</router-link>
-    </p>
 </template>
 
 <style scoped>
+.hint {
+    max-width: 420px;
+    margin-top: 12px;
+    color: var(--muted, #7a6278);
+    line-height: 1.5;
+}
+
 .auth-form {
     margin-top: 32px;
     max-width: 420px;

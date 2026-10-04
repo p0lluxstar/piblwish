@@ -15,3 +15,14 @@ export type ChangePasswordPayload = {
     password: string;
     password_confirmation: string;
 };
+
+export type ForgotPasswordPayload = {
+    email: string;
+};
+
+export type ResetPasswordPayload = {
+    email: string;
+    code: string;
+    password: string;
+    password_confirmation: string;
+};

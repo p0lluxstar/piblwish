@@ -4,6 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import DashboardLayout from '@/layouts/DashboardLayout.vue';
 import LandingLayout from '@/layouts/LandingLayout.vue';
 import DashboardPage from '@/pages/DashboardPage.vue';
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage.vue';
 import LoginPage from '@/pages/LoginPage.vue';
 import MainPage from '@/pages/MainPage.vue';
 import RegistrationPage from '@/pages/RegistrationPage.vue';
@@ -30,6 +31,11 @@ const routes: RouteRecordRaw[] = [
                 path: 'login',
                 name: 'login',
                 component: LoginPage,
+            },
+            {
+                path: 'forgot-password',
+                name: 'forgot-password',
+                component: ForgotPasswordPage,
             },
         ],
     },

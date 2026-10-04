@@ -13,8 +13,10 @@ import { useAuthStore } from '@/stores/auth';
 import type { ApiErrorResponse } from '@/types/api';
 import type {
     ChangePasswordPayload,
+    ForgotPasswordPayload,
     LoginPayload,
     RegisterPayload,
+    ResetPasswordPayload,
 } from '@/types/auth';
 
 export const useLogin = (): any => {
@@ -109,25 +111,92 @@ export const useChangePassword = (): UseChangePasswordReturn => {
         mutationFn: (payload) => api.put('/v1/user/password', payload),
     });
 
-    // Для ошибки валидации показываем первую ошибку по полю,
-    // иначе — общее сообщение сервера
-    const errorMessage = computed((): string | null => {
-        const data = mutation.error.value?.response?.data?.data;
-
-        if (!mutation.error.value) {
-            return null;
-        }
-
-        const firstFieldError = Object.values(data?.errors ?? {})[0]?.[0];
-
-        return firstFieldError ?? data?.message ?? 'Не удалось сменить пароль';
-    });
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось сменить пароль'),
+    );
 
     return {
         ...mutation,
         errorMessage,
     };
 };
+
+type UseForgotPasswordReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    ForgotPasswordPayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+export const useForgotPassword = (): UseForgotPasswordReturn => {
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        ForgotPasswordPayload
+    >({
+        mutationFn: (payload) => api.post('/v1/forgot-password', payload),
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось отправить код'),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type UseResetPasswordReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    ResetPasswordPayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+export const useResetPassword = (): UseResetPasswordReturn => {
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        ResetPasswordPayload
+    >({
+        mutationFn: (payload) => api.post('/v1/reset-password', payload),
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось сменить пароль'),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+// Для ошибки валидации возвращает первую ошибку по полю,
+// иначе — общее сообщение сервера
+function getApiErrorMessage(
+    error: AxiosError<ApiErrorResponse> | null,
+    fallback: string,
+): string | null {
+    if (!error) {
+        return null;
+    }
+
+    // Для 429 обработчик исключений отдаёт английский текст фреймворка
+    if (error.response?.status === 429) {
+        return 'Слишком много попыток. Подождите минуту и попробуйте снова';
+    }
+
+    const data = error.response?.data?.data;
+    const firstFieldError = Object.values(data?.errors ?? {})[0]?.[0];
+
+    return firstFieldError ?? data?.message ?? fallback;
+}
 
 export const useUser = (): any => {
     const authStore = useAuthStore();
