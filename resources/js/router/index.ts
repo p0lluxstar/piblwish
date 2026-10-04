@@ -3,8 +3,10 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 import DashboardLayout from '@/layouts/DashboardLayout.vue';
 import LandingLayout from '@/layouts/LandingLayout.vue';
+import ContactsPage from '@/pages/ContactsPage.vue';
 import DashboardPage from '@/pages/DashboardPage.vue';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage.vue';
+import HelpPage from '@/pages/HelpPage.vue';
 import LoginPage from '@/pages/LoginPage.vue';
 import MainPage from '@/pages/MainPage.vue';
 import RegistrationPage from '@/pages/RegistrationPage.vue';
@@ -63,6 +65,33 @@ const routes: RouteRecordRaw[] = [
                 path: '',
                 name: 'shared-wishlist',
                 component: WishlistSharedPage,
+            },
+        ],
+    },
+
+    {
+        // Публичные страницы с фоном и шапкой дашборда
+        path: '/help',
+        component: DashboardLayout,
+        meta: { loadUser: true },
+        children: [
+            {
+                path: '',
+                name: 'help',
+                component: HelpPage,
+            },
+        ],
+    },
+
+    {
+        path: '/contacts',
+        component: DashboardLayout,
+        meta: { loadUser: true },
+        children: [
+            {
+                path: '',
+                name: 'contacts',
+                component: ContactsPage,
             },
         ],
     },

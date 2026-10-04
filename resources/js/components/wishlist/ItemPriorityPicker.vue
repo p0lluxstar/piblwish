@@ -9,6 +9,11 @@ import type { WishlistItemPriority } from '../../types/wishlist';
 // Повторное нажатие на выбранное значение снимает приоритет
 const model = defineModel<WishlistItemPriority | null | undefined>();
 
+defineProps<{
+    // Подарок уже выбран гостем: сердца и подпись серые, как в карточке
+    muted?: boolean;
+}>();
+
 // Значение под курсором: сердца подсвечиваются до него, пока выбор не сделан
 const hovered = ref<WishlistItemPriority | null>(null);
 
@@ -24,7 +29,10 @@ const select = (value: WishlistItemPriority): void => {
 </script>
 
 <template>
-    <div class="priority-picker" @mouseleave="hovered = null">
+    <div
+        :class="['priority-picker', { 'priority-picker--muted': muted }]"
+        @mouseleave="hovered = null"
+    >
         <div class="priority-hearts" role="group" aria-label="Приоритет">
             <button
                 v-for="value in ITEM_PRIORITIES"
@@ -108,5 +116,20 @@ const select = (value: WishlistItemPriority): void => {
 .priority-caption--empty {
     color: #b3a3bd;
     font-weight: 400;
+}
+
+.priority-picker--muted {
+    .priority-heart {
+        color: rgba(148, 163, 184, 0.45);
+
+        &:hover {
+            background: rgba(148, 163, 184, 0.12);
+        }
+    }
+
+    .priority-heart--on,
+    .priority-caption {
+        color: #94a3b8;
+    }
 }
 </style>

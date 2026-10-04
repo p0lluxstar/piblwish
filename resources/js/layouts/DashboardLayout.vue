@@ -2,6 +2,7 @@
 import Footer from '@/components/dashboard/Footer.vue';
 import Header from '@/components/dashboard/Header.vue';
 import Main from '@/components/dashboard/Main.vue';
+import ScrollToTopButton from '@/components/ui/ScrollToTopButton.vue';
 </script>
 
 <template>
@@ -13,6 +14,7 @@ import Main from '@/components/dashboard/Main.vue';
         <Header />
         <Main />
         <Footer />
+        <ScrollToTopButton />
     </div>
 </template>
 

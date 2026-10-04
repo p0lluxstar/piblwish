@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { Gift, LayoutList, LogOut, Settings } from '@lucide/vue';
+import {
+    CircleQuestionMark,
+    Gift,
+    LayoutList,
+    LogOut,
+    Mail,
+    Settings,
+} from '@lucide/vue';
 import { computed, ref } from 'vue';
-import { useRoute } from 'vue-router';
 
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import UserSettingsModal from '@/components/user/UserSettingsModal.vue';
@@ -13,10 +19,7 @@ import {
 import { useAuthStore } from '@/stores/auth';
 
 const auth = useAuthStore();
-const route = useRoute();
 
-// Ссылка на свои списки нужна везде, кроме самого дашборда (например, на странице общего списка)
-const showMyListsLink = computed(() => route.name !== 'dashboard');
 const logoLink = computed(() => (auth.user ? '/dashboard' : '/'));
 const { mutate: logout, isPending } = useLogout();
 const { mutate: deleteAccount, isPending: isDeletingAccount } =
@@ -62,23 +65,44 @@ const handleDeleteAccount = (): void => {
     <header class="header">
         <div class="container">
             <!-- Авторизованный пользователь попадает на свои списки, гость — на главную -->
-            <router-link :to="logoLink" class="logo">
-                <div class="logo-icon">
-                    <Gift :size="18" color="#fff" />
-                    <span class="logo-spark">✦</span>
-                </div>
-                <span class="logo-title">PiblWish</span>
-            </router-link>
-            <div v-if="auth.user" class="user-info">
-                <router-link
-                    v-if="showMyListsLink"
-                    to="/dashboard"
-                    class="my-lists-btn"
-                    aria-label="Мои списки"
-                >
-                    <LayoutList :size="16" />
-                    <span class="btn-text">Мои списки</span>
+            <div class="header-left">
+                <router-link :to="logoLink" class="logo">
+                    <div class="logo-icon">
+                        <Gift :size="18" color="#fff" />
+                        <span class="logo-spark">✦</span>
+                    </div>
+                    <span class="logo-title">PiblWish</span>
                 </router-link>
+                <nav class="header-nav">
+                    <!-- Свои списки есть только у авторизованного пользователя -->
+                    <router-link
+                        v-if="auth.user"
+                        to="/dashboard"
+                        class="nav-link"
+                        aria-label="Мои списки"
+                    >
+                        <LayoutList :size="16" />
+                        <span class="btn-text">Мои списки</span>
+                    </router-link>
+                    <router-link
+                        to="/help"
+                        class="nav-link"
+                        aria-label="Помощь"
+                    >
+                        <CircleQuestionMark :size="16" />
+                        <span class="btn-text">Помощь</span>
+                    </router-link>
+                    <router-link
+                        to="/contacts"
+                        class="nav-link"
+                        aria-label="Контакты"
+                    >
+                        <Mail :size="16" />
+                        <span class="btn-text">Контакты</span>
+                    </router-link>
+                </nav>
+            </div>
+            <div v-if="auth.user" class="user-info">
                 <div class="user-details">
                     <span class="user-username">{{ auth.user.username }}</span>
                     <span class="user-email">{{ auth.user.email }}</span>
@@ -212,6 +236,39 @@ const handleDeleteAccount = (): void => {
     color: transparent;
     letter-spacing: -0.04em;
 }
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+}
+.header-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+.nav-link:hover {
+    color: var(--brand-violet);
+    background: rgba(139, 92, 246, 0.08);
+}
+/* Ссылка на открытую страницу: заливка фирменным градиентом, чтобы отличаться от наведения */
+.nav-link.router-link-active {
+    color: #fff;
+    background: var(--brand-gradient);
+    box-shadow: var(--shadow-glow);
+}
 .user-info {
     display: flex;
     align-items: center;
@@ -312,27 +369,6 @@ const handleDeleteAccount = (): void => {
     box-shadow: var(--shadow-glow);
     transform: translateY(-1px);
 }
-.my-lists-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    height: 36px;
-    padding: 6px 16px;
-    margin-right: 6px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--brand-violet);
-    background: rgba(139, 92, 246, 0.08);
-    text-decoration: none;
-    transition: all 0.2s ease;
-}
-.my-lists-btn:hover {
-    background: var(--brand-gradient);
-    color: #fff;
-    box-shadow: var(--shadow-glow);
-    transform: translateY(-1px);
-}
 
 .guest-actions {
     display: flex;
@@ -369,6 +405,21 @@ const handleDeleteAccount = (): void => {
     filter: brightness(1.05);
 }
 
+/* Планшет и уже: у ссылок навигации остаются только значки */
+@media (max-width: 767px) {
+    .header-nav {
+        gap: 0;
+    }
+    .nav-link {
+        width: 36px;
+        padding: 0;
+        justify-content: center;
+    }
+    .nav-link .btn-text {
+        display: none;
+    }
+}
+
 /* Узкий экран: одна строка, имя и email скрыты, кнопки только с иконками */
 @media (max-width: 599px) {
     .header {
@@ -385,15 +436,19 @@ const handleDeleteAccount = (): void => {
     .btn-text {
         display: none;
     }
-    .logout-btn,
-    .my-lists-btn {
+    .logout-btn {
         width: 36px;
         padding: 0;
         justify-content: center;
     }
-    .my-lists-btn {
-        margin-right: 0;
+    .header-left {
+        gap: 8px;
     }
+    /* На узком экране остаётся только значок логотипа */
+    .logo-title {
+        display: none;
+    }
+
     .guest-actions {
         gap: 8px;
     }

@@ -3,8 +3,8 @@
         <div class="container">
             <span class="footer-copy">© 2026 PiblWish</span>
             <div class="footer-links">
-                <a href="#">Помощь</a>
-                <a href="#">Контакты</a>
+                <router-link to="/help">Помощь</router-link>
+                <router-link to="/contacts">Контакты</router-link>
             </div>
         </div>
     </footer>

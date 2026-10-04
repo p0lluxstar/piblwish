@@ -210,7 +210,10 @@ const closeModal = (): void => {
 
                         <div class="wishlist-item-fields">
                             <!-- Приоритет над полем описания, у левого края -->
-                            <ItemPriorityPicker v-model="item.priority" />
+                            <ItemPriorityPicker
+                                v-model="item.priority"
+                                :muted="showSelection && item.isSelected"
+                            />
 
                             <input
                                 v-model="item.label"
