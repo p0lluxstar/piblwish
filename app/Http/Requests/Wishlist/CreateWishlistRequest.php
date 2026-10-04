@@ -21,6 +21,9 @@ class CreateWishlistRequest extends FormRequest
             // Необязателен: без него список получает white
             'color' => ['sometimes', Rule::enum(WishlistColor::class)],
 
+            // Режим сюрприза; по умолчанию выключен
+            'hideSelections' => ['sometimes', 'boolean'],
+
             'items' => ['required', 'array', 'min:1'],
 
             'items.*.label' => [

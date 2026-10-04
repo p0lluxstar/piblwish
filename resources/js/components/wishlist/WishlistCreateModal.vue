@@ -7,6 +7,7 @@ import { isValidItemUrl, normalizeItemUrl } from '../../lib/itemUrl';
 import type { WishlistForm, WishlistItem } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import WishlistColorPicker from './WishlistColorPicker.vue';
+import WishlistSurpriseToggle from './WishlistSurpriseToggle.vue';
 
 const props = defineProps<{
     isPending: boolean;
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 const defaultForm = (): WishlistForm => ({
     title: '',
     color: 'white',
+    hideSelections: false,
     items: [
         {
             label: '',
@@ -76,6 +78,7 @@ const handleSubmit = (): void => {
     emit('create', {
         title: form.value.title,
         color: form.value.color,
+        hideSelections: form.value.hideSelections,
         items,
     });
 };
@@ -129,6 +132,10 @@ const closeModal = (): void => {
                     <label>Цвет списка</label>
 
                     <WishlistColorPicker v-model="form.color" />
+                </div>
+
+                <div class="form-group">
+                    <WishlistSurpriseToggle v-model="form.hideSelections" />
                 </div>
 
                 <div class="form-group">

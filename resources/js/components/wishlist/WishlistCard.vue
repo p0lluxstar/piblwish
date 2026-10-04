@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { Check, ExternalLink, FileEdit, Gift, Link, Trash2 } from '@lucide/vue';
+import {
+    Check,
+    ExternalLink,
+    EyeOff,
+    FileEdit,
+    Gift,
+    Link,
+    Sparkles,
+    Trash2,
+} from '@lucide/vue';
 import { computed, onBeforeUnmount, ref } from 'vue';
 
 import { getItemUrlHost } from '../../lib/itemUrl';
@@ -124,6 +133,17 @@ const createdAtLabel = computed(() => {
 
 <template>
     <div :class="['card', `wishlist-color--${wishlist.color}`]">
+        <!-- Режим сюрприза: выбор гостей скрыт от владельца -->
+        <span
+            v-if="wishlist.hideSelections"
+            class="card-surprise"
+            role="img"
+            aria-label="Режим сюрприза: выбор гостей скрыт"
+            title="Режим сюрприза: выбор гостей скрыт"
+        >
+            <EyeOff :size="14" />
+        </span>
+
         <div class="card-actions">
             <button class="card-actions-btn" @click="editCard">
                 <FileEdit :size="14" />
@@ -188,6 +208,15 @@ const createdAtLabel = computed(() => {
                 <Gift :size="11" />
             </span>
 
+            <!-- Режим сюрприза: выбор скрыт, значок-искорка вместо чекбокса -->
+            <span
+                v-else-if="wishlist.hideSelections"
+                class="item-bullet"
+                aria-hidden="true"
+            >
+                <Sparkles :size="13" />
+            </span>
+
             <label v-else class="checkbox-wrapper-disabled">
                 <input
                     type="checkbox"
@@ -218,7 +247,10 @@ const createdAtLabel = computed(() => {
 
         <!-- Прижат к низу карточки, даже если в ней мало позиций -->
         <div class="card-footer">
-            <div class="card-progress-container">
+            <div
+                v-if="!wishlist.hideSelections"
+                class="card-progress-container"
+            >
                 <span class="progress-percent">{{ progress }}%</span>
                 <div class="card-progress">
                     <div
@@ -333,7 +365,7 @@ const createdAtLabel = computed(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 10px;
+    margin-top: 15px;
     margin-bottom: 16px;
 }
 
@@ -406,6 +438,26 @@ const createdAtLabel = computed(() => {
     border-radius: 7px;
     background: var(--brand-gradient);
     color: #fff;
+}
+
+.item-bullet {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 19px;
+    height: 19px;
+    color: rgba(139, 92, 246, 0.55);
+}
+
+.card-surprise {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    color: var(--brand-violet);
 }
 
 .card-footer {

@@ -26,9 +26,9 @@ class WishlistService
             $user,
             $data
         ) {
-            // Если цвет не передан, его задаёт значение по умолчанию в модели (white)
+            // Если цвет и режим сюрприза не переданы, их задают значения по умолчанию в модели
             $wishlist = $user->wishlists()->create(
-                Arr::only($data, ['title', 'color'])
+                $this->wishlistAttributes($data)
             );
 
             // Порядок позиций задаётся порядком массива items
@@ -50,23 +50,30 @@ class WishlistService
 
     public function updateWishlist(User $user, string $id, array $data): Wishlist
     {
-
-        // logger('Входные данные для обновления:', $data);
-
         return DB::transaction(function () use ($user, $id, $data) {
             $wishlist = Wishlist::query()
                 ->where('user_id', $user->id)
                 ->where('id', $id)
                 ->firstOrFail();
 
+            // Владелец не видел выбор гостей, если режим сюрприза был включён
+            // до этого запроса: тогда isSelected из запроса не учитывается
+            $selectionsHidden = $wishlist->hide_selections;
+
             // Обновляются только переданные поля
-            $attributes = Arr::only($data, ['title', 'color']);
+            $attributes = $this->wishlistAttributes($data);
 
             if ($attributes !== []) {
                 $wishlist->update($attributes);
             }
 
             if (array_key_exists('items', $data)) {
+                // Выбор гостей по id прежних позиций этого списка. Блокировка строк
+                // не даёт гостю отметить позицию между чтением и удалением
+                $previousSelections = $wishlist->items()
+                    ->lockForUpdate()
+                    ->pluck('is_selected', 'id');
+
                 $wishlist->items()->delete();
 
                 // Порядок позиций задаётся порядком массива items
@@ -75,7 +82,9 @@ class WishlistService
                     ->map(fn($item, $index) => [
                         'description' => $item['label'],
                         'url' => $item['url'] ?? null,
-                        'is_selected' => (bool) ($item['isSelected'] ?? false),
+                        'is_selected' => $selectionsHidden
+                            ? (bool) $previousSelections->get((string) ($item['id'] ?? ''), false)
+                            : (bool) ($item['isSelected'] ?? false),
                         'position' => $index,
                     ])
                     ->toArray();
@@ -85,6 +94,18 @@ class WishlistService
 
             return $wishlist->load('items');
         });
+    }
+
+    // Поля списка из запроса в атрибуты модели; непереданные поля не попадают в результат
+    private function wishlistAttributes(array $data): array
+    {
+        $attributes = Arr::only($data, ['title', 'color']);
+
+        if (array_key_exists('hideSelections', $data)) {
+            $attributes['hide_selections'] = (bool) $data['hideSelections'];
+        }
+
+        return $attributes;
     }
 
     public function deleteWishlist(User $user, string $id): void

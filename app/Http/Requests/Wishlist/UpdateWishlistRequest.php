@@ -18,7 +18,10 @@ class UpdateWishlistRequest extends FormRequest
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'color' => ['sometimes', Rule::enum(WishlistColor::class)],
+            'hideSelections' => ['sometimes', 'boolean'],
             'items' => ['sometimes', 'array'],
+            // id существующей позиции: по нему в режиме сюрприза сохраняется выбор гостей
+            'items.*.id' => ['sometimes', 'nullable', 'string'],
             'items.*.label' => ['required_with:items', 'string', 'max:1000'],
             'items.*.isSelected' => ['sometimes', 'boolean'],
             // Только http(s): см. CreateWishlistRequest

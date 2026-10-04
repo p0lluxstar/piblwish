@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'title', 'color'])]
+#[Fillable(['user_id', 'title', 'color', 'hide_selections'])]
 class Wishlist extends Model
 {
     use HasUlids;
@@ -18,12 +18,14 @@ class Wishlist extends Model
     // созданного списка без цвета поле color было бы null до перечитывания
     protected $attributes = [
         'color' => 'white',
+        'hide_selections' => false,
     ];
 
     protected function casts(): array
     {
         return [
             'color' => WishlistColor::class,
+            'hide_selections' => 'boolean',
         ];
     }
 

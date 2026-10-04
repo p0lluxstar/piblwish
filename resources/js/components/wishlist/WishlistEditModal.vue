@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChevronDown, ChevronUp, Link, Trash2 } from '@lucide/vue';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { useItemReorder } from '../../composables/useItemReorder';
 import { isValidItemUrl, normalizeItemUrl } from '../../lib/itemUrl';
@@ -11,6 +11,7 @@ import type {
 } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import WishlistColorPicker from './WishlistColorPicker.vue';
+import WishlistSurpriseToggle from './WishlistSurpriseToggle.vue';
 
 const props = defineProps<{
     wishlist: Wishlist;
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 const defaultForm = (): WishlistForm => ({
     title: '',
     color: 'white',
+    hideSelections: false,
     items: [
         {
             isSelected: false,
@@ -36,6 +38,7 @@ const defaultForm = (): WishlistForm => ({
 const form = ref<WishlistForm>({
     title: '',
     color: 'white',
+    hideSelections: false,
     items: [],
 });
 
@@ -48,7 +51,10 @@ watch(
         form.value = {
             title: wishlist.title,
             color: wishlist.color,
+            hideSelections: wishlist.hideSelections ?? false,
+            // id нужен серверу, чтобы в режиме сюрприза сохранить выбор гостей
             items: wishlist.items.map((item) => ({
+                id: item.id,
                 label: item.label,
                 url: item.url ?? '',
                 isSelected: item.isSelected ?? false,
@@ -58,6 +64,12 @@ watch(
     {
         immediate: true,
     },
+);
+
+// Чекбоксы выбора показываются, только если владелец видит выбор гостей:
+// при скрытом выборе сервер не принимает isSelected из формы
+const showSelection = computed(
+    () => !props.wishlist.hideSelections && !form.value.hideSelections,
 );
 
 const { itemKey, moveItem } = useItemReorder(() => form.value.items, urlErrors);
@@ -105,6 +117,7 @@ const handleSubmit = (): void => {
         id: props.wishlist.id,
         title: form.value.title,
         color: form.value.color,
+        hideSelections: form.value.hideSelections,
         items,
     });
 };
@@ -162,6 +175,10 @@ const closeModal = (): void => {
                 </div>
 
                 <div class="form-group">
+                    <WishlistSurpriseToggle v-model="form.hideSelections" />
+                </div>
+
+                <div class="form-group">
                     <label>Список желаний</label>
 
                     <div
@@ -169,7 +186,7 @@ const closeModal = (): void => {
                         :key="itemKey(item)"
                         class="wishlist-item"
                     >
-                        <label class="checkbox-wrapper">
+                        <label v-if="showSelection" class="checkbox-wrapper">
                             <input
                                 type="checkbox"
                                 v-model="item.isSelected"

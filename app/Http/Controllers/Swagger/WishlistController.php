@@ -56,6 +56,13 @@ use OpenApi\Attributes as OA;
                                 ),
 
                                 new OA\Property(
+                                    property: 'hideSelections',
+                                    description: 'Режим сюрприза: если true, у позиций нет поля isSelected',
+                                    type: 'boolean',
+                                    example: false
+                                ),
+
+                                new OA\Property(
                                     property: 'items',
                                     type: 'array',
                                     items: new OA\Items(
@@ -84,6 +91,7 @@ use OpenApi\Attributes as OA;
 
                                             new OA\Property(
                                                 property: 'isSelected',
+                                            description: 'Отсутствует, если включён режим сюрприза (hideSelections)',
                                                 type: 'boolean',
                                                 example: false
                                             ),
@@ -130,6 +138,13 @@ use OpenApi\Attributes as OA;
                     type: 'string',
                     enum: WishlistColor::class,
                     example: 'mint'
+                ),
+
+                new OA\Property(
+                    property: 'hideSelections',
+                    description: 'Режим сюрприза: скрывать от владельца, какие позиции выбрали гости. Необязателен, по умолчанию false',
+                    type: 'boolean',
+                    example: false
                 ),
 
                 new OA\Property(
@@ -199,6 +214,13 @@ use OpenApi\Attributes as OA;
                             ),
 
                             new OA\Property(
+                                property: 'hideSelections',
+                                description: 'Режим сюрприза: если true, у позиций нет поля isSelected',
+                                type: 'boolean',
+                                example: false
+                            ),
+
+                            new OA\Property(
                                 property: 'items',
                                 type: 'array',
                                 items: new OA\Items(
@@ -227,6 +249,7 @@ use OpenApi\Attributes as OA;
 
                                         new OA\Property(
                                             property: 'isSelected',
+                                            description: 'Отсутствует, если включён режим сюрприза (hideSelections)',
                                             type: 'boolean',
                                             example: false
                                         ),

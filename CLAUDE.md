@@ -39,7 +39,7 @@ Docker (`docker-compose.yml`): nginx на порту 8876, MySQL на 3307. Ло
 
 **Swagger.** OpenAPI-описания записаны атрибутами в отдельных классах `app/Http/Controllers/Swagger/*Controller.php`, а не в рабочих контроллерах. При изменении API нужно обновить соответствующий Swagger-класс.
 
-**Модели.** У `User` первичный ключ — ULID; вход по `username`/`email`, аккаунт активируется подтверждением email-кода (`VerificationRegistrationCode`, письмо `VerificationCodeMail`). `Wishlist` → `WishlistItem`; гости по ссылке отмечают позиции через `is_selected` (`SharedWishlistService` обновляет их в транзакции и отклоняет уже выбранные позиции).
+**Модели.** У `User` первичный ключ — ULID; вход по `username`/`email`, аккаунт активируется подтверждением email-кода (`VerificationRegistrationCode`, письмо `VerificationCodeMail`). `Wishlist` → `WishlistItem`; гости по ссылке отмечают позиции через `is_selected` (`SharedWishlistService` обновляет их в транзакции и отклоняет уже выбранные позиции). Флаг `hide_selections` (режим сюрприза) убирает `isSelected` из ответов владельцу; при редактировании списка в этом режиме выбор гостей переносится по `id` позиций, а `isSelected` из запроса игнорируется.
 
 **Миграции.** Каталог `database/migrations/_baseline/` Laravel не загружает; это архивная копия исходной схемы.
 

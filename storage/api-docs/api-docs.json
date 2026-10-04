@@ -511,6 +511,11 @@
                                                         "format": "date-time",
                                                         "example": "2026-09-12T14:30:00+00:00"
                                                     },
+                                                    "hideSelections": {
+                                                        "description": "Режим сюрприза: если true, у позиций нет поля isSelected",
+                                                        "type": "boolean",
+                                                        "example": false
+                                                    },
                                                     "items": {
                                                         "type": "array",
                                                         "items": {
@@ -532,6 +537,7 @@
                                                                     "maxLength": 2048
                                                                 },
                                                                 "isSelected": {
+                                                                    "description": "Отсутствует, если включён режим сюрприза (hideSelections)",
                                                                     "type": "boolean",
                                                                     "example": false
                                                                 }
@@ -592,6 +598,11 @@
                                             "mint",
                                             "sky"
                                         ]
+                                    },
+                                    "hideSelections": {
+                                        "description": "Режим сюрприза: скрывать от владельца, какие позиции выбрали гости. Необязателен, по умолчанию false",
+                                        "type": "boolean",
+                                        "example": false
                                     },
                                     "items": {
                                         "type": "array",
@@ -656,6 +667,11 @@
                                                     "format": "date-time",
                                                     "example": "2026-09-12T14:30:00+00:00"
                                                 },
+                                                "hideSelections": {
+                                                    "description": "Режим сюрприза: если true, у позиций нет поля isSelected",
+                                                    "type": "boolean",
+                                                    "example": false
+                                                },
                                                 "items": {
                                                     "type": "array",
                                                     "items": {
@@ -677,6 +693,7 @@
                                                                 "maxLength": 2048
                                                             },
                                                             "isSelected": {
+                                                                "description": "Отсутствует, если включён режим сюрприза (hideSelections)",
                                                                 "type": "boolean",
                                                                 "example": false
                                                             }

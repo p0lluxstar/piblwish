@@ -17,7 +17,12 @@ class WishlistResource extends ApiResource
             'color' => $this->color->value,
             // Дата создания списка
             'createdAt' => $this->created_at?->toIso8601String(),
-            'items' => WishlistItemResource::collection($this->whenLoaded('items')),
+            // Режим сюрприза: при включённом флаге у позиций нет поля isSelected
+            'hideSelections' => $this->hide_selections,
+            'items' => $this->whenLoaded('items', fn () => $this->items->map(
+                fn ($item) => (new WishlistItemResource($item))
+                    ->hideSelection($this->hide_selections)
+            )),
         ];
     }
 }

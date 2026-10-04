@@ -7,12 +7,21 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class WishlistItemResource extends JsonResource
 {
-    public function toArray($request): array
-    {;
+    // Режим сюрприза: владелец списка не должен знать, какие позиции выбраны
+    private bool $hideSelection = false;
 
+    public function hideSelection(bool $hide = true): static
+    {
+        $this->hideSelection = $hide;
+
+        return $this;
+    }
+
+    public function toArray($request): array
+    {
         return [
             'id' => $this->id,
-            'isSelected' => $this->is_selected,
+            'isSelected' => $this->when(! $this->hideSelection, $this->is_selected),
             'label' => $this->description,
             // Ссылка на товар или null
             'url' => $this->url,
