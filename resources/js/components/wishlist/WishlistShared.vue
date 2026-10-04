@@ -11,6 +11,7 @@ import type { Wishlist, WishlistItem } from '@/types/wishlist';
 
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
+import ItemPriorityHearts from './ItemPriorityHearts.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -204,6 +205,31 @@ const allSelected = computed(() => {
     return items.length > 0 && items.every((item) => item.isSelected);
 });
 
+// Порядок позиций: заданный владельцем или по приоритету (сначала «очень хочу»)
+type ItemOrder = 'owner' | 'priority';
+
+const ITEM_ORDER_OPTIONS: { value: ItemOrder; label: string }[] = [
+    { value: 'owner', label: 'По порядку' },
+    { value: 'priority', label: 'По приоритету' },
+];
+
+const itemOrder = ref<ItemOrder>('owner');
+
+// Переключатель нужен, только если владелец указал приоритет хотя бы у одной позиции
+const hasPriorities = computed(() =>
+    (wishlist.value?.items ?? []).some((item) => item.priority),
+);
+
+// Сортировка устойчива: позиции с одинаковым приоритетом остаются в порядке владельца,
+// позиции без приоритета выводятся последними
+const sortedItems = computed<WishlistItem[]>(() => {
+    const items = wishlist.value?.items ?? [];
+
+    if (itemOrder.value === 'owner') return items;
+
+    return [...items].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+});
+
 const toggleItem = (item: WishlistItem): void => {
     // Уже выбран кем-то другим или идёт сохранение — ничего не делаем
     if (item.isSelected || isBusy.value) {
@@ -326,8 +352,32 @@ onMounted(getWishlist);
                 </div>
 
                 <div
-                    v-for="(item, itemIndex) in wishlist.items"
-                    :key="itemIndex"
+                    v-if="hasPriorities"
+                    class="item-order"
+                    role="group"
+                    aria-label="Порядок подарков"
+                >
+                    <button
+                        v-for="option in ITEM_ORDER_OPTIONS"
+                        :key="option.value"
+                        type="button"
+                        :class="[
+                            'item-order-btn',
+                            {
+                                'item-order-btn--active':
+                                    itemOrder === option.value,
+                            },
+                        ]"
+                        :aria-pressed="itemOrder === option.value"
+                        @click="itemOrder = option.value"
+                    >
+                        {{ option.label }}
+                    </button>
+                </div>
+
+                <div
+                    v-for="(item, itemIndex) in sortedItems"
+                    :key="item.id ?? itemIndex"
                     :class="[
                         'item',
                         {
@@ -345,10 +395,10 @@ onMounted(getWishlist);
                             : undefined
                     "
                 >
-                    <!-- Позицию выбрал этот гость: цветной значок подарка, выбор можно отменить -->
+                    <!-- Позицию выбрал этот гость: серый значок подарка, выбор можно отменить кнопкой справа -->
                     <span
                         v-if="item.isSelected && tokenForItem(item.id)"
-                        class="reserved-icon reserved-icon--mine"
+                        class="reserved-icon"
                         role="img"
                         aria-label="Ваш выбор"
                     >
@@ -380,14 +430,17 @@ onMounted(getWishlist);
                     <span
                         :class="[
                             'item-label',
-                            {
-                                'reserved-text':
-                                    item.isSelected && !tokenForItem(item.id),
-                            },
+                            { 'reserved-text': item.isSelected },
                         ]"
                     >
                         {{ item.label }}
                     </span>
+
+                    <ItemPriorityHearts
+                        v-if="item.priority"
+                        :priority="item.priority"
+                        :muted="item.isSelected"
+                    />
 
                     <a
                         v-if="item.url"
@@ -396,10 +449,7 @@ onMounted(getWishlist);
                         rel="noopener noreferrer nofollow"
                         :class="[
                             'item-link',
-                            {
-                                'item-link--muted':
-                                    item.isSelected && !tokenForItem(item.id),
-                            },
+                            { 'item-link--muted': item.isSelected },
                         ]"
                         :title="item.url"
                     >
@@ -573,6 +623,41 @@ onMounted(getWishlist);
     color: #3b2146;
 }
 
+// Переключатель порядка позиций: по порядку владельца или по приоритету
+.item-order {
+    display: flex;
+    align-self: center;
+    gap: 2px;
+    margin-bottom: 12px;
+    padding: 3px;
+    border-radius: 12px;
+    background: rgba(139, 92, 246, 0.06);
+}
+
+.item-order-btn {
+    padding: 4px 12px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-soft, #6b5878);
+    cursor: pointer;
+    transition: all 0.18s ease;
+
+    &:hover:not(.item-order-btn--active) {
+        color: var(--brand-violet);
+    }
+}
+
+.item-order-btn--active {
+    background: #fff;
+    font-weight: 600;
+    color: var(--brand-violet);
+    box-shadow: 0 1px 4px rgba(139, 92, 246, 0.15);
+}
+
 .item {
     position: relative;
     // Свой контекст наложения: фон выбранной строки (::before, z-index: -1)
@@ -669,7 +754,7 @@ onMounted(getWishlist);
     }
 }
 
-/* Позиция, выбранная другим гостем: приглушённый значок и текст */
+/* Выбранная позиция: серые значок подарка и текст */
 .reserved-icon {
     display: grid;
     place-items: center;
@@ -677,17 +762,12 @@ onMounted(getWishlist);
     width: 19px;
     height: 19px;
     border-radius: 7px;
-    background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+    background: linear-gradient(135deg, #dbe2ea, #64748b);
     color: #fff;
 }
 
 .reserved-text {
     color: #94a3b8;
-}
-
-/* Позиция, выбранная этим гостем: значок в фирменных цветах, как у выбора до сохранения */
-.reserved-icon.reserved-icon--mine {
-    background: var(--brand-gradient);
 }
 
 /* Чекбоксы недоступны только на время сохранения: отмеченные остаются в фирменных

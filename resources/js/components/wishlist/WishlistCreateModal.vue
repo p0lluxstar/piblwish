@@ -4,13 +4,20 @@ import { onMounted, onUnmounted, ref } from 'vue';
 
 import { useItemReorder } from '../../composables/useItemReorder';
 import { isValidItemUrl, normalizeItemUrl } from '../../lib/itemUrl';
-import type { WishlistForm, WishlistItem } from '../../types/wishlist';
+import type {
+    Wishlist,
+    WishlistForm,
+    WishlistItem,
+} from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
+import ItemPriorityPicker from './ItemPriorityPicker.vue';
 import WishlistColorPicker from './WishlistColorPicker.vue';
 import WishlistSurpriseToggle from './WishlistSurpriseToggle.vue';
 
 const props = defineProps<{
     isPending: boolean;
+    // Список-источник при дублировании: форма заполняется его значениями
+    source?: Wishlist | null;
 }>();
 
 const emit = defineEmits<{
@@ -26,12 +33,28 @@ const defaultForm = (): WishlistForm => ({
         {
             label: '',
             url: '',
+            priority: null,
             isSelected: false,
         },
     ],
 });
 
-const form = ref(defaultForm());
+// Копия списка-источника без id позиций и выбора гостей: создаётся новый список
+const sourceForm = (source: Wishlist): WishlistForm => ({
+    title: `${source.title} (копия)`,
+    color: source.color,
+    hideSelections: source.hideSelections ?? false,
+    items: source.items.length
+        ? source.items.map((item) => ({
+              label: item.label,
+              url: item.url ?? '',
+              priority: item.priority ?? null,
+              isSelected: false,
+          }))
+        : defaultForm().items,
+});
+
+const form = ref(props.source ? sourceForm(props.source) : defaultForm());
 
 // Индексы позиций с некорректной ссылкой; ошибка снимается, когда ссылку начинают править
 const urlErrors = ref<boolean[]>([]);
@@ -42,6 +65,7 @@ const addItem = (): void => {
     form.value.items.push({
         label: '',
         url: '',
+        priority: null,
         isSelected: false,
     });
 };
@@ -112,7 +136,9 @@ const closeModal = (): void => {
         <!-- Фон модалки окрашивается в выбранный цвет: превью цвета списка -->
         <div :class="['modal', `wishlist-color--${form.color}`]">
             <div class="modal-header">
-                <h2>Создать список</h2>
+                <h2>
+                    {{ props.source ? 'Дублировать список' : 'Создать список' }}
+                </h2>
 
                 <button class="close-btn" @click="closeModal"></button>
             </div>
@@ -147,6 +173,9 @@ const closeModal = (): void => {
                         class="wishlist-item"
                     >
                         <div class="wishlist-item-fields">
+                            <!-- Приоритет над полем описания, у левого края -->
+                            <ItemPriorityPicker v-model="item.priority" />
+
                             <input
                                 v-model="item.label"
                                 type="text"

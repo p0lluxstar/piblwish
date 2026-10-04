@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
     Check,
+    CopyPlus,
     ExternalLink,
     EyeOff,
     FileEdit,
@@ -14,6 +15,7 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import { copyToClipboard } from '../../lib/clipboard';
 import { getItemUrlHost } from '../../lib/itemUrl';
 import type { Wishlist } from '../../types/wishlist';
+import ItemPriorityHearts from './ItemPriorityHearts.vue';
 
 const props = defineProps<{
     wishlist: Wishlist;
@@ -21,11 +23,16 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     edit: [wishlist: Wishlist];
+    duplicate: [wishlist: Wishlist];
     delete: [wishlist: Wishlist];
 }>();
 
 const editCard = (): void => {
     emit('edit', props.wishlist);
+};
+
+const duplicateCard = (): void => {
+    emit('duplicate', props.wishlist);
 };
 
 const deleteCard = (): void => {
@@ -114,6 +121,15 @@ const createdAtLabel = computed(() => {
             <button class="card-actions-btn" @click="editCard">
                 <FileEdit :size="14" />
             </button>
+            <button
+                class="card-actions-btn"
+                type="button"
+                aria-label="Сделать дубликат списка"
+                title="Сделать дубликат"
+                @click="duplicateCard"
+            >
+                <CopyPlus :size="14" />
+            </button>
             <div class="copy-action">
                 <button
                     :class="[
@@ -197,6 +213,12 @@ const createdAtLabel = computed(() => {
             <span class="item-label">
                 {{ item.label }}
             </span>
+
+            <ItemPriorityHearts
+                v-if="item.priority"
+                :priority="item.priority"
+                :muted="item.isSelected"
+            />
 
             <a
                 v-if="item.url"
@@ -377,6 +399,20 @@ const createdAtLabel = computed(() => {
     border-bottom-color: transparent;
     border-radius: 10px;
     background: rgba(236, 72, 153, 0.06);
+
+    // Серые текст и ссылка в тон значку подарка и сердечкам, как на общей странице
+    .item-label {
+        color: #94a3b8;
+    }
+
+    .item-link {
+        color: #94a3b8;
+
+        &:hover {
+            color: #64748b;
+            background: rgba(148, 163, 184, 0.22);
+        }
+    }
 }
 
 .item-link {
@@ -402,7 +438,8 @@ const createdAtLabel = computed(() => {
     width: 19px;
     height: 19px;
     border-radius: 7px;
-    background: var(--brand-gradient);
+    // Серый градиент: выбранная позиция приглушена, как и её сердечки приоритета
+    background: linear-gradient(135deg, #dbe2ea, #64748b);
     color: #fff;
 }
 

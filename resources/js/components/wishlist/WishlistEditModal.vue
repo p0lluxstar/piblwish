@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronUp, Link, Trash2 } from '@lucide/vue';
+import { ChevronDown, ChevronUp, Gift, Link, Trash2 } from '@lucide/vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { useItemReorder } from '../../composables/useItemReorder';
@@ -10,6 +10,7 @@ import type {
     WishlistItem,
 } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
+import ItemPriorityPicker from './ItemPriorityPicker.vue';
 import WishlistColorPicker from './WishlistColorPicker.vue';
 import WishlistSurpriseToggle from './WishlistSurpriseToggle.vue';
 
@@ -57,6 +58,7 @@ watch(
                 id: item.id,
                 label: item.label,
                 url: item.url ?? '',
+                priority: item.priority ?? null,
                 isSelected: item.isSelected ?? false,
             })),
         };
@@ -79,6 +81,7 @@ const addItem = (): void => {
         isSelected: false,
         label: '',
         url: '',
+        priority: null,
     });
 };
 
@@ -186,17 +189,29 @@ const closeModal = (): void => {
                         :key="itemKey(item)"
                         class="wishlist-item"
                     >
+                        <!-- Выбранная гостем позиция: значок подарка на сером фоне, как в карточке.
+                             Повторный клик снимает выбор -->
                         <label v-if="showSelection" class="checkbox-wrapper">
                             <input
                                 type="checkbox"
                                 v-model="item.isSelected"
                                 class="checkbox-input"
+                                :aria-label="
+                                    item.isSelected
+                                        ? 'Забронировано, снять выбор'
+                                        : 'Отметить как выбранное'
+                                "
                             />
 
-                            <span class="checkbox-custom"></span>
+                            <span class="checkbox-custom">
+                                <Gift v-if="item.isSelected" :size="11" />
+                            </span>
                         </label>
 
                         <div class="wishlist-item-fields">
+                            <!-- Приоритет над полем описания, у левого края -->
+                            <ItemPriorityPicker v-model="item.priority" />
+
                             <input
                                 v-model="item.label"
                                 type="text"
@@ -310,6 +325,16 @@ const closeModal = (): void => {
 // По центру поля описания (см. .wishlist-item в wishlistModal.scss)
 .wishlist-item > .checkbox-wrapper {
     flex-shrink: 0;
-    margin-top: 12px;
+    margin-top: calc(var(--item-label-offset) + 12px);
+}
+
+// Вместо галочки из checkboxCard.scss — значок подарка на сером градиенте
+.checkbox-input:checked + .checkbox-custom {
+    background: linear-gradient(135deg, #dbe2ea, #64748b);
+    color: #fff;
+
+    &::after {
+        content: none;
+    }
 }
 </style>

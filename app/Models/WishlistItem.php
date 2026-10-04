@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\WishlistItemPriority;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'wishlist_id',
     'description',
     'url',
+    'priority',
     'is_selected',
     'reservation_id',
     'position',
@@ -24,6 +26,7 @@ class WishlistItem extends Model
         return [
             'is_selected' => 'boolean',
             'position' => 'integer',
+            'priority' => WishlistItemPriority::class,
         ];
     }
 

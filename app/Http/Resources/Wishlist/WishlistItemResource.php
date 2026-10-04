@@ -25,6 +25,8 @@ class WishlistItemResource extends JsonResource
             'label' => $this->description,
             // Ссылка на товар или null
             'url' => $this->url,
+            // Приоритет 1–3 или null; в отличие от isSelected, виден и в режиме сюрприза
+            'priority' => $this->priority?->value,
         ];
     }
 }

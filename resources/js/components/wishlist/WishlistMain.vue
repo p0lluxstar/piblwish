@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ArrowDown, ArrowUp, Plus, RefreshCcw } from '@lucide/vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { onMounted, ref } from 'vue';
-import { computed } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import {
     useWishlistSort,
@@ -20,6 +19,8 @@ import WishlistEditModal from './WishlistEditModal.vue';
 
 const queryClient = useQueryClient();
 const isCreateModalOpen = ref(false);
+// Список, с которого делается дубликат; null — создание с пустой формы
+const duplicateSource = ref<Wishlist | null>(null);
 const isEditModalOpen = ref(false);
 const selectedWishlist = ref<Wishlist | null>(null);
 const isDeleteModalOpen = ref(false);
@@ -53,6 +54,27 @@ const wishLists = computed(() => data.value ?? []);
 
 const { sort, setSort, sortedWishlists } = useWishlistSort(wishLists);
 
+// Карточки выводятся порциями: все списки уже загружены, ограничивается только отрисовка.
+// Следующая порция добавляется кнопкой «Показать ещё»
+const PAGE_SIZE = 12;
+const visibleCount = ref(PAGE_SIZE);
+
+const visibleWishlists = computed(() =>
+    sortedWishlists.value.slice(0, visibleCount.value),
+);
+const hiddenCount = computed(() =>
+    Math.max(sortedWishlists.value.length - visibleCount.value, 0),
+);
+
+const showMore = (): void => {
+    visibleCount.value += PAGE_SIZE;
+};
+
+// После смены сортировки порядок другой, поэтому вывод начинается с первой порции
+watch(sort, () => {
+    visibleCount.value = PAGE_SIZE;
+});
+
 const SORT_OPTIONS: { field: WishlistSortField; label: string }[] = [
     { field: 'date', label: 'По дате' },
     { field: 'title', label: 'По названию' },
@@ -66,11 +88,19 @@ const sortAriaLabel = (field: WishlistSortField, label: string): string => {
 };
 
 const openCreateModal = (): void => {
+    duplicateSource.value = null;
+    isCreateModalOpen.value = true;
+};
+
+// Модалка создания с формой, заполненной значениями выбранного списка
+const openDuplicateModal = (wishlist: Wishlist): void => {
+    duplicateSource.value = JSON.parse(JSON.stringify(wishlist));
     isCreateModalOpen.value = true;
 };
 
 const closeCreateModal = (): void => {
     isCreateModalOpen.value = false;
+    duplicateSource.value = null;
 };
 
 const createWishlistRequest = async (
@@ -277,19 +307,30 @@ onMounted(generateRandomPhrase);
         </button>
     </div>
 
-    <div v-else class="grid" id="grid">
-        <WishlistCard
-            v-for="wishlist in sortedWishlists"
-            :key="wishlist.id"
-            :wishlist="wishlist"
-            @edit="openEditModal"
-            @delete="openDeleteModal"
-        />
-    </div>
+    <template v-else>
+        <div class="grid" id="grid">
+            <WishlistCard
+                v-for="wishlist in visibleWishlists"
+                :key="wishlist.id"
+                :wishlist="wishlist"
+                @edit="openEditModal"
+                @duplicate="openDuplicateModal"
+                @delete="openDeleteModal"
+            />
+        </div>
+
+        <div v-if="hiddenCount > 0" class="more">
+            <button class="more-btn" @click="showMore">
+                Показать ещё
+                <span class="more-count">{{ hiddenCount }}</span>
+            </button>
+        </div>
+    </template>
 
     <WishlistCreateModal
         v-if="isCreateModalOpen"
         :is-pending="isCreating"
+        :source="duplicateSource"
         @close="closeCreateModal"
         @create="createWishlist"
     />
@@ -437,6 +478,39 @@ onMounted(generateRandomPhrase);
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 20px;
+}
+
+.more {
+    display: flex;
+    justify-content: center;
+    margin-top: 28px;
+}
+
+.more-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    color: var(--brand-violet);
+    border: 1.5px solid var(--surface-border);
+    padding: 9px 22px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+        border-color: var(--brand-violet);
+        box-shadow: var(--shadow-glow);
+    }
+}
+
+.more-count {
+    color: var(--ink-soft);
+    font-weight: 500;
 }
 
 .phrase-wrapper {

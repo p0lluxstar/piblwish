@@ -5,7 +5,13 @@ export interface WishlistItem {
     label: string;
     // Ссылка на товар (http или https); null, если не указана
     url?: string | null;
+    // Приоритет позиции; null, если не указан
+    priority?: WishlistItemPriority | null;
 }
+
+// Приоритет позиции, совпадает с App\Enums\WishlistItemPriority на бэкенде:
+// 1 — было бы неплохо, 2 — хочу, 3 — очень хочу
+export type WishlistItemPriority = 1 | 2 | 3;
 
 // Ключ цвета фона списка, совпадает с App\Enums\WishlistColor на бэкенде
 export type WishlistColor =

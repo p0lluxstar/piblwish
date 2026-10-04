@@ -757,6 +757,17 @@
                                                                     "nullable": true,
                                                                     "maxLength": 2048
                                                                 },
+                                                                "priority": {
+                                                                    "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан",
+                                                                    "type": "integer",
+                                                                    "example": 3,
+                                                                    "nullable": true,
+                                                                    "enum": [
+                                                                        1,
+                                                                        2,
+                                                                        3
+                                                                    ]
+                                                                },
                                                                 "isSelected": {
                                                                     "description": "Отсутствует, если включён режим сюрприза (hideSelections)",
                                                                     "type": "boolean",
@@ -840,6 +851,17 @@
                                                     "example": "https://example.com/books/master-i-margarita",
                                                     "nullable": true,
                                                     "maxLength": 2048
+                                                },
+                                                "priority": {
+                                                    "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан",
+                                                    "type": "integer",
+                                                    "example": 3,
+                                                    "nullable": true,
+                                                    "enum": [
+                                                        1,
+                                                        2,
+                                                        3
+                                                    ]
                                                 }
                                             },
                                             "type": "object"
@@ -912,6 +934,17 @@
                                                                 "example": "https://example.com/books/master-i-margarita",
                                                                 "nullable": true,
                                                                 "maxLength": 2048
+                                                            },
+                                                            "priority": {
+                                                                "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан",
+                                                                "type": "integer",
+                                                                "example": 3,
+                                                                "nullable": true,
+                                                                "enum": [
+                                                                    1,
+                                                                    2,
+                                                                    3
+                                                                ]
                                                             },
                                                             "isSelected": {
                                                                 "description": "Отсутствует, если включён режим сюрприза (hideSelections)",

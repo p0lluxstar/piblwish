@@ -90,6 +90,15 @@ use OpenApi\Attributes as OA;
                                             ),
 
                                             new OA\Property(
+                                                property: 'priority',
+                                                description: 'Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан',
+                                                type: 'integer',
+                                                enum: [1, 2, 3],
+                                                nullable: true,
+                                                example: 3
+                                            ),
+
+                                            new OA\Property(
                                                 property: 'isSelected',
                                             description: 'Отсутствует, если включён режим сюрприза (hideSelections)',
                                                 type: 'boolean',
@@ -166,6 +175,15 @@ use OpenApi\Attributes as OA;
                                 maxLength: 2048,
                                 nullable: true,
                                 example: 'https://example.com/books/master-i-margarita'
+                            ),
+
+                            new OA\Property(
+                                property: 'priority',
+                                description: 'Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан',
+                                type: 'integer',
+                                enum: [1, 2, 3],
+                                nullable: true,
+                                example: 3
                             ),
                         ],
                         type: 'object'
@@ -245,6 +263,15 @@ use OpenApi\Attributes as OA;
                                             maxLength: 2048,
                                             nullable: true,
                                             example: 'https://example.com/books/master-i-margarita'
+                                        ),
+
+                                        new OA\Property(
+                                            property: 'priority',
+                                            description: 'Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан',
+                                            type: 'integer',
+                                            enum: [1, 2, 3],
+                                            nullable: true,
+                                            example: 3
                                         ),
 
                                         new OA\Property(

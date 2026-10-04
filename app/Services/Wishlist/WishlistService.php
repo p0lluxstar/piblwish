@@ -38,6 +38,7 @@ class WishlistService
                     ->map(fn($item, $index) => [
                         'description' => $item['label'],
                         'url' => $item['url'] ?? null,
+                        'priority' => $item['priority'] ?? null,
                         'is_selected' => false,
                         'position' => $index,
                     ])
@@ -97,6 +98,7 @@ class WishlistService
             $attributes = [
                 'description' => $item['label'],
                 'url' => $item['url'] ?? null,
+                'priority' => $item['priority'] ?? null,
                 'position' => $index,
             ];
 

@@ -189,16 +189,26 @@
     justify-content: space-between;
     gap: 8px;
     margin-bottom: 12px;
+    // Над полем описания стоит выбор приоритета (20px) вплотную, без промежутка:
+    // боковые кнопки сдвинуты на эту высоту, чтобы стоять вровень с полем
+    --item-label-offset: 20px;
 
     > .remove-btn {
         flex-shrink: 0;
-        margin-top: 8px;
+        margin-top: calc(var(--item-label-offset) + 8px);
     }
 
     // Две кнопки по 22px занимают высоту поля описания (44px)
     > .move-btns {
         flex-shrink: 0;
+        margin-top: var(--item-label-offset);
     }
+}
+
+// Тонкая линия между позициями, в тон разделителям строк в карточке
+.wishlist-item + .wishlist-item {
+    padding-top: 6px;
+    border-top: 1px solid rgba(139, 92, 246, 0.12);
 }
 
 // Кнопки «вверх» и «вниз» друг под другом
@@ -242,6 +252,11 @@
     gap: 6px;
     flex: 1;
     min-width: 0;
+
+    // Приоритет ближе к полю описания, чем остальные поля друг к другу: без промежутка вместо 6px
+    > .priority-picker {
+        margin-bottom: -6px;
+    }
 }
 
 // Поле ссылки сдвинуто вправо и соединено с полем описания линией-уголком (└)

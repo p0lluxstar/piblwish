@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Wishlist;
 
 use App\Enums\WishlistColor;
+use App\Enums\WishlistItemPriority;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -26,6 +27,7 @@ class UpdateWishlistRequest extends FormRequest
             'items.*.isSelected' => ['sometimes', 'boolean'],
             // Только http(s): см. CreateWishlistRequest
             'items.*.url' => ['nullable', 'string', 'max:2048', 'url:http,https'],
+            'items.*.priority' => ['nullable', Rule::enum(WishlistItemPriority::class)],
         ];
     }
 
@@ -37,6 +39,7 @@ class UpdateWishlistRequest extends FormRequest
             'items.*.label.required_with' => 'Описание элемента обязательно',
             'items.*.url.url' => 'Некорректная ссылка на товар',
             'items.*.url.max' => 'Ссылка на товар слишком длинная',
+            'items.*.priority.enum' => 'Недопустимый приоритет позиции',
         ];
     }
 }
