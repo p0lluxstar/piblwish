@@ -95,7 +95,11 @@ use OpenApi\Attributes as OA;
         ),
         new OA\Response(
             response: 401,
-            description: 'Неверные данные'
+            description: 'Неверные данные или аккаунт деактивирован'
+        ),
+        new OA\Response(
+            response: 403,
+            description: 'Аккаунт не подтверждён (email не подтверждён)'
         ),
     ]
 )]

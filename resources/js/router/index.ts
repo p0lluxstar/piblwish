@@ -48,9 +48,17 @@ const routes: RouteRecordRaw[] = [
     },
 
     {
+        // Публичная страница: доступна всем, но шапка зависит от того, авторизован ли пользователь
         path: '/shared-wishlists/:id',
-        name: 'shared-wishlist',
-        component: WishlistSharedPage,
+        component: DashboardLayout,
+        meta: { loadUser: true },
+        children: [
+            {
+                path: '',
+                name: 'shared-wishlist',
+                component: WishlistSharedPage,
+            },
+        ],
     },
 ];
 
@@ -72,8 +80,8 @@ const router = createRouter({
 router.beforeEach(async (to) => {
     const auth = useAuthStore();
 
-    // Проверка, требуется ли аутентификация или гостевой доступ для целевого маршрута
-    if (to.meta.requiresAuth || to.meta.requiresGuest) {
+    // Проверка, требуется ли аутентификация, гостевой доступ или данные пользователя для целевого маршрута
+    if (to.meta.requiresAuth || to.meta.requiresGuest || to.meta.loadUser) {
         if (!auth.initialized) {
             await auth.fetchUser();
         }

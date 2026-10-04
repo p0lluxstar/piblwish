@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Save } from '@lucide/vue';
+import { ExternalLink, Gift, Save } from '@lucide/vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { api } from '@/lib/api';
+import { getItemUrlHost } from '@/lib/itemUrl';
 import type { Wishlist, WishlistItem } from '@/types/wishlist';
 
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
@@ -102,9 +103,16 @@ onMounted(getWishlist);
         <div v-else-if="wishlist" class="content">
             <div class="card">
                 <div class="card-header">
-                    <span class="card-author">
-                        Автор: {{ wishlist.username }}
-                    </span>
+                    <div class="card-author">
+                        <span class="card-author-avatar">
+                            {{ wishlist.username?.charAt(0).toUpperCase() }}
+                        </span>
+                        <span>
+                            <span class="card-author-name">
+                                {{ wishlist.username }}
+                            </span>
+                        </span>
+                    </div>
                     <span class="card-title">
                         {{ wishlist.title }}
                     </span>
@@ -113,23 +121,31 @@ onMounted(getWishlist);
                 <div
                     v-for="(item, itemIndex) in wishlist.items"
                     :key="itemIndex"
-                    :class="['item', { disabled: item.isSelected }]"
+                    :class="[
+                        'item',
+                        {
+                            disabled: item.isSelected,
+                            'item--mine': selectedItems.includes(item.id),
+                        },
+                    ]"
+                    :title="item.isSelected ? 'Уже выбрано' : undefined"
                 >
-                    <label
-                        :class="[
-                            'checkbox-wrapper',
-                            { 'checkbox-wrapper-disabled': item.isSelected },
-                        ]"
+                    <!-- Позицию уже выбрал другой гость: серый значок подарка вместо чекбокса -->
+                    <span
+                        v-if="item.isSelected"
+                        class="reserved-icon"
+                        role="img"
+                        aria-label="Уже выбрано"
                     >
+                        <Gift :size="11" />
+                    </span>
+
+                    <label v-else class="checkbox-wrapper">
                         <input
                             type="checkbox"
-                            :checked="
-                                item.isSelected ||
-                                selectedItems.includes(item.id)
-                            "
-                            :disabled="item.isSelected"
-                            @change="toggleItem(item)"
                             class="checkbox-input"
+                            :checked="selectedItems.includes(item.id)"
+                            @change="toggleItem(item)"
                         />
 
                         <span class="checkbox-custom"></span>
@@ -138,13 +154,28 @@ onMounted(getWishlist);
                     <span
                         :class="[
                             'item-label',
-                            {
-                                'checked-text': item.isSelected,
-                            },
+                            { 'reserved-text': item.isSelected },
                         ]"
                     >
                         {{ item.label }}
                     </span>
+
+                    <a
+                        v-if="item.url"
+                        :href="item.url"
+                        target="_blank"
+                        rel="noopener noreferrer nofollow"
+                        :class="[
+                            'item-link',
+                            { 'item-link--muted': item.isSelected },
+                        ]"
+                        :title="item.url"
+                    >
+                        <ExternalLink :size="12" />
+                        <span class="item-link-host">
+                            {{ getItemUrlHost(item.url) }}
+                        </span>
+                    </a>
                 </div>
 
                 <div class="card-actions">
@@ -189,6 +220,9 @@ onMounted(getWishlist);
 
 .card {
     position: relative;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
     background: linear-gradient(145deg, #fff 60%, #fff7fd);
     border: 1px solid rgba(226, 195, 211, 0.5);
     border-radius: 18px;
@@ -206,8 +240,16 @@ onMounted(getWishlist);
     color: #b3b3b3;
 
     .card-actions-btn {
-        &:hover {
-            color: #ff8fab;
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        transition: all 0.18s ease;
+
+        &:hover:not(:disabled) {
+            color: #fff;
+            background: var(--brand-gradient);
             cursor: pointer;
         }
     }
@@ -218,14 +260,35 @@ onMounted(getWishlist);
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
+    gap: 6px;
     margin-top: 8px;
     margin-bottom: 14px;
 }
 
 .card-author {
-    font-size: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
     color: #b08cbe;
-    margin-bottom: 4px;
+}
+
+.card-author-avatar {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--brand-gradient);
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    box-shadow: var(--shadow-glow);
+}
+
+.card-author-name {
+    font-weight: 600;
+    color: #8b5cf6;
 }
 
 .card-title {
@@ -235,6 +298,10 @@ onMounted(getWishlist);
 }
 
 .item {
+    position: relative;
+    // Свой контекст наложения: фон выбранной строки (::before, z-index: -1)
+    // выводится под содержимым строки, но поверх фона карточки
+    isolation: isolate;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -254,19 +321,91 @@ onMounted(getWishlist);
 }
 
 .item-label {
+    flex: 1;
+    min-width: 0;
     font-size: 13px;
     color: #4a3356;
     transition: color 0.15s;
     line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.item-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    max-width: 40%;
+    padding: 3px 8px;
+    border-radius: 8px;
+    background: rgba(139, 92, 246, 0.08);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--brand-violet);
+    text-decoration: none;
+    transition: all 0.18s ease;
+
+    &:hover {
+        color: #fff;
+        background: var(--brand-gradient);
+    }
+}
+
+/* Подарок уже выбран: ссылка остаётся (выбравшему гостю она нужна для покупки),
+   но приглушена в тон серому тексту позиции, чтобы не зазывать купить повторно */
+.item-link.item-link--muted {
+    background: rgba(148, 163, 184, 0.12);
+    font-weight: 500;
+    color: #94a3b8;
+
+    &:hover {
+        color: #64748b;
+        background: rgba(148, 163, 184, 0.22);
+    }
+}
+
+.item-link-host {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .item.disabled {
     cursor: default;
 }
 
-.checked-text {
-    // color: #c5a4d8;
+/* Позиция, выбранная этим гостем (ещё не сохранена): тот же розовый фон,
+   что у забронированных позиций на /dashboard.
+   Фон задан псевдоэлементом, а не самой строкой: он не меняет размер строки
+   (строка не прыгает при выборе). Отступ 1px сверху; снизу фон доходит до края
+   строки, ещё 1px даёт прозрачная нижняя граница. Между соседними выбранными
+   строками остаётся зазор 2px, как на /dashboard */
+.item.item--mine {
+    border-bottom-color: transparent;
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 1px -8px 0;
+        z-index: -1;
+        border-radius: 10px;
+        background: rgba(236, 72, 153, 0.06);
+    }
+}
+
+/* Позиция, выбранная другим гостем: приглушённый значок и текст */
+.reserved-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 19px;
+    height: 19px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+    color: #fff;
+}
+
+.reserved-text {
     color: #94a3b8;
-    text-decoration: line-through;
 }
 </style>

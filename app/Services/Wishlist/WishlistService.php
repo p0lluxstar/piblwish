@@ -5,6 +5,7 @@ namespace App\Services\Wishlist;
 use App\Models\User;
 use App\Models\Wishlist;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class WishlistService
@@ -13,6 +14,7 @@ class WishlistService
     {
         return $user->wishlists()
             ->with('items')
+            ->latest()
             ->get();
     }
 
@@ -24,15 +26,20 @@ class WishlistService
             $user,
             $data
         ) {
-            $wishlist = $user->wishlists()->create([
-                'title' => $data['title'],
-            ]);
+            // Если цвет не передан, его задаёт значение по умолчанию в модели (white)
+            $wishlist = $user->wishlists()->create(
+                Arr::only($data, ['title', 'color'])
+            );
 
+            // Порядок позиций задаётся порядком массива items
             $wishlist->items()->createMany(
                 collect($data['items'])
-                    ->map(fn($item) => [
+                    ->values()
+                    ->map(fn($item, $index) => [
                         'description' => $item['label'],
+                        'url' => $item['url'] ?? null,
                         'is_selected' => false,
+                        'position' => $index,
                     ])
                     ->toArray()
             );
@@ -52,19 +59,24 @@ class WishlistService
                 ->where('id', $id)
                 ->firstOrFail();
 
-            if (array_key_exists('title', $data)) {
-                $wishlist->update([
-                    'title' => $data['title'],
-                ]);
+            // Обновляются только переданные поля
+            $attributes = Arr::only($data, ['title', 'color']);
+
+            if ($attributes !== []) {
+                $wishlist->update($attributes);
             }
 
             if (array_key_exists('items', $data)) {
                 $wishlist->items()->delete();
 
+                // Порядок позиций задаётся порядком массива items
                 $items = collect($data['items'])
-                    ->map(fn($item) => [
+                    ->values()
+                    ->map(fn($item, $index) => [
                         'description' => $item['label'],
+                        'url' => $item['url'] ?? null,
                         'is_selected' => (bool) ($item['isSelected'] ?? false),
+                        'position' => $index,
                     ])
                     ->toArray();
 

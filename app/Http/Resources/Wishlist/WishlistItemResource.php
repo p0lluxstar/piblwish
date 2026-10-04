@@ -14,6 +14,8 @@ class WishlistItemResource extends JsonResource
             'id' => $this->id,
             'isSelected' => $this->is_selected,
             'label' => $this->description,
+            // Ссылка на товар или null
+            'url' => $this->url,
         ];
     }
 }

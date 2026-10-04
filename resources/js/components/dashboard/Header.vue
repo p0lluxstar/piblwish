@@ -1,14 +1,33 @@
 <script setup lang="ts">
-import { Gift, Settings } from '@lucide/vue';
-import { ref } from 'vue';
+import { Gift, LayoutList, LogOut, Settings } from '@lucide/vue';
+import { computed, ref } from 'vue';
+import { useRoute } from 'vue-router';
 
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import UserSettingsModal from '@/components/user/UserSettingsModal.vue';
-import { useLogout } from '@/composables/useAuth';
+import {
+    useChangePassword,
+    useDeleteAccount,
+    useLogout,
+} from '@/composables/useAuth';
 import { useAuthStore } from '@/stores/auth';
 
 const auth = useAuthStore();
+const route = useRoute();
+
+// Ссылка на свои списки нужна везде, кроме самого дашборда (например, на странице общего списка)
+const showMyListsLink = computed(() => route.name !== 'dashboard');
+const logoLink = computed(() => (auth.user ? '/dashboard' : '/'));
 const { mutate: logout, isPending } = useLogout();
+const { mutate: deleteAccount, isPending: isDeletingAccount } =
+    useDeleteAccount();
+const {
+    mutate: changePassword,
+    isPending: isChangingPassword,
+    isSuccess: isPasswordChanged,
+    errorMessage: passwordErrorMessage,
+    reset: resetChangePassword,
+} = useChangePassword();
 
 const isSettingsModalOpen = ref(false);
 
@@ -18,6 +37,8 @@ const openSettingsModal = (): void => {
 
 const closeSettingsModal = (): void => {
     isSettingsModalOpen.value = false;
+    // При повторном открытии модалки не показываем результат прошлой попытки
+    resetChangePassword();
 };
 
 const handleChangePassword = (payload: {
@@ -25,28 +46,40 @@ const handleChangePassword = (payload: {
     newPassword: string;
     newPasswordConfirmation: string;
 }): void => {
-    // TODO: подключить запрос к API после реализации бэкенда
-    console.log('changePassword', payload);
+    changePassword({
+        current_password: payload.currentPassword,
+        password: payload.newPassword,
+        password_confirmation: payload.newPasswordConfirmation,
+    });
 };
 
 const handleDeleteAccount = (): void => {
-    // TODO: подключить запрос к API после реализации бэкенда
-    console.log('Пользователь удален');
+    deleteAccount();
 };
 </script>
 
 <template>
     <header class="header">
         <div class="container">
-            <div class="logo">
+            <!-- Авторизованный пользователь попадает на свои списки, гость — на главную -->
+            <router-link :to="logoLink" class="logo">
                 <div class="logo-icon">
                     <Gift :size="18" color="#fff" />
                     <span class="logo-spark">✦</span>
                 </div>
                 <span class="logo-title">PiblWish</span>
-            </div>
-            <div class="user-info">
-                <div v-if="auth.user" class="user-details">
+            </router-link>
+            <div v-if="auth.user" class="user-info">
+                <router-link
+                    v-if="showMyListsLink"
+                    to="/dashboard"
+                    class="my-lists-btn"
+                    aria-label="Мои списки"
+                >
+                    <LayoutList :size="16" />
+                    <span class="btn-text">Мои списки</span>
+                </router-link>
+                <div class="user-details">
                     <span class="user-username">{{ auth.user.username }}</span>
                     <span class="user-email">{{ auth.user.email }}</span>
                 </div>
@@ -65,17 +98,42 @@ const handleDeleteAccount = (): void => {
                 </div>
                 <button
                     class="logout-btn"
+                    aria-label="Выход"
                     :disabled="isPending"
                     @click="logout"
                 >
-                    <LoaderButtonSpinner v-if="isPending" :size="18" />
-                    <span v-else>Выход</span>
+                    <!-- Содержимое остаётся в разметке и задаёт ширину кнопки,
+                         во время выхода оно скрыто, а спиннер выводится поверх -->
+                    <span
+                        class="logout-content"
+                        :class="{ 'is-hidden': isPending }"
+                    >
+                        <LogOut :size="16" />
+                        <span class="btn-text">Выход</span>
+                    </span>
+                    <LoaderButtonSpinner
+                        v-if="isPending"
+                        class="logout-spinner"
+                        :size="18"
+                    />
                 </button>
+            </div>
+            <div v-else class="guest-actions">
+                <router-link to="/registration" class="guest-btn">
+                    Регистрация
+                </router-link>
+                <router-link to="/login" class="guest-btn guest-btn--primary">
+                    Войти
+                </router-link>
             </div>
         </div>
 
         <UserSettingsModal
-            v-if="isSettingsModalOpen"
+            v-if="auth.user && isSettingsModalOpen"
+            :is-pending="isChangingPassword"
+            :is-deleting-account="isDeletingAccount"
+            :password-error-message="passwordErrorMessage"
+            :is-password-changed="isPasswordChanged"
             @close="closeSettingsModal"
             @change-password="handleChangePassword"
             @delete-account="handleDeleteAccount"
@@ -109,6 +167,7 @@ const handleDeleteAccount = (): void => {
     display: flex;
     align-items: center;
     gap: 12px;
+    text-decoration: none;
 }
 .logo-icon {
     width: 38px;
@@ -230,10 +289,116 @@ const handleDeleteAccount = (): void => {
     transition: all 0.2s ease;
     height: 36px;
 }
+.logout-btn {
+    position: relative;
+}
+.logout-content {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.logout-content.is-hidden {
+    visibility: hidden;
+}
+/* Центрирование через inset и margin: transform занят анимацией вращения спиннера */
+.logout-spinner {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+}
 .logout-btn:hover:not(:disabled) {
     background: var(--brand-gradient);
     color: #fff;
     box-shadow: var(--shadow-glow);
     transform: translateY(-1px);
+}
+.my-lists-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 6px 16px;
+    margin-right: 6px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brand-violet);
+    background: rgba(139, 92, 246, 0.08);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+.my-lists-btn:hover {
+    background: var(--brand-gradient);
+    color: #fff;
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-1px);
+}
+
+.guest-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.guest-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 36px;
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brand-violet);
+    background: rgba(139, 92, 246, 0.08);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+.guest-btn:hover {
+    background: rgba(139, 92, 246, 0.14);
+    transform: translateY(-1px);
+}
+
+.guest-btn--primary {
+    color: #fff;
+    background: var(--brand-gradient);
+    box-shadow: var(--shadow-glow);
+}
+.guest-btn--primary:hover {
+    background: var(--brand-gradient);
+    filter: brightness(1.05);
+}
+
+/* Узкий экран: одна строка, имя и email скрыты, кнопки только с иконками */
+@media (max-width: 599px) {
+    .header {
+        height: 60px;
+        padding: 0 16px;
+    }
+    .container {
+        width: 100%;
+    }
+    .user-info {
+        gap: 10px;
+    }
+    .user-details,
+    .btn-text {
+        display: none;
+    }
+    .logout-btn,
+    .my-lists-btn {
+        width: 36px;
+        padding: 0;
+        justify-content: center;
+    }
+    .my-lists-btn {
+        margin-right: 0;
+    }
+    .guest-actions {
+        gap: 8px;
+    }
+    .guest-btn {
+        padding: 6px 14px;
+    }
 }
 </style>

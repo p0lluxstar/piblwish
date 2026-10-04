@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Swagger;
 
+use App\Enums\WishlistColor;
 use App\Http\Controllers\Controller;
 use OpenApi\Attributes as OA;
 
@@ -39,6 +40,22 @@ use OpenApi\Attributes as OA;
                                 ),
 
                                 new OA\Property(
+                                    property: 'color',
+                                    description: 'Ключ цвета фона списка',
+                                    type: 'string',
+                                    enum: WishlistColor::class,
+                                    example: 'lavender'
+                                ),
+
+                                new OA\Property(
+                                    property: 'createdAt',
+                                    description: 'Дата создания списка (ISO 8601)',
+                                    type: 'string',
+                                    format: 'date-time',
+                                    example: '2026-09-12T14:30:00+00:00'
+                                ),
+
+                                new OA\Property(
                                     property: 'items',
                                     type: 'array',
                                     items: new OA\Items(
@@ -53,6 +70,16 @@ use OpenApi\Attributes as OA;
                                                 property: 'label',
                                                 type: 'string',
                                                 example: 'Книга «Мастер и Маргарита»'
+                                            ),
+
+                                            new OA\Property(
+                                                property: 'url',
+                                                description: 'Ссылка на товар (http или https), необязательна',
+                                                type: 'string',
+                                                format: 'uri',
+                                                maxLength: 2048,
+                                                nullable: true,
+                                                example: 'https://example.com/books/master-i-margarita'
                                             ),
 
                                             new OA\Property(
@@ -98,6 +125,14 @@ use OpenApi\Attributes as OA;
                 ),
 
                 new OA\Property(
+                    property: 'color',
+                    description: 'Ключ цвета фона списка. Необязателен, по умолчанию white',
+                    type: 'string',
+                    enum: WishlistColor::class,
+                    example: 'mint'
+                ),
+
+                new OA\Property(
                     property: 'items',
                     type: 'array',
                     items: new OA\Items(
@@ -106,6 +141,16 @@ use OpenApi\Attributes as OA;
                                 property: 'label',
                                 type: 'string',
                                 example: 'Книга «Мастер и Маргарита»'
+                            ),
+
+                            new OA\Property(
+                                property: 'url',
+                                description: 'Ссылка на товар (http или https), необязательна',
+                                type: 'string',
+                                format: 'uri',
+                                maxLength: 2048,
+                                nullable: true,
+                                example: 'https://example.com/books/master-i-margarita'
                             ),
                         ],
                         type: 'object'
@@ -138,6 +183,22 @@ use OpenApi\Attributes as OA;
                             ),
 
                             new OA\Property(
+                                property: 'color',
+                                description: 'Ключ цвета фона списка',
+                                type: 'string',
+                                enum: WishlistColor::class,
+                                example: 'mint'
+                            ),
+
+                            new OA\Property(
+                                property: 'createdAt',
+                                description: 'Дата создания списка (ISO 8601)',
+                                type: 'string',
+                                format: 'date-time',
+                                example: '2026-09-12T14:30:00+00:00'
+                            ),
+
+                            new OA\Property(
                                 property: 'items',
                                 type: 'array',
                                 items: new OA\Items(
@@ -152,6 +213,16 @@ use OpenApi\Attributes as OA;
                                             property: 'label',
                                             type: 'string',
                                             example: 'Свеча с ароматом ванили'
+                                        ),
+
+                                        new OA\Property(
+                                            property: 'url',
+                                            description: 'Ссылка на товар (http или https), необязательна',
+                                            type: 'string',
+                                            format: 'uri',
+                                            maxLength: 2048,
+                                            nullable: true,
+                                            example: 'https://example.com/books/master-i-margarita'
                                         ),
 
                                         new OA\Property(

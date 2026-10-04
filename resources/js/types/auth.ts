@@ -9,3 +9,9 @@ export type RegisterPayload = {
     password: string;
     password_confirmation: string;
 };
+
+export type ChangePasswordPayload = {
+    current_password: string;
+    password: string;
+    password_confirmation: string;
+};

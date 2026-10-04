@@ -1,10 +1,21 @@
-import { useMutation, useQuery } from '@tanstack/vue-query';
-import { ref, watch } from 'vue';
+import {
+    useMutation,
+    type UseMutationReturnType,
+    useQuery,
+    useQueryClient,
+} from '@tanstack/vue-query';
+import type { AxiosError, AxiosResponse } from 'axios';
+import { computed, type ComputedRef, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
-import type { LoginPayload, RegisterPayload } from '@/types/auth';
+import type { ApiErrorResponse } from '@/types/api';
+import type {
+    ChangePasswordPayload,
+    LoginPayload,
+    RegisterPayload,
+} from '@/types/auth';
 
 export const useLogin = (): any => {
     const router = useRouter();
@@ -56,6 +67,66 @@ export const useLogout = (): any => {
             router.push('/');
         },
     });
+};
+
+export const useDeleteAccount = (): UseMutationReturnType<
+    AxiosResponse,
+    Error,
+    void,
+    unknown
+> => {
+    const router = useRouter();
+    const authStore = useAuthStore();
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: () => api.delete('/v1/user'),
+
+        onSuccess: () => {
+            authStore.setUser(null);
+            // Сбрасываем кэш, чтобы данные удалённого аккаунта не остались в памяти
+            queryClient.clear();
+            router.push('/');
+        },
+    });
+};
+
+type UseChangePasswordReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    ChangePasswordPayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+export const useChangePassword = (): UseChangePasswordReturn => {
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        ChangePasswordPayload
+    >({
+        mutationFn: (payload) => api.put('/v1/user/password', payload),
+    });
+
+    // Для ошибки валидации показываем первую ошибку по полю,
+    // иначе — общее сообщение сервера
+    const errorMessage = computed((): string | null => {
+        const data = mutation.error.value?.response?.data?.data;
+
+        if (!mutation.error.value) {
+            return null;
+        }
+
+        const firstFieldError = Object.values(data?.errors ?? {})[0]?.[0];
+
+        return firstFieldError ?? data?.message ?? 'Не удалось сменить пароль';
+    });
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
 };
 
 export const useUser = (): any => {

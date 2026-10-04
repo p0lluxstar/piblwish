@@ -83,9 +83,23 @@ class AuthService
         array $credentials,
         Request $request
     ): User {
-        if (! Auth::guard('web')->attempt($credentials)) {
+        // Деактивированные (удалённые) аккаунты не могут войти
+        $credentials[] = fn ($query) => $query->whereNull('deactivated_at');
+
+        $guard = Auth::guard('web');
+
+        if (! $guard->validate($credentials)) {
             abort(401, 'Неверный email или пароль.');
         }
+
+        // Пароль верный, но email не подтверждён — входить нельзя
+        $user = $guard->getLastAttempted();
+
+        if (! $user->is_active) {
+            abort(403, 'Аккаунт не подтверждён. Подтвердите email.');
+        }
+
+        $guard->login($user);
 
         $request->session()->regenerate();
 

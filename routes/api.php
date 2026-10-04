@@ -28,21 +28,20 @@ use App\Http\Controllers\Api\SharedWishlistController;
 |
 */
 
-// Публичные API (без авторизации)
-Route::prefix('v1')
-    ->middleware('throttle:5,1')
-    ->group(function () {
+// Публичные API (без авторизации).
+// Лимитеры описаны в AppServiceProvider::configureRateLimiting()
+Route::prefix('v1')->group(function () {
 
-        Route::get(
-            '/shared-wishlists/{id}',
-            [SharedWishlistController::class, 'getWishlistById']
-        );
+    Route::get(
+        '/shared-wishlists/{id}',
+        [SharedWishlistController::class, 'getWishlistById']
+    )->middleware('throttle:shared-read');
 
-        Route::patch(
-            '/shared-wishlists/{wishlist}/items',
-            [SharedWishlistController::class, 'updateSharedWishlistItems']
-        );
-    });
+    Route::patch(
+        '/shared-wishlists/{wishlist}/items',
+        [SharedWishlistController::class, 'updateSharedWishlistItems']
+    )->middleware('throttle:shared-write');
+});
 
 // Только для авторизованных пользователей (через Sanctum)
 Route::middleware(['auth:sanctum', 'throttle:30,1'])->prefix('v1')->group(function () {

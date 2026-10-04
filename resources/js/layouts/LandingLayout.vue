@@ -95,10 +95,8 @@ function resetImage(): void {
     border-right: 1px solid #e2c3d373;
 }
 
+/* Логотип в обычном потоке: форма центрируется в оставшемся месте и не наезжает на него при низком окне */
 .brand {
-    position: absolute;
-    top: 56px;
-    left: 56px;
     display: flex;
     align-items: center;
     gap: 16px;
@@ -108,6 +106,7 @@ function resetImage(): void {
     flex: 1;
     display: flex;
     margin: 0 auto;
+    padding-top: 40px;
     flex-direction: column;
     justify-content: center;
 }
@@ -124,6 +123,10 @@ function resetImage(): void {
     font-weight: 900;
     box-shadow: var(--shadow-glow-lg);
     transition: transform 0.25s ease;
+}
+
+.brand-link {
+    align-self: flex-start;
 }
 
 .brand-link:hover .logo {
@@ -240,13 +243,9 @@ function resetImage(): void {
 }
 
 @media (max-width: 900px) {
-    .brand {
-        position: static;
-    }
-
     .hero-content {
         min-height: auto;
-        padding-top: 72px;
+        padding-top: 48px;
     }
 
     .landing {

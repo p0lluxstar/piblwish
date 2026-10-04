@@ -10,7 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'wishlist_id',
     'description',
-    'is_selected'
+    'url',
+    'is_selected',
+    'position',
 ])]
 class WishlistItem extends Model
 {
@@ -20,6 +22,7 @@ class WishlistItem extends Model
     {
         return [
             'is_selected' => 'boolean',
+            'position' => 'integer',
         ];
     }
 

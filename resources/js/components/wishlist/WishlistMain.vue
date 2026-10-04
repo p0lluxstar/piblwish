@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { Plus, RefreshCcw } from '@lucide/vue';
+import { ArrowDown, ArrowUp, Plus, RefreshCcw } from '@lucide/vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import axios from 'axios';
 import { onMounted, ref } from 'vue';
 import { computed } from 'vue';
 
+import {
+    useWishlistSort,
+    type WishlistSortField,
+} from '@/composables/useWishlistSort';
 import { MOTIVATIONAL_PHRASES } from '@/constants/phrases';
+import { api } from '@/lib/api';
 
-import type { Wishlist } from '../../types/wishlist';
+import type { Wishlist, WishlistForm } from '../../types/wishlist';
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
 import WishlistCard from './WishlistCard.vue';
 import WishlistCreateModal from './WishlistCreateModal.vue';
@@ -22,8 +26,20 @@ const isDeleteModalOpen = ref(false);
 const wishlistToDelete = ref<Wishlist | null>(null);
 const randomPhrase = ref('');
 
+// Фраза меняется при загрузке страницы и после действий пользователя: «Обновить»,
+// создание, изменение и удаление списка. Таймер не используется, чтобы движение
+// в заголовке не отвлекало. Подряд одна и та же фраза не выпадает
+const generateRandomPhrase = (): void => {
+    const candidates = MOTIVATIONAL_PHRASES.filter(
+        (phrase) => phrase !== randomPhrase.value,
+    );
+    const pool = candidates.length > 0 ? candidates : MOTIVATIONAL_PHRASES;
+
+    randomPhrase.value = pool[Math.floor(Math.random() * pool.length)];
+};
+
 const fetchWishlists = async (): Promise<Wishlist[]> => {
-    const response = await axios.get('/v1/wishlists');
+    const response = await api.get<{ data: Wishlist[] }>('/v1/wishlists');
 
     return response.data.data;
 };
@@ -35,6 +51,20 @@ const { data, isLoading, isFetching, error } = useQuery({
 
 const wishLists = computed(() => data.value ?? []);
 
+const { sort, setSort, sortedWishlists } = useWishlistSort(wishLists);
+
+const SORT_OPTIONS: { field: WishlistSortField; label: string }[] = [
+    { field: 'date', label: 'По дате' },
+    { field: 'title', label: 'По названию' },
+];
+
+// Подпись для экранных дикторов: поле и текущее направление сортировки
+const sortAriaLabel = (field: WishlistSortField, label: string): string => {
+    if (sort.value.field !== field) return `Сортировать ${label.toLowerCase()}`;
+
+    return `${label}, ${sort.value.direction === 'asc' ? 'по возрастанию' : 'по убыванию'}`;
+};
+
 const openCreateModal = (): void => {
     isCreateModalOpen.value = true;
 };
@@ -44,9 +74,12 @@ const closeCreateModal = (): void => {
 };
 
 const createWishlistRequest = async (
-    payload: Omit<Wishlist, 'id'>,
+    payload: WishlistForm,
 ): Promise<Wishlist> => {
-    const response = await axios.post('/v1/wishlists', payload);
+    const response = await api.post<{ data: Wishlist }>(
+        '/v1/wishlists',
+        payload,
+    );
 
     return response.data.data;
 };
@@ -60,6 +93,7 @@ const { mutate: createWishlist, isPending: isCreating } = useMutation({
         });
 
         closeCreateModal();
+        generateRandomPhrase();
     },
 
     onError: (error) => {
@@ -81,30 +115,51 @@ const closeEditModal = (): void => {
     selectedWishlist.value = null;
 };
 
-// Цепочка обновения списка: PATCH → emit('updated') → updateWishlist() → queryClient.setQueryData() → vue-query обновляет data.value → computed wishLists пересчитывается → WishlistCard получает новые props
-const updateWishlist = (updated: Partial<Wishlist>): void => {
-    queryClient.setQueryData<Wishlist[]>(['wishlists'], (oldData) => {
-        if (!oldData) return [];
+const updateWishlistRequest = async ({
+    id,
+    ...payload
+}: WishlistForm & { id: string }): Promise<Wishlist> => {
+    const response = await api.patch<{ data: Wishlist }>(
+        `/v1/wishlists/${id}`,
+        payload,
+    );
 
-        return oldData.map((wishlist) =>
-            wishlist.id === updated.id
-                ? {
-                      ...wishlist,
-                      ...updated,
-                  }
-                : wishlist,
-        );
-    });
+    return response.data.data;
 };
+
+// Цепочка обновления списка: emit('update') → мутация (PATCH) → queryClient.setQueryData() с ответом сервера → computed wishLists пересчитывается → WishlistCard получает новые props
+const { mutate: updateWishlist, isPending: isUpdating } = useMutation({
+    mutationFn: updateWishlistRequest,
+
+    onSuccess: (updated) => {
+        queryClient.setQueryData<Wishlist[]>(['wishlists'], (oldData) => {
+            if (!oldData) return [];
+
+            return oldData.map((wishlist) =>
+                wishlist.id === updated.id
+                    ? { ...wishlist, ...updated }
+                    : wishlist,
+            );
+        });
+
+        closeEditModal();
+        generateRandomPhrase();
+    },
+
+    onError: (error) => {
+        console.error('Ошибка обновления списка', error);
+    },
+});
 
 const updateWishlists = async (): Promise<void> => {
     await queryClient.invalidateQueries({
         queryKey: ['wishlists'],
     });
+    generateRandomPhrase();
 };
 
 const deleteWishlistRequest = async (id: string): Promise<void> => {
-    await axios.delete(`/v1/wishlists/${id}`);
+    await api.delete(`/v1/wishlists/${id}`);
 };
 
 const { mutate: deleteWishlist, isPending: isDeleting } = useMutation({
@@ -114,6 +169,7 @@ const { mutate: deleteWishlist, isPending: isDeleting } = useMutation({
             queryKey: ['wishlists'],
         });
         closeDeleteModal(); // Закрываем модальное окно при успехе
+        generateRandomPhrase();
     },
     onError: (error) => {
         console.error('Ошибка удаления списка', error);
@@ -129,21 +185,7 @@ const closeDeleteModal = (): void => {
     wishlistToDelete.value = null;
 };
 
-// Функция для генерации случайной фразы
-const generateRandomPhrase = (): void => {
-    const randomIndex = Math.floor(Math.random() * MOTIVATIONAL_PHRASES.length);
-    randomPhrase.value = MOTIVATIONAL_PHRASES[randomIndex];
-};
-
-// Генерируем при монтировании
 onMounted(generateRandomPhrase);
-
-// Генерируем новую фразу при обновлении списков
-// Предположим, у вас есть функция updateWishlists
-// const updateWishlists = async () => {
-//     // ... ваш код обновления
-//     generateRandomPhrase(); // меняем фразу после обновления
-// };
 </script>
 
 <template>
@@ -153,8 +195,11 @@ onMounted(generateRandomPhrase);
             <div class="heading">Мои списки</div>
             <div class="sub">
                 <span v-if="!isLoading">
-                    Cписков {{ wishLists.length }} ·
-                    <span class="phrase-wrapper">
+                    <span>Списков {{ wishLists.length }}</span>
+                    <!-- Отступы вокруг точки заданы в CSS: пробелы между тегами Vue удаляет -->
+                    <span class="separator">·</span>
+                    <!-- Ключ пересоздаёт элемент при смене фразы, чтобы анимация срабатывала заново -->
+                    <span :key="randomPhrase" class="phrase-wrapper">
                         <span class="phrase">{{ randomPhrase }}</span>
                     </span>
                 </span>
@@ -162,15 +207,47 @@ onMounted(generateRandomPhrase);
             </div>
         </div>
         <div v-if="wishLists.length > 0 || isLoading" class="flex gap-2">
-            <button class="add-btn" @click="openCreateModal">
+            <button
+                class="add-btn"
+                aria-label="Новый список"
+                @click="openCreateModal"
+            >
                 <Plus :size="12" />
-                Новый список
+                <span class="btn-text">Новый список</span>
             </button>
-            <button class="update-btn" @click="updateWishlists">
+            <button
+                class="update-btn"
+                aria-label="Обновить"
+                @click="updateWishlists"
+            >
                 <RefreshCcw :size="12" />
-                Обновить
+                <span class="btn-text">Обновить</span>
             </button>
         </div>
+    </div>
+
+    <!-- Сортировка имеет смысл, только когда списков больше одного -->
+    <div
+        v-if="!isLoading && wishLists.length > 1"
+        class="sort-bar"
+        role="group"
+        aria-label="Сортировка списков"
+    >
+        <button
+            v-for="option in SORT_OPTIONS"
+            :key="option.field"
+            class="sort-btn"
+            :class="{ active: sort.field === option.field }"
+            :aria-pressed="sort.field === option.field"
+            :aria-label="sortAriaLabel(option.field, option.label)"
+            @click="setSort(option.field)"
+        >
+            <span>{{ option.label }}</span>
+            <template v-if="sort.field === option.field">
+                <ArrowUp v-if="sort.direction === 'asc'" :size="12" />
+                <ArrowDown v-else :size="12" />
+            </template>
+        </button>
     </div>
 
     <div
@@ -202,7 +279,7 @@ onMounted(generateRandomPhrase);
 
     <div v-else class="grid" id="grid">
         <WishlistCard
-            v-for="wishlist in wishLists"
+            v-for="wishlist in sortedWishlists"
             :key="wishlist.id"
             :wishlist="wishlist"
             @edit="openEditModal"
@@ -222,7 +299,7 @@ onMounted(generateRandomPhrase);
         :wishlist="selectedWishlist"
         :is-pending="isUpdating"
         @close="closeEditModal"
-        @updated="updateWishlist"
+        @update="updateWishlist"
     />
 
     <WishlistDeleteModal
@@ -268,6 +345,7 @@ onMounted(generateRandomPhrase);
     font-family: inherit;
     transition: all 0.2s ease;
     line-height: 1.5;
+    white-space: nowrap;
     box-shadow: var(--shadow-glow);
 
     &:hover:not(:disabled) {
@@ -294,6 +372,67 @@ onMounted(generateRandomPhrase);
     }
 }
 
+/* Узкий экран: кнопки «Новый список» и «Обновить» — круглые, только с иконками.
+   Кнопка «Создать список» (нет ни одного списка) не затрагивается: она вне .top */
+@media (max-width: 599px) {
+    .top .add-btn,
+    .top .update-btn {
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        padding: 0;
+
+        svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .btn-text {
+            display: none;
+        }
+    }
+}
+
+.sort-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: -10px 0 18px;
+}
+
+.sort-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #fff;
+    color: var(--ink-soft);
+    border: 1.5px solid var(--surface-border);
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    line-height: 1.5;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+        color: var(--brand-violet);
+        border-color: var(--brand-violet);
+    }
+
+    &.active {
+        color: var(--brand-violet);
+        border-color: var(--brand-violet);
+        background: rgba(139, 92, 246, 0.08);
+    }
+}
+
+.separator {
+    margin: 0 0.35em;
+}
+
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -303,6 +442,10 @@ onMounted(generateRandomPhrase);
 .phrase-wrapper {
     display: inline-block;
     animation: fadeSlide 0.4s ease-out;
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
 }
 
 .phrase {
@@ -318,6 +461,17 @@ onMounted(generateRandomPhrase);
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* Очень узкий экран: количество списков и фраза на отдельных строках, без точки.
+   Медиазапрос стоит в конце, иначе .phrase-wrapper { display: inline-block } выше по файлу перекрывает его */
+@media (max-width: 399px) {
+    .separator {
+        display: none;
+    }
+    .phrase-wrapper {
+        display: block;
     }
 }
 </style>
