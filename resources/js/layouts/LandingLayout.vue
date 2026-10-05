@@ -1,8 +1,68 @@
 <script setup lang="ts">
-import { Gift } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { Gift, ListChecks, StickyNote } from '@lucide/vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-import giftHeroImage from '../../images/gift-hero.png';
+import dashboardSlideImage from '../../images/slide-dashboard.jpg';
+import editSlideImage from '../../images/slide-edit.jpg';
+import sharedSlideImage from '../../images/slide-shared.jpg';
+
+interface HeroSlide {
+    image: string;
+    alt: string;
+    // Заголовок подписи; он же подпись точки-переключателя для экранного диктора
+    title: string;
+    text: string;
+}
+
+const slides: HeroSlide[] = [
+    {
+        image: dashboardSlideImage,
+        alt: 'Скриншот страницы «Мои карточки» со списками желаний, делами и заметкой',
+        title: 'Всё на одном экране',
+        text: 'Желания, дела и заметки — рядом. Фильтруйте по типу и следите, сколько уже выполнено.',
+    },
+    {
+        image: editSlideImage,
+        alt: 'Скриншот окна редактирования списка желаний',
+        title: 'Список желаний за минуту',
+        text: 'Добавьте подарки с ценой, ссылкой и приоритетом, выберите цвет и включите режим сюрприза.',
+    },
+    {
+        image: sharedSlideImage,
+        alt: 'Скриншот списка подарков, открытого гостем по ссылке',
+        title: 'Друзья выбирают по ссылке',
+        text: 'Гости отмечают подарок без регистрации, и одно и то же не подарят дважды.',
+    },
+];
+
+// Интервал автоматической смены слайдов, мс
+const SLIDE_INTERVAL = 5000;
+
+const activeSlide = ref(0);
+let slideTimer: number | null = null;
+
+function startSlideTimer(): void {
+    stopSlideTimer();
+    slideTimer = window.setInterval(() => {
+        activeSlide.value = (activeSlide.value + 1) % slides.length;
+    }, SLIDE_INTERVAL);
+}
+
+function stopSlideTimer(): void {
+    if (slideTimer !== null) {
+        window.clearInterval(slideTimer);
+        slideTimer = null;
+    }
+}
+
+// Ручной выбор слайда перезапускает таймер, чтобы слайд не сменился сразу после клика
+function showSlide(index: number): void {
+    activeSlide.value = index;
+    startSlideTimer();
+}
+
+onMounted(startSlideTimer);
+onBeforeUnmount(stopSlideTimer);
 
 const offsetX = ref(0);
 const offsetY = ref(0);
@@ -46,16 +106,62 @@ function resetImage(): void {
         </section>
 
         <section class="right-panel">
-            <div class="floating-card card-one">🎁 Подарки</div>
-            <div class="floating-card card-two">✨ Мечты</div>
-            <div class="floating-card card-three">💌 Списки</div>
+            <div class="floating-card card-one">
+                <Gift class="floating-card-icon" :size="18" />
+                Подарки
+            </div>
+            <div class="floating-card card-two">
+                <StickyNote class="floating-card-icon" :size="18" />
+                Заметки
+            </div>
+            <div class="floating-card card-three">
+                <ListChecks class="floating-card-icon" :size="18" />
+                Дела
+            </div>
             <div class="image-glow"></div>
-            <img
-                class="hero-image"
-                :src="giftHeroImage"
-                alt="Подарок с лентой"
-                :style="imageStyle"
-            />
+
+            <div class="hero-stage">
+                <div class="hero-slider" :style="imageStyle">
+                    <img
+                        v-for="(slide, index) in slides"
+                        :key="slide.title"
+                        class="hero-image"
+                        :class="{ active: index === activeSlide }"
+                        :src="slide.image"
+                        :alt="slide.alt"
+                        :aria-hidden="index !== activeSlide"
+                    />
+                </div>
+
+                <!-- Подпись к текущему слайду: что изображено на скриншоте -->
+                <Transition name="caption" mode="out-in">
+                    <div
+                        :key="activeSlide"
+                        class="slide-caption"
+                        aria-live="polite"
+                    >
+                        <h3 class="slide-caption-title">
+                            {{ slides[activeSlide].title }}
+                        </h3>
+                        <p class="slide-caption-text">
+                            {{ slides[activeSlide].text }}
+                        </p>
+                    </div>
+                </Transition>
+
+                <div class="slider-dots">
+                    <button
+                        v-for="(slide, index) in slides"
+                        :key="slide.title"
+                        type="button"
+                        class="slider-dot"
+                        :class="{ active: index === activeSlide }"
+                        :aria-label="slide.title"
+                        :aria-current="index === activeSlide"
+                        @click="showSlide(index)"
+                    ></button>
+                </div>
+            </div>
         </section>
     </main>
 </template>
@@ -187,16 +293,141 @@ function resetImage(): void {
     filter: blur(56px);
 }
 
-.hero-image {
+.hero-slider {
     position: relative;
     width: min(46vw, 620px);
     height: min(62vh, 620px);
-    object-fit: cover;
-    border: 12px solid rgba(255, 255, 255, 0.9);
+    overflow: hidden;
+    border: 4px solid rgba(255, 255, 255, 0.9);
     border-radius: var(--radius-xl);
+    background: rgba(255, 255, 255, 0.9);
     box-shadow: var(--shadow-glow-lg);
     transition: transform 0.16s ease-out;
     will-change: transform;
+    /* Ниже подписи: смещённая за мышью картинка не должна её закрывать */
+    z-index: 1;
+}
+
+/* Внутреннее затемнение по краям поверх всех слайдов */
+.hero-slider::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    box-shadow: inset 0 0 50px rgba(30, 16, 50, 0.24);
+    background: radial-gradient(
+        ellipse at center,
+        rgba(30, 16, 50, 0) 55%,
+        rgba(30, 16, 50, 0.1) 100%
+    );
+}
+
+.hero-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transform: scale(1.06);
+    transition:
+        opacity 0.9s ease,
+        transform 5s ease-out;
+}
+
+.hero-image.active {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Слайдер, подпись и точки одной колонкой */
+.hero-stage {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.slide-caption {
+    position: relative;
+    z-index: 2;
+    /* Высота под две строки текста, чтобы точки не прыгали при смене подписи */
+    min-height: 72px;
+    max-width: min(46vw, 560px);
+    /* Дополнительный отступ от картинки сверх общего gap */
+    margin-top: 20px;
+    text-align: center;
+}
+
+.slide-caption-title {
+    margin: 0 0 6px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+}
+
+.slide-caption-text {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+}
+
+.caption-enter-active,
+.caption-leave-active {
+    transition:
+        opacity 0.35s ease,
+        transform 0.35s ease;
+}
+
+.caption-enter-from {
+    opacity: 0;
+    transform: translateY(6px);
+}
+
+.caption-leave-to {
+    opacity: 0;
+    transform: translateY(-6px);
+}
+
+.slider-dots {
+    z-index: 2;
+    display: flex;
+    gap: 10px;
+}
+
+.slider-dot {
+    width: 10px;
+    height: 10px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(124, 58, 237, 0.25);
+    cursor: pointer;
+    transition:
+        width 0.3s ease,
+        background 0.3s ease;
+}
+
+.slider-dot.active {
+    width: 28px;
+    background: var(--brand-gradient);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-image {
+        transform: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .caption-enter-from,
+    .caption-leave-to {
+        transform: none;
+    }
 }
 
 .floating-card {
@@ -211,6 +442,15 @@ function resetImage(): void {
     box-shadow: var(--shadow-glow);
     backdrop-filter: blur(14px);
     border: 1px solid rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Значки одного цвета у всех плашек */
+.floating-card-icon {
+    flex-shrink: 0;
+    color: var(--brand-violet, #8b5cf6);
 }
 
 .card-one {
@@ -221,13 +461,13 @@ function resetImage(): void {
 
 .card-two {
     right: 13%;
-    bottom: 19%;
+    bottom: 24%;
     animation: float 5.2s ease-in-out infinite reverse;
 }
 
 .card-three {
-    right: 8%;
-    top: 12%;
+    right: 21%;
+    top: 16%;
     animation: float 5.8s ease-in-out infinite;
 }
 
@@ -264,9 +504,13 @@ function resetImage(): void {
         padding: 32px;
     }
 
-    .hero-image {
+    .hero-slider {
         width: min(86vw, 520px);
         height: 320px;
+    }
+
+    .slide-caption {
+        max-width: min(86vw, 520px);
     }
 }
 

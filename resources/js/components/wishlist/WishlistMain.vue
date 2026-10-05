@@ -1,7 +1,16 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, Plus, RefreshCcw } from '@lucide/vue';
+import {
+    ArrowDown,
+    ArrowUp,
+    Gift,
+    LayoutList,
+    ListChecks,
+    Plus,
+    RefreshCcw,
+    StickyNote,
+} from '@lucide/vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { computed, onMounted, ref, watch } from 'vue';
+import { type Component, computed, onMounted, ref, watch } from 'vue';
 
 import {
     useWishlistSort,
@@ -102,11 +111,16 @@ const typeCounts = computed(() => {
     return counts;
 });
 
-const TYPE_FILTER_OPTIONS: { value: WishlistTypeFilter; label: string }[] = [
-    { value: 'all', label: 'Все' },
-    { value: 'gift', label: 'Желания' },
-    { value: 'todo', label: 'Дела' },
-    { value: 'note', label: 'Заметки' },
+// Иконка заменяет подпись кнопки на очень узком экране
+const TYPE_FILTER_OPTIONS: {
+    value: WishlistTypeFilter;
+    label: string;
+    icon: Component;
+}[] = [
+    { value: 'all', label: 'Все', icon: LayoutList },
+    { value: 'gift', label: 'Желания', icon: Gift },
+    { value: 'todo', label: 'Дела', icon: ListChecks },
+    { value: 'note', label: 'Заметки', icon: StickyNote },
 ];
 
 // Кнопки показываются только для типов, которые есть у пользователя
@@ -470,9 +484,17 @@ onMounted(generateRandomPhrase);
                 class="sort-btn"
                 :class="{ active: activeTypeFilter === option.value }"
                 :aria-pressed="activeTypeFilter === option.value"
+                :aria-label="`${option.label}: ${typeCounts[option.value]}`"
+                :title="option.label"
                 @click="typeFilter = option.value"
             >
-                <span>{{ option.label }}</span>
+                <component
+                    :is="option.icon"
+                    class="type-filter-icon"
+                    :size="14"
+                    aria-hidden="true"
+                />
+                <span class="type-filter-label">{{ option.label }}</span>
                 <span class="sort-count">{{ typeCounts[option.value] }}</span>
             </button>
         </div>
@@ -700,6 +722,11 @@ onMounted(generateRandomPhrase);
     }
 }
 
+.type-filter-icon {
+    display: none;
+    flex-shrink: 0;
+}
+
 .separator {
     margin: 0 0.35em;
 }
@@ -776,6 +803,14 @@ onMounted(generateRandomPhrase);
     }
     .phrase-wrapper {
         display: block;
+    }
+
+    /* Кнопки фильтра по типу: иконка вместо подписи, чтобы ряд занимал меньше места */
+    .type-filter-icon {
+        display: block;
+    }
+    .type-filter-label {
+        display: none;
     }
 }
 </style>
