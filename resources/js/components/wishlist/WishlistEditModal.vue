@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronUp, Gift, Link, Trash2 } from '@lucide/vue';
+import { Check, ChevronDown, ChevronUp, Gift, Link, Trash2 } from '@lucide/vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { useItemReorder } from '../../composables/useItemReorder';
@@ -8,6 +8,7 @@ import type {
     Wishlist,
     WishlistForm,
     WishlistItem,
+    WishlistUpdatePayload,
 } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import ItemPriceInput from './ItemPriceInput.vue';
@@ -22,10 +23,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     close: [];
-    update: [payload: WishlistForm & { id: string }];
+    update: [payload: WishlistUpdatePayload];
 }>();
 
-const defaultForm = (): WishlistForm => ({
+// Тип списка при редактировании не меняется, поэтому в форме его нет
+type EditForm = Omit<WishlistForm, 'type'>;
+
+const defaultForm = (): EditForm => ({
     title: '',
     color: 'white',
     hideSelections: false,
@@ -37,7 +41,7 @@ const defaultForm = (): WishlistForm => ({
     ],
 });
 
-const form = ref<WishlistForm>({
+const form = ref<EditForm>({
     title: '',
     color: 'white',
     hideSelections: false,
@@ -70,6 +74,9 @@ watch(
     },
 );
 
+// Список дел: у позиций только текст и отметка «выполнено»
+const isTodo = computed(() => props.wishlist.type === 'todo');
+
 // Чекбоксы выбора показываются, только если владелец видит выбор гостей:
 // при скрытом выборе сервер не принимает isSelected из формы
 const showSelection = computed(
@@ -99,6 +106,17 @@ const clearUrlError = (index: number): void => {
 
 // Пустые позиции отбрасываются, ссылки нормализуются; null — в форме есть некорректная ссылка
 const prepareItems = (): WishlistItem[] | null => {
+    // У дел есть только текст и отметка: ссылку, приоритет и цену сервер для них не сохраняет
+    if (isTodo.value) {
+        return form.value.items
+            .filter((item) => item.label.trim())
+            .map((item) => ({
+                id: item.id,
+                label: item.label,
+                isSelected: item.isSelected ?? false,
+            }));
+    }
+
     urlErrors.value = form.value.items.map((item) => {
         const url = normalizeItemUrl(item.url);
 
@@ -123,7 +141,8 @@ const handleSubmit = (): void => {
         id: props.wishlist.id,
         title: form.value.title,
         color: form.value.color,
-        hideSelections: form.value.hideSelections,
+        // У списка дел нет гостей и режима сюрприза
+        hideSelections: !isTodo.value && form.value.hideSelections,
         items,
     });
 };
@@ -170,7 +189,11 @@ const closeModal = (): void => {
                     <input
                         v-model="form.title"
                         type="text"
-                        placeholder="Например: День рождения"
+                        :placeholder="
+                            isTodo
+                                ? 'Например: Дела на выходные'
+                                : 'Например: День рождения'
+                        "
                     />
                 </div>
 
@@ -180,40 +203,54 @@ const closeModal = (): void => {
                     <WishlistColorPicker v-model="form.color" />
                 </div>
 
-                <div class="form-group">
+                <div v-if="!isTodo" class="form-group">
                     <WishlistSurpriseToggle v-model="form.hideSelections" />
                 </div>
 
                 <div class="form-group">
-                    <label>Список желаний</label>
+                    <label>{{ isTodo ? 'Дела' : 'Список желаний' }}</label>
 
                     <div
                         v-for="(item, index) in form.items"
                         :key="itemKey(item)"
-                        class="wishlist-item"
+                        :class="[
+                            'wishlist-item',
+                            {
+                                'wishlist-item--todo': isTodo,
+                                'wishlist-item--done':
+                                    isTodo && item.isSelected,
+                            },
+                        ]"
                     >
-                        <!-- Выбранная гостем позиция: значок подарка на сером фоне, как в карточке.
-                             Повторный клик снимает выбор -->
+                        <!-- Выбранная гостем позиция или выполненное дело: значок на сером фоне,
+                             как в карточке. Повторный клик снимает отметку -->
                         <label v-if="showSelection" class="checkbox-wrapper">
                             <input
                                 type="checkbox"
                                 v-model="item.isSelected"
                                 class="checkbox-input"
                                 :aria-label="
-                                    item.isSelected
-                                        ? 'Забронировано, снять выбор'
-                                        : 'Отметить как выбранное'
+                                    isTodo
+                                        ? item.isSelected
+                                            ? 'Выполнено, снять отметку'
+                                            : 'Отметить как выполненное'
+                                        : item.isSelected
+                                          ? 'Забронировано, снять выбор'
+                                          : 'Отметить как выбранное'
                                 "
                             />
 
                             <span class="checkbox-custom">
-                                <Gift v-if="item.isSelected" :size="11" />
+                                <template v-if="item.isSelected">
+                                    <Check v-if="isTodo" :size="12" />
+                                    <Gift v-else :size="11" />
+                                </template>
                             </span>
                         </label>
 
                         <div class="wishlist-item-fields">
                             <!-- Приоритет над полем описания у левого края, цена — у правого -->
-                            <div class="item-meta-row">
+                            <div v-if="!isTodo" class="item-meta-row">
                                 <ItemPriorityPicker
                                     v-model="item.priority"
                                     :muted="showSelection && item.isSelected"
@@ -228,11 +265,15 @@ const closeModal = (): void => {
                             <input
                                 v-model="item.label"
                                 type="text"
-                                placeholder="Например: Книга"
+                                :placeholder="
+                                    isTodo
+                                        ? 'Например: Купить продукты'
+                                        : 'Например: Книга'
+                                "
                             />
 
                             <!-- Линия-уголок от поля описания: ссылка относится к этой позиции -->
-                            <div class="item-url-row">
+                            <div v-if="!isTodo" class="item-url-row">
                                 <Link
                                     :size="13"
                                     class="item-url-icon"
@@ -301,7 +342,7 @@ const closeModal = (): void => {
                     </div>
 
                     <button class="add-item-btn" type="button" @click="addItem">
-                        + Добавить желание
+                        {{ isTodo ? '+ Добавить дело' : '+ Добавить желание' }}
                     </button>
                 </div>
 
@@ -341,7 +382,7 @@ const closeModal = (): void => {
     margin-top: calc(var(--item-label-offset) + 12px);
 }
 
-// Вместо галочки из checkboxCard.scss — значок подарка на сером градиенте
+// Вместо галочки из checkboxCard.scss — значок подарка или галочка Lucide на сером градиенте
 .checkbox-input:checked + .checkbox-custom {
     background: linear-gradient(135deg, #dbe2ea, #64748b);
     color: #fff;
@@ -349,5 +390,11 @@ const closeModal = (): void => {
     &::after {
         content: none;
     }
+}
+
+// Выполненное дело: текст серый и зачёркнут, как в карточке
+.wishlist-item--done input[type='text'] {
+    color: #94a3b8;
+    text-decoration: line-through;
 }
 </style>

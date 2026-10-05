@@ -2,8 +2,6 @@
 
 namespace App\Http\Resources\Wishlist;
 
-use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
 use App\Http\Resources\ApiResource;
 
 class WishlistResource extends ApiResource
@@ -12,6 +10,8 @@ class WishlistResource extends ApiResource
     {
         return [
             'id' => $this->id,
+            // Тип списка: gift — список желаний, todo — список дел, см. App\Enums\WishlistType
+            'type' => $this->type->value,
             'title' => $this->title,
             // Ключ цвета фона списка (white, lavender, …), см. App\Enums\WishlistColor
             'color' => $this->color->value,

@@ -1,6 +1,14 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronUp, Link, Trash2 } from '@lucide/vue';
-import { onMounted, onUnmounted, ref } from 'vue';
+import {
+    ArrowLeft,
+    ChevronDown,
+    ChevronUp,
+    Gift,
+    Link,
+    ListChecks,
+    Trash2,
+} from '@lucide/vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import { useItemReorder } from '../../composables/useItemReorder';
 import { isValidItemUrl, normalizeItemUrl } from '../../lib/itemUrl';
@@ -8,6 +16,7 @@ import type {
     Wishlist,
     WishlistForm,
     WishlistItem,
+    WishlistType,
 } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import ItemPriceInput from './ItemPriceInput.vue';
@@ -26,7 +35,8 @@ const emit = defineEmits<{
     create: [payload: WishlistForm];
 }>();
 
-const defaultForm = (): WishlistForm => ({
+const defaultForm = (type: WishlistType = 'gift'): WishlistForm => ({
+    type,
     title: '',
     color: 'white',
     hideSelections: false,
@@ -43,6 +53,7 @@ const defaultForm = (): WishlistForm => ({
 
 // Копия списка-источника без id позиций и выбора гостей: создаётся новый список
 const sourceForm = (source: Wishlist): WishlistForm => ({
+    type: source.type ?? 'gift',
     title: `${source.title} (копия)`,
     color: source.color,
     hideSelections: source.hideSelections ?? false,
@@ -58,6 +69,18 @@ const sourceForm = (source: Wishlist): WishlistForm => ({
 });
 
 const form = ref(props.source ? sourceForm(props.source) : defaultForm());
+
+// Сначала выбирается тип списка; при дублировании тип берётся у списка-источника
+const step = ref<'type' | 'form'>(props.source ? 'form' : 'type');
+
+const isTodo = computed(() => form.value.type === 'todo');
+
+const modalTitle = computed(() => {
+    if (props.source) return 'Дублировать список';
+    if (step.value === 'type') return 'Новый список';
+
+    return isTodo.value ? 'Новый список дел' : 'Новый список желаний';
+});
 
 // Индексы позиций с некорректной ссылкой; ошибка снимается, когда ссылку начинают править
 const urlErrors = ref<boolean[]>([]);
@@ -83,8 +106,25 @@ const clearUrlError = (index: number): void => {
     urlErrors.value[index] = false;
 };
 
-// Пустые позиции отбрасываются, ссылки нормализуются; null — в форме есть некорректная ссылка
+const chooseType = (type: WishlistType): void => {
+    form.value = defaultForm(type);
+    urlErrors.value = [];
+    step.value = 'form';
+};
+
+const backToTypeChoice = (): void => {
+    step.value = 'type';
+};
+
+// Пустые позиции отбрасываются, ссылки нормализуются; null — в форме есть некорректная ссылка.
+// У дел есть только текст: ссылку, приоритет и цену сервер для них не принимает
 const prepareItems = (): WishlistItem[] | null => {
+    if (isTodo.value) {
+        return form.value.items
+            .filter((item) => item.label.trim())
+            .map((item) => ({ label: item.label, isSelected: false }));
+    }
+
     urlErrors.value = form.value.items.map((item) => {
         const url = normalizeItemUrl(item.url);
 
@@ -104,9 +144,11 @@ const handleSubmit = (): void => {
     if (!items) return;
 
     emit('create', {
+        type: form.value.type,
         title: form.value.title,
         color: form.value.color,
-        hideSelections: form.value.hideSelections,
+        // У списка дел нет гостей и режима сюрприза
+        hideSelections: !isTodo.value && form.value.hideSelections,
         items,
     });
 };
@@ -140,21 +182,72 @@ const closeModal = (): void => {
         <!-- Фон модалки окрашивается в выбранный цвет: превью цвета списка -->
         <div :class="['modal', `wishlist-color--${form.color}`]">
             <div class="modal-header">
-                <h2>
-                    {{ props.source ? 'Дублировать список' : 'Создать список' }}
-                </h2>
+                <h2>{{ modalTitle }}</h2>
 
                 <button class="close-btn" @click="closeModal"></button>
             </div>
 
-            <form @submit.prevent="handleSubmit">
+            <!-- Первый шаг: выбор типа списка -->
+            <div v-if="step === 'type'" class="type-choice">
+                <button
+                    class="type-option"
+                    type="button"
+                    @click="chooseType('gift')"
+                >
+                    <span class="type-option-icon">
+                        <Gift :size="22" />
+                    </span>
+
+                    <span class="type-option-text">
+                        <span class="type-option-title">Список желаний</span>
+                        <span class="type-option-description">
+                            Подарки со ссылками и ценами; друзья отмечают их по
+                            ссылке
+                        </span>
+                    </span>
+                </button>
+
+                <button
+                    class="type-option"
+                    type="button"
+                    @click="chooseType('todo')"
+                >
+                    <span class="type-option-icon">
+                        <ListChecks :size="22" />
+                    </span>
+
+                    <span class="type-option-text">
+                        <span class="type-option-title">Список дел</span>
+                        <span class="type-option-description">
+                            Задачи, которые вы отмечаете выполненными; список
+                            виден только вам
+                        </span>
+                    </span>
+                </button>
+            </div>
+
+            <form v-else @submit.prevent="handleSubmit">
+                <button
+                    v-if="!props.source"
+                    class="back-btn"
+                    type="button"
+                    @click="backToTypeChoice"
+                >
+                    <ArrowLeft :size="14" />
+                    Выбрать другой тип списка
+                </button>
+
                 <div class="form-group">
                     <label>Название списка</label>
 
                     <input
                         v-model="form.title"
                         type="text"
-                        placeholder="Например: День рождения"
+                        :placeholder="
+                            isTodo
+                                ? 'Например: Дела на выходные'
+                                : 'Например: День рождения'
+                        "
                     />
                 </div>
 
@@ -164,21 +257,24 @@ const closeModal = (): void => {
                     <WishlistColorPicker v-model="form.color" />
                 </div>
 
-                <div class="form-group">
+                <div v-if="!isTodo" class="form-group">
                     <WishlistSurpriseToggle v-model="form.hideSelections" />
                 </div>
 
                 <div class="form-group">
-                    <label>Список желаний</label>
+                    <label>{{ isTodo ? 'Дела' : 'Список желаний' }}</label>
 
                     <div
                         v-for="(item, index) in form.items"
                         :key="itemKey(item)"
-                        class="wishlist-item"
+                        :class="[
+                            'wishlist-item',
+                            { 'wishlist-item--todo': isTodo },
+                        ]"
                     >
                         <div class="wishlist-item-fields">
                             <!-- Приоритет над полем описания у левого края, цена — у правого -->
-                            <div class="item-meta-row">
+                            <div v-if="!isTodo" class="item-meta-row">
                                 <ItemPriorityPicker v-model="item.priority" />
 
                                 <ItemPriceInput v-model="item.price" />
@@ -187,11 +283,15 @@ const closeModal = (): void => {
                             <input
                                 v-model="item.label"
                                 type="text"
-                                placeholder="Например: Книга"
+                                :placeholder="
+                                    isTodo
+                                        ? 'Например: Купить продукты'
+                                        : 'Например: Книга'
+                                "
                             />
 
                             <!-- Линия-уголок от поля описания: ссылка относится к этой позиции -->
-                            <div class="item-url-row">
+                            <div v-if="!isTodo" class="item-url-row">
                                 <Link
                                     :size="13"
                                     class="item-url-icon"
@@ -260,7 +360,7 @@ const closeModal = (): void => {
                     </div>
 
                     <button class="add-item-btn" type="button" @click="addItem">
-                        + Добавить желание
+                        {{ isTodo ? '+ Добавить дело' : '+ Добавить желание' }}
                     </button>
                 </div>
 
@@ -286,5 +386,82 @@ const closeModal = (): void => {
 .modal {
     background: var(--wishlist-bg, #fff);
     transition: background-color 0.2s ease;
+}
+
+// Выбор типа списка: две карточки-кнопки друг под другом
+.type-choice {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.type-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 16px;
+    border: 1.5px solid rgba(139, 92, 246, 0.2);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.6);
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.18s ease;
+
+    &:hover {
+        border-color: var(--brand-violet);
+        box-shadow: 0 8px 20px -12px rgba(139, 92, 246, 0.5);
+        transform: translateY(-2px);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--brand-violet);
+        outline-offset: 2px;
+    }
+}
+
+.type-option-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--brand-gradient);
+    color: #fff;
+}
+
+.type-option-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.type-option-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.type-option-description {
+    font-size: 12px;
+    color: #6b5b7b;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 14px;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 12px;
+    color: var(--brand-violet);
+    cursor: pointer;
+
+    &:hover {
+        text-decoration: underline;
+    }
 }
 </style>

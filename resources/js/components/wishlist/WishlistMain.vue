@@ -10,7 +10,13 @@ import {
 import { MOTIVATIONAL_PHRASES } from '@/constants/phrases';
 import { api } from '@/lib/api';
 
-import type { Wishlist, WishlistForm } from '../../types/wishlist';
+import type {
+    Wishlist,
+    WishlistForm,
+    WishlistItem,
+    WishlistType,
+    WishlistUpdatePayload,
+} from '../../types/wishlist';
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
 import WishlistCard from './WishlistCard.vue';
 import WishlistCreateModal from './WishlistCreateModal.vue';
@@ -54,24 +60,83 @@ const wishLists = computed(() => data.value ?? []);
 
 const { sort, setSort, sortedWishlists } = useWishlistSort(wishLists);
 
+type WishlistTypeFilter = 'all' | WishlistType;
+
+const TYPE_FILTER_STORAGE_KEY = 'wishlists-type-filter';
+
+// Чтение защищено так же, как у сортировки: localStorage может быть недоступен
+const readTypeFilter = (): WishlistTypeFilter => {
+    try {
+        const value = window.localStorage.getItem(TYPE_FILTER_STORAGE_KEY);
+
+        if (value === 'gift' || value === 'todo') return value;
+    } catch {
+        // Значение недоступно — показываются все списки
+    }
+
+    return 'all';
+};
+
+const typeFilter = ref<WishlistTypeFilter>(readTypeFilter());
+
+watch(typeFilter, (value) => {
+    try {
+        window.localStorage.setItem(TYPE_FILTER_STORAGE_KEY, value);
+    } catch {
+        // Сохранение недоступно — фильтр действует до перезагрузки страницы
+    }
+});
+
+const typeCounts = computed(() => ({
+    all: wishLists.value.length,
+    gift: wishLists.value.filter((wishlist) => wishlist.type !== 'todo').length,
+    todo: wishLists.value.filter((wishlist) => wishlist.type === 'todo').length,
+}));
+
+// Фильтр нужен, только когда есть списки обоих типов. Иначе он скрыт и не
+// действует: сохранённый фильтр не должен прятать все карточки без возможности
+// его сбросить
+const hasTypeFilter = computed(
+    () => typeCounts.value.gift > 0 && typeCounts.value.todo > 0,
+);
+
+const filteredWishlists = computed(() => {
+    if (!hasTypeFilter.value || typeFilter.value === 'all') {
+        return sortedWishlists.value;
+    }
+
+    return sortedWishlists.value.filter((wishlist) =>
+        typeFilter.value === 'todo'
+            ? wishlist.type === 'todo'
+            : wishlist.type !== 'todo',
+    );
+});
+
+const TYPE_FILTER_OPTIONS: { value: WishlistTypeFilter; label: string }[] = [
+    { value: 'all', label: 'Все' },
+    { value: 'gift', label: 'Желания' },
+    { value: 'todo', label: 'Дела' },
+];
+
 // Карточки выводятся порциями: все списки уже загружены, ограничивается только отрисовка.
 // Следующая порция добавляется кнопкой «Показать ещё»
 const PAGE_SIZE = 12;
 const visibleCount = ref(PAGE_SIZE);
 
 const visibleWishlists = computed(() =>
-    sortedWishlists.value.slice(0, visibleCount.value),
+    filteredWishlists.value.slice(0, visibleCount.value),
 );
 const hiddenCount = computed(() =>
-    Math.max(sortedWishlists.value.length - visibleCount.value, 0),
+    Math.max(filteredWishlists.value.length - visibleCount.value, 0),
 );
 
 const showMore = (): void => {
     visibleCount.value += PAGE_SIZE;
 };
 
-// После смены сортировки порядок другой, поэтому вывод начинается с первой порции
-watch(sort, () => {
+// После смены сортировки или фильтра набор карточек другой, поэтому вывод
+// начинается с первой порции
+watch([sort, typeFilter], () => {
     visibleCount.value = PAGE_SIZE;
 });
 
@@ -148,7 +213,7 @@ const closeEditModal = (): void => {
 const updateWishlistRequest = async ({
     id,
     ...payload
-}: WishlistForm & { id: string }): Promise<Wishlist> => {
+}: WishlistUpdatePayload): Promise<Wishlist> => {
     const response = await api.patch<{ data: Wishlist }>(
         `/v1/wishlists/${id}`,
         payload,
@@ -180,6 +245,71 @@ const { mutate: updateWishlist, isPending: isUpdating } = useMutation({
         console.error('Ошибка обновления списка', error);
     },
 });
+
+type ToggleItemPayload = {
+    wishlistId: string;
+    itemId: string;
+    isSelected: boolean;
+};
+
+const toggleItemRequest = async ({
+    wishlistId,
+    itemId,
+    isSelected,
+}: ToggleItemPayload): Promise<Wishlist> => {
+    const response = await api.patch<{ data: Wishlist }>(
+        `/v1/wishlists/${wishlistId}/items/${itemId}`,
+        { isSelected },
+    );
+
+    return response.data.data;
+};
+
+// Отметка позиции в кэше дашборда без перезапроса списков
+const setCachedItemSelected = ({
+    wishlistId,
+    itemId,
+    isSelected,
+}: ToggleItemPayload): void => {
+    queryClient.setQueryData<Wishlist[]>(['wishlists'], (oldData) =>
+        oldData?.map((wishlist) =>
+            wishlist.id === wishlistId
+                ? {
+                      ...wishlist,
+                      items: wishlist.items.map((item) =>
+                          item.id === itemId ? { ...item, isSelected } : item,
+                      ),
+                  }
+                : wishlist,
+        ),
+    );
+};
+
+// Отметка дела с карточки: галочка ставится сразу, не дожидаясь ответа сервера.
+// Ответ сервером в кэш не записывается: при быстрых повторных кликах ответ
+// на более ранний запрос перезаписал бы последнюю отметку.
+// При ошибке возвращается прежнее состояние позиции
+const { mutate: toggleItemMutation } = useMutation({
+    mutationFn: toggleItemRequest,
+
+    onMutate: setCachedItemSelected,
+
+    onError: (error, payload) => {
+        console.error('Ошибка отметки дела', error);
+
+        setCachedItemSelected({ ...payload, isSelected: !payload.isSelected });
+    },
+});
+
+const toggleItem = (wishlist: Wishlist, item: WishlistItem): void => {
+    if (!item.id) return;
+
+    toggleItemMutation({
+        wishlistId: wishlist.id,
+        itemId: item.id,
+        isSelected: !item.isSelected,
+    });
+};
 
 const updateWishlists = async (): Promise<void> => {
     await queryClient.invalidateQueries({
@@ -257,27 +387,43 @@ onMounted(generateRandomPhrase);
     </div>
 
     <!-- Сортировка имеет смысл, только когда списков больше одного -->
-    <div
-        v-if="!isLoading && wishLists.length > 1"
-        class="sort-bar"
-        role="group"
-        aria-label="Сортировка списков"
-    >
-        <button
-            v-for="option in SORT_OPTIONS"
-            :key="option.field"
-            class="sort-btn"
-            :class="{ active: sort.field === option.field }"
-            :aria-pressed="sort.field === option.field"
-            :aria-label="sortAriaLabel(option.field, option.label)"
-            @click="setSort(option.field)"
+    <div v-if="!isLoading && wishLists.length > 1" class="sort-bar">
+        <div
+            v-if="hasTypeFilter"
+            class="sort-group"
+            role="group"
+            aria-label="Тип списков"
         >
-            <span>{{ option.label }}</span>
-            <template v-if="sort.field === option.field">
-                <ArrowUp v-if="sort.direction === 'asc'" :size="12" />
-                <ArrowDown v-else :size="12" />
-            </template>
-        </button>
+            <button
+                v-for="option in TYPE_FILTER_OPTIONS"
+                :key="option.value"
+                class="sort-btn"
+                :class="{ active: typeFilter === option.value }"
+                :aria-pressed="typeFilter === option.value"
+                @click="typeFilter = option.value"
+            >
+                <span>{{ option.label }}</span>
+                <span class="sort-count">{{ typeCounts[option.value] }}</span>
+            </button>
+        </div>
+
+        <div class="sort-group" role="group" aria-label="Сортировка списков">
+            <button
+                v-for="option in SORT_OPTIONS"
+                :key="option.field"
+                class="sort-btn"
+                :class="{ active: sort.field === option.field }"
+                :aria-pressed="sort.field === option.field"
+                :aria-label="sortAriaLabel(option.field, option.label)"
+                @click="setSort(option.field)"
+            >
+                <span>{{ option.label }}</span>
+                <template v-if="sort.field === option.field">
+                    <ArrowUp v-if="sort.direction === 'asc'" :size="12" />
+                    <ArrowDown v-else :size="12" />
+                </template>
+            </button>
+        </div>
     </div>
 
     <div
@@ -299,7 +445,7 @@ onMounted(generateRandomPhrase);
         class="flex flex-col items-center justify-center min-h-[300px] text-center"
     >
         <p class="text-gray-500 dark:text-gray-400 text-lg mb-4">
-            У вас пока нет списков желаний
+            У вас пока нет списков
         </p>
         <button class="add-btn px-6 py-2" @click="openCreateModal">
             <Plus :size="14" class="mr-1.5" />
@@ -316,6 +462,7 @@ onMounted(generateRandomPhrase);
                 @edit="openEditModal"
                 @duplicate="openDuplicateModal"
                 @delete="openDeleteModal"
+                @toggle-item="toggleItem"
             />
         </div>
 
@@ -437,8 +584,20 @@ onMounted(generateRandomPhrase);
 .sort-bar {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    align-items: center;
+    gap: 8px 20px;
     margin: -10px 0 18px;
+}
+
+.sort-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sort-count {
+    font-size: 11px;
+    opacity: 0.6;
 }
 
 .sort-btn {

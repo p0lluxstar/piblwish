@@ -16,6 +16,8 @@ class UpdateWishlistRequest extends FormRequest
 
     public function rules(): array
     {
+        // Тип списка после создания не меняется, поэтому поля type здесь нет.
+        // Ссылку, цену, приоритет и режим сюрприза у списка дел очищает WishlistService
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'color' => ['sometimes', Rule::enum(WishlistColor::class)],

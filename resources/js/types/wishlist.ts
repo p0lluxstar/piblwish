@@ -15,6 +15,10 @@ export interface WishlistItem {
 // 1 — было бы неплохо, 2 — хочу, 3 — очень хочу
 export type WishlistItemPriority = 1 | 2 | 3;
 
+// Тип списка, совпадает с App\Enums\WishlistType на бэкенде:
+// gift — список желаний, todo — список дел (isSelected позиции означает «выполнено»)
+export type WishlistType = 'gift' | 'todo';
+
 // Ключ цвета фона списка, совпадает с App\Enums\WishlistColor на бэкенде
 export type WishlistColor =
     | 'white'
@@ -27,6 +31,8 @@ export type WishlistColor =
 
 export interface Wishlist {
     id: string;
+    // Тип списка; приходит только в дашборде: общая страница доступна лишь для списков желаний
+    type?: WishlistType;
     title: string;
     color: WishlistColor;
     // Дата создания (ISO 8601); приходит только в дашборде, в общем списке её нет
@@ -47,5 +53,11 @@ export interface WishlistReservation {
 
 // Данные формы создания и редактирования списка
 export type WishlistForm = Pick<Wishlist, 'title' | 'color' | 'items'> & {
+    type: WishlistType;
     hideSelections: boolean;
+};
+
+// Данные запроса на изменение списка: тип после создания не меняется
+export type WishlistUpdatePayload = Omit<WishlistForm, 'type'> & {
+    id: string;
 };

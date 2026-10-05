@@ -7,6 +7,7 @@ use App\Models\Wishlist;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class WishlistService
 {
@@ -26,22 +27,17 @@ class WishlistService
             $user,
             $data
         ) {
-            // Если цвет и режим сюрприза не переданы, их задают значения по умолчанию в модели
+            // Если тип, цвет и режим сюрприза не переданы, их задают значения по умолчанию в модели
             $wishlist = $user->wishlists()->create(
-                $this->wishlistAttributes($data)
+                Arr::only($data, ['type']) + $this->wishlistAttributes($data)
             );
 
             // Порядок позиций задаётся порядком массива items
             $wishlist->items()->createMany(
                 collect($data['items'])
                     ->values()
-                    ->map(fn($item, $index) => [
-                        'description' => $item['label'],
-                        'url' => $item['url'] ?? null,
-                        'priority' => $item['priority'] ?? null,
-                        'price' => $item['price'] ?? null,
+                    ->map(fn ($item, $index) => $this->itemAttributes($wishlist, $item, $index) + [
                         'is_selected' => false,
-                        'position' => $index,
                     ])
                     ->toArray()
             );
@@ -65,6 +61,11 @@ class WishlistService
             // Обновляются только переданные поля
             $attributes = $this->wishlistAttributes($data);
 
+            // У списка дел нет гостей, поэтому режим сюрприза для него не включается
+            if ($wishlist->isTodo()) {
+                unset($attributes['hide_selections']);
+            }
+
             if ($attributes !== []) {
                 $wishlist->update($attributes);
             }
@@ -72,6 +73,34 @@ class WishlistService
             if (array_key_exists('items', $data)) {
                 $this->syncItems($wishlist, $data['items'], $selectionsHidden);
             }
+
+            return $wishlist->load('items');
+        });
+    }
+
+    /**
+     * Отметить дело выполненным или снять отметку без редактирования всего списка.
+     * Только для списков дел: в списке желаний позиции выбирают гости, и отметка
+     * владельца с карточки раскрыла бы или сбросила их выбор.
+     */
+    public function setItemSelected(User $user, string $id, string $itemId, bool $isSelected): Wishlist
+    {
+        return DB::transaction(function () use ($user, $id, $itemId, $isSelected) {
+            $wishlist = Wishlist::query()
+                ->where('user_id', $user->id)
+                ->where('id', $id)
+                ->firstOrFail();
+
+            if (! $wishlist->isTodo()) {
+                throw ValidationException::withMessages([
+                    'isSelected' => 'Отмечать позиции с карточки можно только в списке дел',
+                ]);
+            }
+
+            $wishlist->items()
+                ->where('id', $itemId)
+                ->firstOrFail()
+                ->update(['is_selected' => $isSelected]);
 
             return $wishlist->load('items');
         });
@@ -96,13 +125,7 @@ class WishlistService
         ksort($items);
 
         foreach (array_values($items) as $index => $item) {
-            $attributes = [
-                'description' => $item['label'],
-                'url' => $item['url'] ?? null,
-                'priority' => $item['priority'] ?? null,
-                'price' => $item['price'] ?? null,
-                'position' => $index,
-            ];
+            $attributes = $this->itemAttributes($wishlist, $item, $index);
 
             $isSelected = (bool) ($item['isSelected'] ?? false);
             $current = $existing->get((string) ($item['id'] ?? ''));
@@ -138,6 +161,21 @@ class WishlistService
         if ($removedIds->isNotEmpty()) {
             $wishlist->items()->whereIn('id', $removedIds)->delete();
         }
+    }
+
+    // Поля позиции из запроса в атрибуты модели. У дел нет ссылки, приоритета
+    // и стоимости: они не сохраняются, даже если переданы в запросе на изменение
+    private function itemAttributes(Wishlist $wishlist, array $item, int $position): array
+    {
+        $isTodo = $wishlist->isTodo();
+
+        return [
+            'description' => $item['label'],
+            'url' => $isTodo ? null : ($item['url'] ?? null),
+            'priority' => $isTodo ? null : ($item['priority'] ?? null),
+            'price' => $isTodo ? null : ($item['price'] ?? null),
+            'position' => $position,
+        ];
     }
 
     // Поля списка из запроса в атрибуты модели; непереданные поля не попадают в результат

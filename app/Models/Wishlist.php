@@ -3,20 +3,22 @@
 namespace App\Models;
 
 use App\Enums\WishlistColor;
+use App\Enums\WishlistType;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'title', 'color', 'hide_selections'])]
+#[Fillable(['user_id', 'type', 'title', 'color', 'hide_selections'])]
 class Wishlist extends Model
 {
     use HasUlids;
 
-    // Совпадает со значением по умолчанию в БД: без этого у только что
-    // созданного списка без цвета поле color было бы null до перечитывания
+    // Совпадает со значениями по умолчанию в БД: без этого у только что
+    // созданного списка без цвета или типа поле было бы null до перечитывания
     protected $attributes = [
+        'type' => 'gift',
         'color' => 'white',
         'hide_selections' => false,
     ];
@@ -24,9 +26,16 @@ class Wishlist extends Model
     protected function casts(): array
     {
         return [
+            'type' => WishlistType::class,
             'color' => WishlistColor::class,
             'hide_selections' => 'boolean',
         ];
+    }
+
+    // Список дел: доступен только владельцу, у позиций нет ссылки, цены и приоритета
+    public function isTodo(): bool
+    {
+        return $this->type === WishlistType::Todo;
     }
 
     public function user(): BelongsTo

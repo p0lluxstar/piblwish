@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Swagger;
 
 use App\Enums\WishlistColor;
+use App\Enums\WishlistType;
 use App\Http\Controllers\Controller;
 use OpenApi\Attributes as OA;
 
@@ -31,6 +32,14 @@ use OpenApi\Attributes as OA;
                                     property: 'id',
                                     type: 'integer',
                                     example: 1
+                                ),
+
+                                new OA\Property(
+                                    property: 'type',
+                                    description: 'Тип списка: gift — список желаний, todo — список дел. Список дел недоступен по общей ссылке',
+                                    type: 'string',
+                                    enum: WishlistType::class,
+                                    example: 'gift'
                                 ),
 
                                 new OA\Property(
@@ -110,7 +119,7 @@ use OpenApi\Attributes as OA;
 
                                             new OA\Property(
                                                 property: 'isSelected',
-                                            description: 'Отсутствует, если включён режим сюрприза (hideSelections)',
+                                                description: 'Отсутствует, если включён режим сюрприза (hideSelections)',
                                                 type: 'boolean',
                                                 example: false
                                             ),
@@ -145,6 +154,14 @@ use OpenApi\Attributes as OA;
         content: new OA\JsonContent(
             required: ['title', 'items'],
             properties: [
+                new OA\Property(
+                    property: 'type',
+                    description: 'Тип списка: gift — список желаний, todo — список дел. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать url, priority и price, а hideSelections может быть только false',
+                    type: 'string',
+                    enum: WishlistType::class,
+                    example: 'gift'
+                ),
+
                 new OA\Property(
                     property: 'title',
                     type: 'string',
@@ -227,6 +244,14 @@ use OpenApi\Attributes as OA;
                                 property: 'id',
                                 type: 'integer',
                                 example: 1
+                            ),
+
+                            new OA\Property(
+                                property: 'type',
+                                description: 'Тип списка: gift — список желаний, todo — список дел. Список дел недоступен по общей ссылке',
+                                type: 'string',
+                                enum: WishlistType::class,
+                                example: 'gift'
                             ),
 
                             new OA\Property(
@@ -325,6 +350,54 @@ use OpenApi\Attributes as OA;
         new OA\Response(
             response: 422,
             description: 'Ошибка валидации'
+        ),
+
+        new OA\Response(
+            response: 401,
+            description: 'Не авторизован'
+        ),
+    ]
+)]
+
+#[OA\Patch(
+    path: '/v1/wishlists/{id}/items/{itemId}',
+    summary: 'Отметить дело в списке дел выполненным или снять отметку',
+    description: 'Только для списков дел (type = todo); для списка желаний возвращается 422',
+    tags: ['Wishlists'],
+    security: [['bearerAuth' => []]],
+    parameters: [
+        new OA\Parameter(name: 'id', description: 'ID списка', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+        new OA\Parameter(name: 'itemId', description: 'ID позиции', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+    ],
+    requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['isSelected'],
+            properties: [
+                new OA\Property(
+                    property: 'isSelected',
+                    description: 'true — дело выполнено',
+                    type: 'boolean',
+                    example: true
+                ),
+            ],
+            type: 'object'
+        )
+    ),
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Список целиком, в том же формате, что и при изменении списка'
+        ),
+
+        new OA\Response(
+            response: 404,
+            description: 'Список или позиция не найдены'
+        ),
+
+        new OA\Response(
+            response: 422,
+            description: 'Ошибка валидации или список не является списком дел'
         ),
 
         new OA\Response(

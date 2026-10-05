@@ -7,6 +7,7 @@ import {
     FileEdit,
     Gift,
     Link,
+    ListChecks,
     Sparkles,
     Trash2,
 } from '@lucide/vue';
@@ -15,7 +16,7 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import { copyToClipboard } from '../../lib/clipboard';
 import { formatPrice } from '../../lib/itemPrice';
 import { getItemUrlHost } from '../../lib/itemUrl';
-import type { Wishlist } from '../../types/wishlist';
+import type { Wishlist, WishlistItem } from '../../types/wishlist';
 import ItemPriorityHearts from './ItemPriorityHearts.vue';
 
 const props = defineProps<{
@@ -26,7 +27,11 @@ const emit = defineEmits<{
     edit: [wishlist: Wishlist];
     duplicate: [wishlist: Wishlist];
     delete: [wishlist: Wishlist];
+    toggleItem: [wishlist: Wishlist, item: WishlistItem];
 }>();
+
+// Список дел: нет ссылки для гостей, выполненные дела зачёркнуты
+const isTodo = computed(() => props.wishlist.type === 'todo');
 
 const editCard = (): void => {
     emit('edit', props.wishlist);
@@ -38,6 +43,11 @@ const duplicateCard = (): void => {
 
 const deleteCard = (): void => {
     emit('delete', props.wishlist);
+};
+
+// Отметить дело выполненным или снять отметку без режима редактирования
+const toggleItem = (item: WishlistItem): void => {
+    emit('toggleItem', props.wishlist, item);
 };
 
 // Сколько миллисекунд показывать результат копирования
@@ -82,15 +92,23 @@ onBeforeUnmount(() => {
     }
 });
 
+const selectedCount = computed(
+    () => props.wishlist.items.filter((item) => item.isSelected).length,
+);
+
+// Целые проценты: без округления 1 из 3 выводилось как 33.333…%
 const progress = computed(() => {
-    const items = props.wishlist.items;
+    const total = props.wishlist.items.length;
 
-    if (!items.length) return 0;
+    if (!total) return 0;
 
-    const selected = items.filter((item) => item.isSelected).length;
-
-    return (selected / items.length) * 100;
+    return Math.round((selectedCount.value / total) * 100);
 });
+
+// «2 из 5»: сколько подарков выбрали гости или сколько дел выполнено
+const progressLabel = computed(
+    () => `${selectedCount.value} из ${props.wishlist.items.length}`,
+);
 
 // «Создан 12 сентября 2026 г.»
 const createdAtLabel = computed(() => {
@@ -106,20 +124,48 @@ const createdAtLabel = computed(() => {
 </script>
 
 <template>
-    <div :class="['card', `wishlist-color--${wishlist.color}`]">
-        <!-- Режим сюрприза: выбор гостей скрыт от владельца -->
-        <span
-            v-if="wishlist.hideSelections"
-            class="card-surprise"
-            role="img"
-            aria-label="Режим сюрприза: выбор гостей скрыт"
-            title="Режим сюрприза: выбор гостей скрыт"
-        >
-            <EyeOff :size="14" />
-        </span>
+    <div
+        :class="[
+            'card',
+            `wishlist-color--${wishlist.color}`,
+            { 'card--todo': isTodo },
+        ]"
+    >
+        <!-- Тип списка виден сразу, даже у пустой карточки: цвет фона выбирает
+             пользователь, поэтому тип им не обозначается. Значки те же, что
+             на шаге выбора типа при создании -->
+        <div class="card-badges">
+            <span
+                :class="[
+                    'card-type',
+                    isTodo ? 'card-type--todo' : 'card-type--gift',
+                ]"
+            >
+                <ListChecks v-if="isTodo" :size="12" />
+                <Gift v-else :size="12" />
+                {{ isTodo ? 'Дела' : 'Желания' }}
+            </span>
+
+            <!-- Режим сюрприза: выбор гостей скрыт от владельца -->
+            <span
+                v-if="wishlist.hideSelections"
+                class="card-surprise"
+                role="img"
+                aria-label="Режим сюрприза: выбор гостей скрыт"
+                title="Режим сюрприза: выбор гостей скрыт"
+            >
+                <EyeOff :size="14" />
+            </span>
+        </div>
 
         <div class="card-actions">
-            <button class="card-actions-btn" @click="editCard">
+            <button
+                class="card-actions-btn"
+                type="button"
+                aria-label="Редактировать список"
+                title="Редактировать"
+                @click="editCard"
+            >
                 <FileEdit :size="14" />
             </button>
             <button
@@ -131,7 +177,8 @@ const createdAtLabel = computed(() => {
             >
                 <CopyPlus :size="14" />
             </button>
-            <div class="copy-action">
+            <!-- Список дел виден только владельцу: ссылки для гостей у него нет -->
+            <div v-if="!isTodo" class="copy-action">
                 <button
                     :class="[
                         'card-actions-btn',
@@ -165,7 +212,13 @@ const createdAtLabel = computed(() => {
                     </span>
                 </Transition>
             </div>
-            <button class="card-actions-btn" @click="deleteCard">
+            <button
+                class="card-actions-btn"
+                type="button"
+                aria-label="Удалить список"
+                title="Удалить"
+                @click="deleteCard"
+            >
                 <Trash2 :size="14" />
             </button>
         </div>
@@ -178,11 +231,37 @@ const createdAtLabel = computed(() => {
         <div
             v-for="(item, itemIndex) in wishlist.items"
             :key="itemIndex"
-            :class="['item', { 'item--reserved': item.isSelected }]"
+            :class="[
+                'item',
+                {
+                    'item--reserved': !isTodo && item.isSelected,
+                    'item--done': isTodo && item.isSelected,
+                },
+            ]"
         >
+            <!-- Дело отмечается прямо с карточки: выполненное — серая галочка
+                 на том же фоне, что и значок подарка -->
+            <button
+                v-if="isTodo"
+                type="button"
+                role="checkbox"
+                :aria-checked="Boolean(item.isSelected)"
+                :aria-label="`${item.isSelected ? 'Снять отметку' : 'Отметить выполненным'}: ${item.label}`"
+                :title="
+                    item.isSelected ? 'Снять отметку' : 'Отметить выполненным'
+                "
+                :class="[
+                    'todo-toggle',
+                    item.isSelected ? 'reserved-icon' : 'checkbox-custom',
+                ]"
+                @click="toggleItem(item)"
+            >
+                <Check v-if="item.isSelected" :size="12" />
+            </button>
+
             <!-- Позицию выбрал гость: вместо чекбокса значок подарка -->
             <span
-                v-if="item.isSelected"
+                v-else-if="item.isSelected"
                 class="reserved-icon"
                 role="img"
                 aria-label="Забронировано"
@@ -252,7 +331,10 @@ const createdAtLabel = computed(() => {
                 v-if="!wishlist.hideSelections"
                 class="card-progress-container"
             >
-                <span class="progress-percent">{{ progress }}%</span>
+                <div class="card-progress-info">
+                    <span class="progress-label">{{ progressLabel }}</span>
+                    <span class="progress-percent">{{ progress }}%</span>
+                </div>
                 <div class="card-progress">
                     <div
                         class="card-progress-fill"
@@ -439,6 +521,12 @@ const createdAtLabel = computed(() => {
     white-space: nowrap;
 }
 
+// Выполненное дело: серый зачёркнутый текст, без фона забронированного подарка
+.item.item--done .item-label {
+    color: #94a3b8;
+    text-decoration: line-through;
+}
+
 /* Забронированная позиция: строка с лёгким розовым фоном.
    Отрицательный отступ сохраняет выравнивание значка с чекбоксами соседних строк */
 .item.item--reserved {
@@ -492,6 +580,24 @@ const createdAtLabel = computed(() => {
     color: #fff;
 }
 
+// Отметка дела кликабельна в обоих состояниях: повторный клик снимает отметку
+.todo-toggle {
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover {
+        transform: scale(1.08);
+    }
+
+    &.checkbox-custom {
+        border-color: rgba(16, 185, 129, 0.45);
+
+        &:hover {
+            border-color: #10b981;
+        }
+    }
+}
+
 .item-bullet {
     display: grid;
     place-items: center;
@@ -501,10 +607,38 @@ const createdAtLabel = computed(() => {
     color: rgba(139, 92, 246, 0.55);
 }
 
-.card-surprise {
+.card-badges {
     position: absolute;
     top: 10px;
     left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.card-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.card-type--gift {
+    background: rgba(139, 92, 246, 0.12);
+    color: var(--brand-violet);
+}
+
+.card-type--todo {
+    background: rgba(16, 185, 129, 0.14);
+    color: #059669;
+}
+
+.card-surprise {
     display: grid;
     place-items: center;
     width: 24px;
@@ -532,14 +666,38 @@ const createdAtLabel = computed(() => {
     transition: width 0.3s ease;
 }
 
+.card-progress-info {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.progress-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
 .progress-percent {
-    display: inline-block;
-    width: 100%;
     font-size: 11px;
     font-weight: 700;
     color: var(--brand-violet);
-    min-width: 45px;
-    text-align: right;
+}
+
+// Прогресс списка дел — зелёный, списка желаний — фирменный градиент
+.card--todo {
+    .progress-percent {
+        color: #059669;
+    }
+
+    .card-progress {
+        background: rgba(16, 185, 129, 0.12);
+    }
+
+    .card-progress-fill {
+        background: linear-gradient(135deg, #6ee7b7, #10b981);
+    }
 }
 
 .card-created-at {

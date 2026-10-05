@@ -2,9 +2,11 @@
 
 namespace App\Services\SharedWishlist;
 
+use App\Enums\WishlistType;
 use App\Models\Wishlist;
 use App\Models\WishlistItem;
 use App\Models\WishlistReservation;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -18,7 +20,7 @@ class SharedWishlistService
     public function getWishlistById(
         string $id
     ): Wishlist {
-        return Wishlist::query()
+        return $this->sharedQuery()
             ->with(['items', 'user'])
             ->findOrFail($id);
     }
@@ -35,7 +37,7 @@ class SharedWishlistService
         string $wishlistId,
         array $itemIds
     ): array {
-        $wishlist = Wishlist::query()->findOrFail($wishlistId);
+        $wishlist = $this->sharedQuery()->findOrFail($wishlistId);
         $itemIds = array_values(array_unique($itemIds));
         $token = Str::random(self::RESERVATION_TOKEN_LENGTH);
 
@@ -79,7 +81,7 @@ class SharedWishlistService
      */
     public function getReservations(string $wishlistId, array $tokens): array
     {
-        Wishlist::query()->findOrFail($wishlistId);
+        $this->sharedQuery()->findOrFail($wishlistId);
 
         $hashes = collect($tokens)
             ->unique()
@@ -107,6 +109,8 @@ class SharedWishlistService
      */
     public function cancelReservation(string $wishlistId, string $token, array $itemIds): array
     {
+        $this->sharedQuery()->findOrFail($wishlistId);
+
         $itemIds = array_values(array_unique($itemIds));
 
         $remainingIds = DB::transaction(function () use ($wishlistId, $token, $itemIds) {
@@ -156,6 +160,13 @@ class SharedWishlistService
 
     private function freshWishlist(string $wishlistId): Wishlist
     {
-        return Wishlist::with(['items', 'user'])->findOrFail($wishlistId);
+        return $this->sharedQuery()->with(['items', 'user'])->findOrFail($wishlistId);
+    }
+
+    // По ссылке доступны только списки желаний: список дел видит лишь владелец,
+    // поэтому для гостя он не существует и все публичные эндпоинты отвечают 404
+    private function sharedQuery(): Builder
+    {
+        return Wishlist::query()->where('type', WishlistType::Gift);
     }
 }

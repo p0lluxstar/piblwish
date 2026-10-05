@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Wishlist\CreateWishlistRequest;
 use App\Services\Wishlist\WishlistService;
 use Illuminate\Support\Facades\Log;
+use App\Http\Requests\Wishlist\UpdateWishlistItemRequest;
 use App\Http\Requests\Wishlist\UpdateWishlistRequest;
 
 class WishlistController extends Controller
@@ -50,6 +51,22 @@ class WishlistController extends Controller
             $request->user(),
             $id,
             $request->validated()
+        );
+
+        return new WishlistResource($wishlist);
+    }
+
+    // Отметить дело в списке дел выполненным или снять отметку
+    public function updateWishlistItem(
+        UpdateWishlistItemRequest $request,
+        string $id,
+        string $itemId
+    ): WishlistResource {
+        $wishlist = $this->wishlistService->setItemSelected(
+            $request->user(),
+            $id,
+            $itemId,
+            $request->boolean('isSelected')
         );
 
         return new WishlistResource($wishlist);

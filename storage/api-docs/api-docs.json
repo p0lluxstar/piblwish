@@ -708,6 +708,15 @@
                                                         "type": "integer",
                                                         "example": 1
                                                     },
+                                                    "type": {
+                                                        "description": "Тип списка: gift — список желаний, todo — список дел. Список дел недоступен по общей ссылке",
+                                                        "type": "string",
+                                                        "example": "gift",
+                                                        "enum": [
+                                                            "gift",
+                                                            "todo"
+                                                        ]
+                                                    },
                                                     "title": {
                                                         "type": "string",
                                                         "example": "День рождения"
@@ -821,6 +830,15 @@
                                     "items"
                                 ],
                                 "properties": {
+                                    "type": {
+                                        "description": "Тип списка: gift — список желаний, todo — список дел. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать url, priority и price, а hideSelections может быть только false",
+                                        "type": "string",
+                                        "example": "gift",
+                                        "enum": [
+                                            "gift",
+                                            "todo"
+                                        ]
+                                    },
                                     "title": {
                                         "type": "string",
                                         "example": "День рождения 2"
@@ -901,6 +919,15 @@
                                                 "id": {
                                                     "type": "integer",
                                                     "example": 1
+                                                },
+                                                "type": {
+                                                    "description": "Тип списка: gift — список желаний, todo — список дел. Список дел недоступен по общей ссылке",
+                                                    "type": "string",
+                                                    "example": "gift",
+                                                    "enum": [
+                                                        "gift",
+                                                        "todo"
+                                                    ]
                                                 },
                                                 "title": {
                                                     "type": "string",
@@ -990,6 +1017,75 @@
                     },
                     "422": {
                         "description": "Ошибка валидации"
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/v1/wishlists/{id}/items/{itemId}": {
+            "patch": {
+                "tags": [
+                    "Wishlists"
+                ],
+                "summary": "Отметить дело в списке дел выполненным или снять отметку",
+                "description": "Только для списков дел (type = todo); для списка желаний возвращается 422",
+                "operationId": "2fd1398cea3d565c716c8d99a3061acc",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID списка",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "itemId",
+                        "in": "path",
+                        "description": "ID позиции",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "isSelected"
+                                ],
+                                "properties": {
+                                    "isSelected": {
+                                        "description": "true — дело выполнено",
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Список целиком, в том же формате, что и при изменении списка"
+                    },
+                    "404": {
+                        "description": "Список или позиция не найдены"
+                    },
+                    "422": {
+                        "description": "Ошибка валидации или список не является списком дел"
                     },
                     "401": {
                         "description": "Не авторизован"
