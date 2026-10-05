@@ -419,13 +419,13 @@ onMounted(generateRandomPhrase);
 </script>
 
 <template>
-    <!-- Блок "Мои списки" всегда отображается -->
+    <!-- Блок "Мои карточки" всегда отображается -->
     <div class="top">
         <div>
-            <div class="heading">Мои списки</div>
+            <div class="heading">Мои карточки</div>
             <div class="sub">
                 <span v-if="!isLoading">
-                    <span>Списков {{ wishLists.length }}</span>
+                    <span>Карточек {{ wishLists.length }}</span>
                     <!-- Отступы вокруг точки заданы в CSS: пробелы между тегами Vue удаляет -->
                     <span class="separator">·</span>
                     <!-- Ключ пересоздаёт элемент при смене фразы, чтобы анимация срабатывала заново -->
@@ -439,11 +439,11 @@ onMounted(generateRandomPhrase);
         <div v-if="wishLists.length > 0 || isLoading" class="flex gap-2">
             <button
                 class="add-btn"
-                aria-label="Новый список"
+                aria-label="Новая карточка"
                 @click="openCreateModal"
             >
                 <Plus :size="12" />
-                <span class="btn-text">Новый список</span>
+                <span class="btn-text">Новая карточка</span>
             </button>
             <button
                 class="update-btn"
@@ -515,11 +515,11 @@ onMounted(generateRandomPhrase);
         class="flex flex-col items-center justify-center min-h-[300px] text-center"
     >
         <p class="text-gray-500 dark:text-gray-400 text-lg mb-4">
-            У вас пока нет списков
+            У вас пока нет карточек
         </p>
         <button class="add-btn px-6 py-2" @click="openCreateModal">
             <Plus :size="14" class="mr-1.5" />
-            Создать список
+            Создать карточку
         </button>
     </div>
 
@@ -631,8 +631,8 @@ onMounted(generateRandomPhrase);
     }
 }
 
-/* Узкий экран: кнопки «Новый список» и «Обновить» — круглые, только с иконками.
-   Кнопка «Создать список» (нет ни одного списка) не затрагивается: она вне .top */
+/* Узкий экран: кнопки «Новая карточка» и «Обновить» — круглые, только с иконками.
+   Кнопка «Создать карточку» (нет ни одной карточки) не затрагивается: она вне .top */
 @media (max-width: 599px) {
     .top .add-btn,
     .top .update-btn {

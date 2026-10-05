@@ -37,7 +37,7 @@ const GITHUB_URL = 'https://github.com/p0lluxstar/piblwish';
 </template>
 
 <style scoped>
-/* Тот же стиль, что у заголовка «Мои списки» в дашборде */
+/* Тот же стиль, что у заголовка «Мои карточки» в дашборде */
 .heading {
     font-size: 26px;
     font-weight: 800;

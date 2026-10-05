@@ -90,7 +90,7 @@ const modalTitle = computed(() => {
         return isNote.value ? 'Дублировать заметку' : 'Дублировать список';
     }
 
-    if (step.value === 'type') return 'Новый список';
+    if (step.value === 'type') return 'Новая карточка';
     if (isNote.value) return 'Новая заметка';
 
     return isTodo.value ? 'Новый список дел' : 'Новый список желаний';

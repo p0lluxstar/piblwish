@@ -30,7 +30,7 @@ const SECTIONS: HelpSection[] = [
     { id: 'create', title: 'Создание списка', icon: ListPlus },
     { id: 'todo', title: 'Список дел', icon: ListChecks },
     { id: 'note', title: 'Заметка', icon: StickyNote },
-    { id: 'manage', title: 'Мои списки', icon: FileEdit },
+    { id: 'manage', title: 'Мои карточки', icon: FileEdit },
     { id: 'share', title: 'Как поделиться', icon: Share2 },
     { id: 'guests', title: 'Для гостей', icon: Users },
     { id: 'surprise', title: 'Режим сюрприза', icon: EyeOff },
@@ -145,7 +145,7 @@ const FAQ: FaqItem[] = [
                     Создание списка
                 </h2>
                 <p>
-                    В разделе «Мои списки» нажмите «Новый список» и выберите
+                    В разделе «Мои карточки» нажмите «Новая карточка» и выберите
                     тип: «Список желаний», «Список дел» или «Заметка». Список
                     дел и заметка описаны в отдельных разделах:
                     <a href="#todo">«Список дел»</a>
@@ -268,8 +268,8 @@ const FAQ: FaqItem[] = [
                 <p><b>Как создать заметку.</b></p>
                 <ol class="steps">
                     <li>
-                        В разделе «Мои списки» нажмите «Новый список» и выберите
-                        тип «Заметка».
+                        В разделе «Мои карточки» нажмите «Новая карточка» и
+                        выберите тип «Заметка».
                     </li>
                     <li>
                         Выберите цвет. По умолчанию заметка жёлтая, как бумажный
@@ -316,7 +316,7 @@ const FAQ: FaqItem[] = [
             <section id="manage" class="card">
                 <h2 class="card-title">
                     <span class="card-icon"><FileEdit :size="16" /></span>
-                    Мои списки
+                    Мои карточки
                 </h2>
                 <p>
                     Каждый список и каждая заметка отображаются карточкой. В
@@ -511,7 +511,7 @@ const FAQ: FaqItem[] = [
 </template>
 
 <style scoped>
-/* Тот же стиль, что у заголовка «Мои списки» в дашборде */
+/* Тот же стиль, что у заголовка «Мои карточки» в дашборде */
 .heading {
     font-size: 26px;
     font-weight: 800;

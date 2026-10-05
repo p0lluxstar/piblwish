@@ -64,7 +64,7 @@ const handleDeleteAccount = (): void => {
 <template>
     <header class="header">
         <div class="container">
-            <!-- Авторизованный пользователь попадает на свои списки, гость — на главную -->
+            <!-- Авторизованный пользователь попадает на свои карточки, гость — на главную -->
             <div class="header-left">
                 <router-link :to="logoLink" class="logo" aria-label="PiblWish">
                     <div class="logo-icon">
@@ -78,15 +78,15 @@ const handleDeleteAccount = (): void => {
                     </span>
                 </router-link>
                 <nav class="header-nav">
-                    <!-- Свои списки есть только у авторизованного пользователя -->
+                    <!-- Свои карточки есть только у авторизованного пользователя -->
                     <router-link
                         v-if="auth.user"
                         to="/dashboard"
                         class="nav-link"
-                        aria-label="Мои списки"
+                        aria-label="Мои карточки"
                     >
                         <LayoutList :size="16" />
-                        <span class="btn-text">Мои списки</span>
+                        <span class="btn-text">Мои карточки</span>
                     </router-link>
                     <router-link
                         to="/help"
@@ -189,6 +189,7 @@ const handleDeleteAccount = (): void => {
     width: 1200px;
     justify-content: space-between;
     align-items: center;
+    gap: 16px;
 }
 
 .logo {
@@ -243,8 +244,10 @@ const handleDeleteAccount = (): void => {
 .logo-title-short {
     display: none;
 }
+/* Логотип и меню не сжимаются: при нехватке места сжимается блок с именем и email */
 .header-left {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     gap: 28px;
 }
@@ -264,6 +267,8 @@ const handleDeleteAccount = (): void => {
     font-weight: 600;
     color: var(--ink-soft);
     text-decoration: none;
+    /* Без этого на ширине 768–1023px «Мои карточки» переносилось на две строки */
+    white-space: nowrap;
     transition: all 0.2s ease;
 }
 .nav-link:hover {
@@ -280,14 +285,25 @@ const handleDeleteAccount = (): void => {
     display: flex;
     align-items: center;
     gap: 14px;
+    min-width: 0;
     font-size: 14px;
     color: var(--ink);
 }
 
+/* Длинные имя и email обрезаются многоточием, а не сдвигают меню */
 .user-details {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
+    min-width: 0;
+}
+
+.user-username,
+.user-email {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .user-username {
