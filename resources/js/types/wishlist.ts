@@ -16,8 +16,9 @@ export interface WishlistItem {
 export type WishlistItemPriority = 1 | 2 | 3;
 
 // Тип списка, совпадает с App\Enums\WishlistType на бэкенде:
-// gift — список желаний, todo — список дел (isSelected позиции означает «выполнено»)
-export type WishlistType = 'gift' | 'todo';
+// gift — список желаний, todo — список дел (isSelected позиции означает «выполнено»),
+// note — заметка: вместо названия и позиций только текст content
+export type WishlistType = 'gift' | 'todo' | 'note';
 
 // Ключ цвета фона списка, совпадает с App\Enums\WishlistColor на бэкенде
 export type WishlistColor =
@@ -33,7 +34,10 @@ export interface Wishlist {
     id: string;
     // Тип списка; приходит только в дашборде: общая страница доступна лишь для списков желаний
     type?: WishlistType;
-    title: string;
+    // У заметки названия нет: null
+    title: string | null;
+    // Текст заметки; у списков желаний и дел — null
+    content?: string | null;
     color: WishlistColor;
     // Дата создания (ISO 8601); приходит только в дашборде, в общем списке её нет
     createdAt?: string;
@@ -51,13 +55,22 @@ export interface WishlistReservation {
     itemIds: string[];
 }
 
-// Данные формы создания и редактирования списка
-export type WishlistForm = Pick<Wishlist, 'title' | 'color' | 'items'> & {
+// Данные формы создания и редактирования списка или заметки
+export type WishlistForm = Pick<Wishlist, 'color' | 'items'> & {
     type: WishlistType;
+    title: string;
+    content: string;
     hideSelections: boolean;
 };
 
-// Данные запроса на изменение списка: тип после создания не меняется
-export type WishlistUpdatePayload = Omit<WishlistForm, 'type'> & {
+// Данные запроса на создание: у списка нет content, у заметки — title, items
+// и hideSelections, поэтому эти поля необязательны
+export type WishlistCreatePayload = Pick<WishlistForm, 'type' | 'color'> &
+    Partial<
+        Pick<WishlistForm, 'title' | 'content' | 'hideSelections' | 'items'>
+    >;
+
+// Данные запроса на изменение: тип после создания не меняется
+export type WishlistUpdatePayload = Omit<WishlistCreatePayload, 'type'> & {
     id: string;
 };

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+    Calendar,
     Check,
     CopyPlus,
     ExternalLink,
@@ -9,10 +10,12 @@ import {
     Link,
     ListChecks,
     Sparkles,
+    StickyNote,
     Trash2,
 } from '@lucide/vue';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
+import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
 import { copyToClipboard } from '../../lib/clipboard';
 import { formatPrice } from '../../lib/itemPrice';
 import { getItemUrlHost } from '../../lib/itemUrl';
@@ -28,10 +31,20 @@ const emit = defineEmits<{
     duplicate: [wishlist: Wishlist];
     delete: [wishlist: Wishlist];
     toggleItem: [wishlist: Wishlist, item: WishlistItem];
+    updateContent: [wishlist: Wishlist, content: string];
 }>();
 
 // Список дел: нет ссылки для гостей, выполненные дела зачёркнуты
 const isTodo = computed(() => props.wishlist.type === 'todo');
+
+// Заметка: вместо названия и позиций текст, нет ссылки для гостей и прогресса
+const isNote = computed(() => props.wishlist.type === 'note');
+
+// Ссылка для гостей есть только у списка желаний
+const isGift = computed(() => !isTodo.value && !isNote.value);
+
+// «список» или «заметку» в подписях кнопок
+const subject = computed(() => (isNote.value ? 'заметку' : 'список'));
 
 const editCard = (): void => {
     emit('edit', props.wishlist);
@@ -49,6 +62,62 @@ const deleteCard = (): void => {
 const toggleItem = (item: WishlistItem): void => {
     emit('toggleItem', props.wishlist, item);
 };
+
+// Через сколько миллисекунд после последнего ввода сохраняется текст заметки
+const NOTE_SAVE_DELAY = 800;
+
+// Текст заметки редактируется прямо на карточке. Черновик отделён от данных
+// списка: пока поле в фокусе, обновление кэша не перезаписывает набранный текст
+const noteDraft = ref(props.wishlist.content ?? '');
+const isNoteFocused = ref(false);
+let noteSaveTimer: number | null = null;
+
+watch(
+    () => props.wishlist.content,
+    (content) => {
+        if (!isNoteFocused.value) {
+            noteDraft.value = content ?? '';
+        }
+    },
+);
+
+const clearNoteSaveTimer = (): void => {
+    if (noteSaveTimer) {
+        window.clearTimeout(noteSaveTimer);
+        noteSaveTimer = null;
+    }
+};
+
+// Пустую заметку сервер не принимает, неизменённый текст сохранять незачем
+const saveNote = (): void => {
+    clearNoteSaveTimer();
+
+    if (!noteDraft.value.trim() || noteDraft.value === props.wishlist.content) {
+        return;
+    }
+
+    emit('updateContent', props.wishlist, noteDraft.value);
+};
+
+const scheduleNoteSave = (): void => {
+    clearNoteSaveTimer();
+    noteSaveTimer = window.setTimeout(saveNote, NOTE_SAVE_DELAY);
+};
+
+// При уходе из поля текст сохраняется сразу. Стёртый целиком текст
+// восстанавливается: заметка удаляется кнопкой с корзиной
+const finishNoteEditing = (): void => {
+    isNoteFocused.value = false;
+    saveNote();
+
+    if (!noteDraft.value.trim()) {
+        noteDraft.value = props.wishlist.content ?? '';
+    }
+};
+
+// Карточка может исчезнуть до истечения задержки (фильтр, переход на другую
+// страницу): набранный текст сохраняется сразу
+onBeforeUnmount(saveNote);
 
 // Сколько миллисекунд показывать результат копирования
 const COPY_FEEDBACK_DURATION = 2000;
@@ -110,17 +179,21 @@ const progressLabel = computed(
     () => `${selectedCount.value} из ${props.wishlist.items.length}`,
 );
 
-// «Создан 12 сентября 2026 г.»
-const createdAtLabel = computed(() => {
+// «12 сентября 2026 г.»: на карточке дата выводится со значком календаря
+const createdAtDate = computed(() => {
     if (!props.wishlist.createdAt) return '';
 
-    const formatted = new Date(props.wishlist.createdAt).toLocaleDateString(
-        'ru-RU',
-        { day: 'numeric', month: 'long', year: 'numeric' },
-    );
-
-    return `Создан ${formatted}`;
+    return new Date(props.wishlist.createdAt).toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
 });
+
+// «Создан 12 сентября 2026 г.»: подсказка и подпись для экранных дикторов
+const createdAtLabel = computed(
+    () => `${isNote.value ? 'Создана' : 'Создан'} ${createdAtDate.value}`,
+);
 </script>
 
 <template>
@@ -135,7 +208,12 @@ const createdAtLabel = computed(() => {
              пользователь, поэтому тип им не обозначается. Значки те же, что
              на шаге выбора типа при создании -->
         <div class="card-badges">
+            <span v-if="isNote" class="card-type card-type--note">
+                <StickyNote :size="12" />
+                Заметка
+            </span>
             <span
+                v-else
                 :class="[
                     'card-type',
                     isTodo ? 'card-type--todo' : 'card-type--gift',
@@ -162,7 +240,7 @@ const createdAtLabel = computed(() => {
             <button
                 class="card-actions-btn"
                 type="button"
-                aria-label="Редактировать список"
+                :aria-label="`Редактировать ${subject}`"
                 title="Редактировать"
                 @click="editCard"
             >
@@ -171,14 +249,14 @@ const createdAtLabel = computed(() => {
             <button
                 class="card-actions-btn"
                 type="button"
-                aria-label="Сделать дубликат списка"
+                :aria-label="`Сделать дубликат: ${subject}`"
                 title="Сделать дубликат"
                 @click="duplicateCard"
             >
                 <CopyPlus :size="14" />
             </button>
-            <!-- Список дел виден только владельцу: ссылки для гостей у него нет -->
-            <div v-if="!isTodo" class="copy-action">
+            <!-- Список дел и заметка видны только владельцу: ссылки для гостей у них нет -->
+            <div v-if="isGift" class="copy-action">
                 <button
                     :class="[
                         'card-actions-btn',
@@ -215,14 +293,29 @@ const createdAtLabel = computed(() => {
             <button
                 class="card-actions-btn"
                 type="button"
-                aria-label="Удалить список"
+                :aria-label="`Удалить ${subject}`"
                 title="Удалить"
                 @click="deleteCard"
             >
                 <Trash2 :size="14" />
             </button>
         </div>
-        <div class="card-header">
+
+        <!-- Заметка: текст редактируется прямо на карточке и сохраняется
+             через NOTE_SAVE_DELAY после ввода или при уходе из поля -->
+        <textarea
+            v-if="isNote"
+            v-model="noteDraft"
+            class="note-text"
+            rows="3"
+            :maxlength="NOTE_CONTENT_MAX_LENGTH"
+            aria-label="Текст заметки"
+            @focus="isNoteFocused = true"
+            @input="scheduleNoteSave"
+            @blur="finishNoteEditing"
+        ></textarea>
+
+        <div v-else class="card-header">
             <span class="card-title">
                 {{ wishlist.title }}
             </span>
@@ -328,7 +421,7 @@ const createdAtLabel = computed(() => {
         <!-- Прижат к низу карточки, даже если в ней мало позиций -->
         <div class="card-footer">
             <div
-                v-if="!wishlist.hideSelections"
+                v-if="!isNote && !wishlist.hideSelections"
                 class="card-progress-container"
             >
                 <div class="card-progress-info">
@@ -344,11 +437,16 @@ const createdAtLabel = computed(() => {
             </div>
 
             <time
-                v-if="createdAtLabel"
+                v-if="createdAtDate"
                 class="card-created-at"
                 :datetime="wishlist.createdAt"
+                :title="createdAtLabel"
             >
-                {{ createdAtLabel }}
+                <!-- Значок рисуется цветом текста (currentColor); слово «Создан»
+                     видно только экранным дикторам -->
+                <Calendar :size="12" aria-hidden="true" />
+                <span class="sr-only">{{ isNote ? 'Создана' : 'Создан' }}</span>
+                {{ createdAtDate }}
             </time>
         </div>
     </div>
@@ -448,8 +546,8 @@ const createdAtLabel = computed(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 15px;
-    margin-bottom: 16px;
+    margin-top: 18px;
+    margin-bottom: 10px;
 }
 
 .card-title {
@@ -464,7 +562,7 @@ const createdAtLabel = computed(() => {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 7px 0;
+    padding: 5px 0;
     border-bottom: 1px solid rgba(139, 92, 246, 0.1);
     user-select: none;
 }
@@ -507,6 +605,9 @@ const createdAtLabel = computed(() => {
     flex: 1;
     min-width: 0;
     font-size: 13px;
+    // Чуть плотнее обычного текста: название важнее цены рядом с ним.
+    // На Windows 10 у Segoe UI нет начертания 500, там текст остаётся обычным
+    font-weight: 500;
     color: var(--ink);
     transition: color 0.15s;
     line-height: 1.35;
@@ -531,7 +632,7 @@ const createdAtLabel = computed(() => {
    Отрицательный отступ сохраняет выравнивание значка с чекбоксами соседних строк */
 .item.item--reserved {
     margin: 2px -8px;
-    padding: 7px 8px;
+    padding: 5px 8px;
     border-bottom-color: transparent;
     border-radius: 10px;
     background: rgba(236, 72, 153, 0.06);
@@ -638,6 +739,43 @@ const createdAtLabel = computed(() => {
     color: #059669;
 }
 
+.card-type--note {
+    background: rgba(245, 158, 11, 0.16);
+    color: #b45309;
+}
+
+// Поле без рамки и фона выглядит как обычный текст карточки. Высота растёт
+// вместе с текстом (field-sizing), длинный текст прокручивается внутри
+// карточки, а не растягивает весь ряд
+.note-text {
+    display: block;
+    width: 100%;
+    // Отступ под метками типа
+    margin: 15px 0 0;
+    padding: 0;
+    max-height: 320px;
+    overflow-y: auto;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    // Шрифт «от руки» без наклона, как надпись маркером на бумажном стикере
+    font-family: 'Shantell Sans Variable', cursive;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--ink);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    resize: none;
+    field-sizing: content;
+    cursor: text;
+
+    &:focus {
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
+    }
+}
+
 .card-surprise {
     display: grid;
     place-items: center;
@@ -701,9 +839,20 @@ const createdAtLabel = computed(() => {
 }
 
 .card-created-at {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 4px;
     margin-top: 10px;
     font-size: 11px;
+    line-height: normal;
     color: #baa7c7;
+
+    // Flex выравнивает значок по центру строки, в которую входит место под
+    // выносные элементы букв (у, р), поэтому сами цифры и буквы даты стоят
+    // ниже этого центра. Сдвиг опускает значок на их уровень
+    svg {
+        flex-shrink: 0;
+        transform: translateY(1px);
+    }
 }
 </style>

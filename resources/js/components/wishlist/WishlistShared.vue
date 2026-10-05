@@ -725,7 +725,7 @@ onMounted(getWishlist);
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 7px 0;
+    padding: 5px 0;
     border-bottom: 1px solid rgba(226, 195, 211, 0.25);
     cursor: pointer;
     user-select: none;
@@ -744,6 +744,9 @@ onMounted(getWishlist);
     flex: 1;
     min-width: 0;
     font-size: 13px;
+    // Как в карточке на дашборде: чуть плотнее обычного текста.
+    // На Windows 10 у Segoe UI нет начертания 500, там текст остаётся обычным
+    font-weight: 500;
     color: #4a3356;
     transition: color 0.15s;
     line-height: 1.35;

@@ -1,4 +1,6 @@
 import 'normalize.css';
+// Рукописный шрифт текста заметок; браузер загружает только нужные наборы символов
+import '@fontsource-variable/shantell-sans';
 import '../scss/app.scss';
 
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';

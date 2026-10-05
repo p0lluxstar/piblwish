@@ -17,9 +17,11 @@ class UpdateWishlistRequest extends FormRequest
     public function rules(): array
     {
         // Тип списка после создания не меняется, поэтому поля type здесь нет.
-        // Ссылку, цену, приоритет и режим сюрприза у списка дел очищает WishlistService
+        // Ссылку, цену, приоритет и режим сюрприза у списка дел очищает WishlistService.
+        // У заметки WishlistService изменяет только цвет и текст, у списков — всё, кроме текста
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
+            'content' => ['sometimes', 'required', 'string', 'max:5000'],
             'color' => ['sometimes', Rule::enum(WishlistColor::class)],
             'hideSelections' => ['sometimes', 'boolean'],
             'items' => ['sometimes', 'array'],
@@ -38,6 +40,8 @@ class UpdateWishlistRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'content.required' => 'Текст заметки обязателен',
+            'content.max' => 'Текст заметки не может быть длиннее 5000 символов',
             'color.enum' => 'Недопустимый цвет списка',
             'items.required' => 'Добавьте хотя бы один элемент',
             'items.*.label.required_with' => 'Описание элемента обязательно',

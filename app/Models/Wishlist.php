@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'type', 'title', 'color', 'hide_selections'])]
+#[Fillable(['user_id', 'type', 'title', 'content', 'color', 'hide_selections'])]
 class Wishlist extends Model
 {
     use HasUlids;
@@ -36,6 +36,12 @@ class Wishlist extends Model
     public function isTodo(): bool
     {
         return $this->type === WishlistType::Todo;
+    }
+
+    // Заметка: доступна только владельцу, вместо названия и позиций — текст в content
+    public function isNote(): bool
+    {
+        return $this->type === WishlistType::Note;
     }
 
     public function user(): BelongsTo

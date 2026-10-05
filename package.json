@@ -29,6 +29,7 @@
         "vue-tsc": "^3.2.7"
     },
     "dependencies": {
+        "@fontsource-variable/shantell-sans": "^5.3.0",
         "@lucide/vue": "^1.14.0",
         "@tanstack/vue-query": "^5.100.6",
         "axios": "^1.15.2",

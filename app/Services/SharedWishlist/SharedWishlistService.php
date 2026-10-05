@@ -163,7 +163,7 @@ class SharedWishlistService
         return $this->sharedQuery()->with(['items', 'user'])->findOrFail($wishlistId);
     }
 
-    // По ссылке доступны только списки желаний: список дел видит лишь владелец,
+    // По ссылке доступны только списки желаний: список дел и заметку видит лишь владелец,
     // поэтому для гостя он не существует и все публичные эндпоинты отвечают 404
     private function sharedQuery(): Builder
     {

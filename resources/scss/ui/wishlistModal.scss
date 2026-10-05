@@ -182,6 +182,40 @@
     }
 }
 
+// Текст заметки: высота растёт вместе с текстом (field-sizing), но не выше
+// max-height, дальше — прокрутка. Без поддержки field-sizing высота задаётся rows
+.form-group textarea.note-content {
+    min-height: 160px;
+    max-height: 50vh;
+    padding: 12px 14px;
+    border: 1.5px solid rgba(139, 92, 246, 0.15);
+    border-radius: 14px;
+    width: 100%;
+    // Как текст заметки на карточке
+    font-family: 'Shantell Sans Variable', cursive;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.45;
+    background: rgba(255, 255, 255, 0.7);
+    resize: vertical;
+    field-sizing: content;
+    transition: all 0.18s ease;
+
+    &:focus {
+        outline: none;
+        border-color: #8b5cf6;
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
+    }
+}
+
+.note-content-counter {
+    align-self: flex-end;
+    margin-top: 6px;
+    font-size: 11px;
+    color: #9a89aa;
+}
+
 // Позиция: описание и ссылка друг под другом, кнопки выровнены по полю описания
 .wishlist-item {
     display: flex;

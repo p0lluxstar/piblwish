@@ -53,6 +53,10 @@ const collator = new Intl.Collator('ru', {
     numeric: true,
 });
 
+// У заметки нет названия: при сортировке по названию учитывается её текст
+const sortTitle = (wishlist: Wishlist): string =>
+    wishlist.title ?? wishlist.content ?? '';
+
 // Сортировка карточек списков в дашборде; выбор пользователя хранится в localStorage
 export const useWishlistSort = (
     wishlists: Ref<Wishlist[]>,
@@ -86,7 +90,7 @@ export const useWishlistSort = (
 
         return [...wishlists.value].sort((a, b) =>
             field === 'title'
-                ? factor * collator.compare(a.title, b.title)
+                ? factor * collator.compare(sortTitle(a), sortTitle(b))
                 : // Даты в формате ISO 8601 упорядочиваются при сравнении как строки
                   factor * (a.createdAt ?? '').localeCompare(b.createdAt ?? ''),
         );

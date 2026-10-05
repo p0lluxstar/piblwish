@@ -709,17 +709,27 @@
                                                         "example": 1
                                                     },
                                                     "type": {
-                                                        "description": "Тип списка: gift — список желаний, todo — список дел. Список дел недоступен по общей ссылке",
+                                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел и заметка недоступны по общей ссылке",
                                                         "type": "string",
                                                         "example": "gift",
                                                         "enum": [
                                                             "gift",
-                                                            "todo"
+                                                            "todo",
+                                                            "note"
                                                         ]
                                                     },
                                                     "title": {
+                                                        "description": "Название; у заметки — null",
                                                         "type": "string",
-                                                        "example": "День рождения"
+                                                        "example": "День рождения",
+                                                        "nullable": true
+                                                    },
+                                                    "content": {
+                                                        "description": "Текст заметки; у списков желаний и дел — null",
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true,
+                                                        "maxLength": 5000
                                                     },
                                                     "color": {
                                                         "description": "Ключ цвета фона списка",
@@ -825,23 +835,27 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "title",
-                                    "items"
-                                ],
                                 "properties": {
                                     "type": {
-                                        "description": "Тип списка: gift — список желаний, todo — список дел. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать url, priority и price, а hideSelections может быть только false",
+                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать url, priority и price. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний",
                                         "type": "string",
                                         "example": "gift",
                                         "enum": [
                                             "gift",
-                                            "todo"
+                                            "todo",
+                                            "note"
                                         ]
                                     },
                                     "title": {
+                                        "description": "Название. Обязательно для списков желаний и дел, у заметки (type = note) запрещено",
                                         "type": "string",
                                         "example": "День рождения 2"
+                                    },
+                                    "content": {
+                                        "description": "Текст заметки до 5000 символов. Обязателен для заметки (type = note), у списков запрещён",
+                                        "type": "string",
+                                        "example": "Код домофона 1234",
+                                        "maxLength": 5000
                                     },
                                     "color": {
                                         "description": "Ключ цвета фона списка. Необязателен, по умолчанию white",
@@ -863,6 +877,7 @@
                                         "example": false
                                     },
                                     "items": {
+                                        "description": "Позиции списка, хотя бы одна. Обязательны для списков желаний и дел, у заметки запрещены",
                                         "type": "array",
                                         "items": {
                                             "properties": {
@@ -921,17 +936,27 @@
                                                     "example": 1
                                                 },
                                                 "type": {
-                                                    "description": "Тип списка: gift — список желаний, todo — список дел. Список дел недоступен по общей ссылке",
+                                                    "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел и заметка недоступны по общей ссылке",
                                                     "type": "string",
                                                     "example": "gift",
                                                     "enum": [
                                                         "gift",
-                                                        "todo"
+                                                        "todo",
+                                                        "note"
                                                     ]
                                                 },
                                                 "title": {
+                                                    "description": "Название; у заметки — null",
                                                     "type": "string",
-                                                    "example": "День рождения 2"
+                                                    "example": "День рождения 2",
+                                                    "nullable": true
+                                                },
+                                                "content": {
+                                                    "description": "Текст заметки; у списков желаний и дел — null",
+                                                    "type": "string",
+                                                    "example": null,
+                                                    "nullable": true,
+                                                    "maxLength": 5000
                                                 },
                                                 "color": {
                                                     "description": "Ключ цвета фона списка",

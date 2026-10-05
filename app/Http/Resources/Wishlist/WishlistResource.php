@@ -10,9 +10,13 @@ class WishlistResource extends ApiResource
     {
         return [
             'id' => $this->id,
-            // Тип списка: gift — список желаний, todo — список дел, см. App\Enums\WishlistType
+            // Тип списка: gift — список желаний, todo — список дел, note — заметка,
+            // см. App\Enums\WishlistType
             'type' => $this->type->value,
+            // У заметки названия нет: null
             'title' => $this->title,
+            // Текст заметки; у списков желаний и дел — null
+            'content' => $this->content,
             // Ключ цвета фона списка (white, lavender, …), см. App\Enums\WishlistColor
             'color' => $this->color->value,
             // Дата создания списка

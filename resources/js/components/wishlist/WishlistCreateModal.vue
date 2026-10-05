@@ -6,14 +6,17 @@ import {
     Gift,
     Link,
     ListChecks,
+    StickyNote,
     Trash2,
 } from '@lucide/vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import { useItemReorder } from '../../composables/useItemReorder';
+import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
 import { isValidItemUrl, normalizeItemUrl } from '../../lib/itemUrl';
 import type {
     Wishlist,
+    WishlistCreatePayload,
     WishlistForm,
     WishlistItem,
     WishlistType,
@@ -32,13 +35,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     close: [];
-    create: [payload: WishlistForm];
+    create: [payload: WishlistCreatePayload];
 }>();
 
 const defaultForm = (type: WishlistType = 'gift'): WishlistForm => ({
     type,
     title: '',
-    color: 'white',
+    content: '',
+    // Заметка по умолчанию жёлтая, как бумажный стикер
+    color: type === 'note' ? 'lemon' : 'white',
     hideSelections: false,
     items: [
         {
@@ -54,7 +59,9 @@ const defaultForm = (type: WishlistType = 'gift'): WishlistForm => ({
 // Копия списка-источника без id позиций и выбора гостей: создаётся новый список
 const sourceForm = (source: Wishlist): WishlistForm => ({
     type: source.type ?? 'gift',
-    title: `${source.title} (копия)`,
+    // У заметки названия нет, поэтому нет и пометки «(копия)»
+    title: source.title ? `${source.title} (копия)` : '',
+    content: source.content ?? '',
     color: source.color,
     hideSelections: source.hideSelections ?? false,
     items: source.items.length
@@ -75,12 +82,22 @@ const step = ref<'type' | 'form'>(props.source ? 'form' : 'type');
 
 const isTodo = computed(() => form.value.type === 'todo');
 
+// Заметка: вместо названия и позиций одно текстовое поле
+const isNote = computed(() => form.value.type === 'note');
+
 const modalTitle = computed(() => {
-    if (props.source) return 'Дублировать список';
+    if (props.source) {
+        return isNote.value ? 'Дублировать заметку' : 'Дублировать список';
+    }
+
     if (step.value === 'type') return 'Новый список';
+    if (isNote.value) return 'Новая заметка';
 
     return isTodo.value ? 'Новый список дел' : 'Новый список желаний';
 });
+
+// Пустую заметку сервер не принимает, поэтому кнопка создания недоступна
+const isNoteEmpty = computed(() => isNote.value && !form.value.content.trim());
 
 // Индексы позиций с некорректной ссылкой; ошибка снимается, когда ссылку начинают править
 const urlErrors = ref<boolean[]>([]);
@@ -139,6 +156,19 @@ const prepareItems = (): WishlistItem[] | null => {
 };
 
 const handleSubmit = (): void => {
+    // У заметки нет названия, позиций и режима сюрприза: сервер их не принимает
+    if (isNote.value) {
+        if (isNoteEmpty.value) return;
+
+        emit('create', {
+            type: 'note',
+            color: form.value.color,
+            content: form.value.content,
+        });
+
+        return;
+    }
+
     const items = prepareItems();
 
     if (!items) return;
@@ -224,6 +254,24 @@ const closeModal = (): void => {
                         </span>
                     </span>
                 </button>
+
+                <button
+                    class="type-option"
+                    type="button"
+                    @click="chooseType('note')"
+                >
+                    <span class="type-option-icon">
+                        <StickyNote :size="22" />
+                    </span>
+
+                    <span class="type-option-text">
+                        <span class="type-option-title">Заметка</span>
+                        <span class="type-option-description">
+                            Произвольный текст на цветном стикере; заметка видна
+                            только вам
+                        </span>
+                    </span>
+                </button>
             </div>
 
             <form v-else @submit.prevent="handleSubmit">
@@ -237,7 +285,7 @@ const closeModal = (): void => {
                     Выбрать другой тип списка
                 </button>
 
-                <div class="form-group">
+                <div v-if="!isNote" class="form-group">
                     <label>Название списка</label>
 
                     <input
@@ -252,16 +300,35 @@ const closeModal = (): void => {
                 </div>
 
                 <div class="form-group">
-                    <label>Цвет списка</label>
+                    <label>{{ isNote ? 'Цвет заметки' : 'Цвет списка' }}</label>
 
                     <WishlistColorPicker v-model="form.color" />
                 </div>
 
-                <div v-if="!isTodo" class="form-group">
+                <!-- Режим сюрприза есть только у списка желаний: у остальных нет гостей -->
+                <div v-if="form.type === 'gift'" class="form-group">
                     <WishlistSurpriseToggle v-model="form.hideSelections" />
                 </div>
 
-                <div class="form-group">
+                <div v-if="isNote" class="form-group">
+                    <label for="note-content">Текст заметки</label>
+
+                    <textarea
+                        id="note-content"
+                        v-model="form.content"
+                        class="note-content"
+                        rows="7"
+                        :maxlength="NOTE_CONTENT_MAX_LENGTH"
+                        placeholder="Например: код домофона, список покупок или поздравление"
+                    ></textarea>
+
+                    <span class="note-content-counter">
+                        {{ form.content.length }} /
+                        {{ NOTE_CONTENT_MAX_LENGTH }}
+                    </span>
+                </div>
+
+                <div v-else class="form-group">
                     <label>{{ isTodo ? 'Дела' : 'Список желаний' }}</label>
 
                     <div
@@ -366,7 +433,7 @@ const closeModal = (): void => {
 
                 <button
                     type="submit"
-                    :disabled="props.isPending"
+                    :disabled="props.isPending || isNoteEmpty"
                     class="create-btn"
                 >
                     <LoaderButtonSpinner v-if="props.isPending" :size="18" />

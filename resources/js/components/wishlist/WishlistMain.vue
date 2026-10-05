@@ -12,7 +12,7 @@ import { api } from '@/lib/api';
 
 import type {
     Wishlist,
-    WishlistForm,
+    WishlistCreatePayload,
     WishlistItem,
     WishlistType,
     WishlistUpdatePayload,
@@ -69,7 +69,9 @@ const readTypeFilter = (): WishlistTypeFilter => {
     try {
         const value = window.localStorage.getItem(TYPE_FILTER_STORAGE_KEY);
 
-        if (value === 'gift' || value === 'todo') return value;
+        if (value === 'gift' || value === 'todo' || value === 'note') {
+            return value;
+        }
     } catch {
         // Значение недоступно — показываются все списки
     }
@@ -87,36 +89,54 @@ watch(typeFilter, (value) => {
     }
 });
 
-const typeCounts = computed(() => ({
-    all: wishLists.value.length,
-    gift: wishLists.value.filter((wishlist) => wishlist.type !== 'todo').length,
-    todo: wishLists.value.filter((wishlist) => wishlist.type === 'todo').length,
-}));
+// Список без типа считается списком желаний, как и на бэкенде
+const typeOf = (wishlist: Wishlist): WishlistType => wishlist.type ?? 'gift';
 
-// Фильтр нужен, только когда есть списки обоих типов. Иначе он скрыт и не
-// действует: сохранённый фильтр не должен прятать все карточки без возможности
-// его сбросить
-const hasTypeFilter = computed(
-    () => typeCounts.value.gift > 0 && typeCounts.value.todo > 0,
-);
+const typeCounts = computed(() => {
+    const counts = { all: wishLists.value.length, gift: 0, todo: 0, note: 0 };
 
-const filteredWishlists = computed(() => {
-    if (!hasTypeFilter.value || typeFilter.value === 'all') {
-        return sortedWishlists.value;
+    for (const wishlist of wishLists.value) {
+        counts[typeOf(wishlist)] += 1;
     }
 
-    return sortedWishlists.value.filter((wishlist) =>
-        typeFilter.value === 'todo'
-            ? wishlist.type === 'todo'
-            : wishlist.type !== 'todo',
-    );
+    return counts;
 });
 
 const TYPE_FILTER_OPTIONS: { value: WishlistTypeFilter; label: string }[] = [
     { value: 'all', label: 'Все' },
     { value: 'gift', label: 'Желания' },
     { value: 'todo', label: 'Дела' },
+    { value: 'note', label: 'Заметки' },
 ];
+
+// Кнопки показываются только для типов, которые есть у пользователя
+const typeFilterOptions = computed(() =>
+    TYPE_FILTER_OPTIONS.filter(
+        (option) =>
+            option.value === 'all' || typeCounts.value[option.value] > 0,
+    ),
+);
+
+// Фильтр нужен, только когда есть карточки хотя бы двух типов
+const hasTypeFilter = computed(() => typeFilterOptions.value.length > 2);
+
+// Фильтр действует, только если он показан и у выбранного типа есть карточки.
+// Иначе сохранённый фильтр спрятал бы все карточки без возможности его сбросить
+const activeTypeFilter = computed<WishlistTypeFilter>(() =>
+    hasTypeFilter.value &&
+    typeFilter.value !== 'all' &&
+    typeCounts.value[typeFilter.value] > 0
+        ? typeFilter.value
+        : 'all',
+);
+
+const filteredWishlists = computed(() => {
+    if (activeTypeFilter.value === 'all') return sortedWishlists.value;
+
+    return sortedWishlists.value.filter(
+        (wishlist) => typeOf(wishlist) === activeTypeFilter.value,
+    );
+});
 
 // Карточки выводятся порциями: все списки уже загружены, ограничивается только отрисовка.
 // Следующая порция добавляется кнопкой «Показать ещё»
@@ -169,7 +189,7 @@ const closeCreateModal = (): void => {
 };
 
 const createWishlistRequest = async (
-    payload: WishlistForm,
+    payload: WishlistCreatePayload,
 ): Promise<Wishlist> => {
     const response = await api.post<{ data: Wishlist }>(
         '/v1/wishlists',
@@ -311,6 +331,56 @@ const toggleItem = (wishlist: Wishlist, item: WishlistItem): void => {
     });
 };
 
+type NoteContentPayload = {
+    wishlistId: string;
+    content: string;
+    // Текст до изменения: возвращается в кэш, если сохранить не удалось
+    previousContent: string | null;
+};
+
+const updateNoteContentRequest = async ({
+    wishlistId,
+    content,
+}: NoteContentPayload): Promise<void> => {
+    await api.patch(`/v1/wishlists/${wishlistId}`, { content });
+};
+
+const setCachedNoteContent = (
+    wishlistId: string,
+    content: string | null,
+): void => {
+    queryClient.setQueryData<Wishlist[]>(['wishlists'], (oldData) =>
+        oldData?.map((wishlist) =>
+            wishlist.id === wishlistId ? { ...wishlist, content } : wishlist,
+        ),
+    );
+};
+
+// Текст заметки, изменённый на карточке, сразу записывается в кэш. Ответ
+// сервера в кэш не записывается по той же причине, что и при отметке дела:
+// ответ на более ранний запрос перезаписал бы текст, набранный позже
+const { mutate: updateNoteContentMutation } = useMutation({
+    mutationFn: updateNoteContentRequest,
+
+    onMutate: ({ wishlistId, content }) => {
+        setCachedNoteContent(wishlistId, content);
+    },
+
+    onError: (error, { wishlistId, previousContent }) => {
+        console.error('Ошибка сохранения заметки', error);
+
+        setCachedNoteContent(wishlistId, previousContent);
+    },
+});
+
+const updateNoteContent = (wishlist: Wishlist, content: string): void => {
+    updateNoteContentMutation({
+        wishlistId: wishlist.id,
+        content,
+        previousContent: wishlist.content ?? null,
+    });
+};
+
 const updateWishlists = async (): Promise<void> => {
     await queryClient.invalidateQueries({
         queryKey: ['wishlists'],
@@ -395,11 +465,11 @@ onMounted(generateRandomPhrase);
             aria-label="Тип списков"
         >
             <button
-                v-for="option in TYPE_FILTER_OPTIONS"
+                v-for="option in typeFilterOptions"
                 :key="option.value"
                 class="sort-btn"
-                :class="{ active: typeFilter === option.value }"
-                :aria-pressed="typeFilter === option.value"
+                :class="{ active: activeTypeFilter === option.value }"
+                :aria-pressed="activeTypeFilter === option.value"
                 @click="typeFilter = option.value"
             >
                 <span>{{ option.label }}</span>
@@ -463,6 +533,7 @@ onMounted(generateRandomPhrase);
                 @duplicate="openDuplicateModal"
                 @delete="openDeleteModal"
                 @toggle-item="toggleItem"
+                @update-content="updateNoteContent"
             />
         </div>
 

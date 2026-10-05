@@ -3,6 +3,7 @@ import { Check, ChevronDown, ChevronUp, Gift, Link, Trash2 } from '@lucide/vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { useItemReorder } from '../../composables/useItemReorder';
+import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
 import { isValidItemUrl, normalizeItemUrl } from '../../lib/itemUrl';
 import type {
     Wishlist,
@@ -31,6 +32,7 @@ type EditForm = Omit<WishlistForm, 'type'>;
 
 const defaultForm = (): EditForm => ({
     title: '',
+    content: '',
     color: 'white',
     hideSelections: false,
     items: [
@@ -43,6 +45,7 @@ const defaultForm = (): EditForm => ({
 
 const form = ref<EditForm>({
     title: '',
+    content: '',
     color: 'white',
     hideSelections: false,
     items: [],
@@ -55,7 +58,8 @@ watch(
     () => props.wishlist,
     (wishlist) => {
         form.value = {
-            title: wishlist.title,
+            title: wishlist.title ?? '',
+            content: wishlist.content ?? '',
             color: wishlist.color,
             hideSelections: wishlist.hideSelections ?? false,
             // id нужен серверу, чтобы в режиме сюрприза сохранить выбор гостей
@@ -76,6 +80,12 @@ watch(
 
 // Список дел: у позиций только текст и отметка «выполнено»
 const isTodo = computed(() => props.wishlist.type === 'todo');
+
+// Заметка: изменяются только цвет и текст
+const isNote = computed(() => props.wishlist.type === 'note');
+
+// Пустую заметку сервер не принимает, поэтому кнопка сохранения недоступна
+const isNoteEmpty = computed(() => isNote.value && !form.value.content.trim());
 
 // Чекбоксы выбора показываются, только если владелец видит выбор гостей:
 // при скрытом выборе сервер не принимает isSelected из формы
@@ -133,6 +143,18 @@ const prepareItems = (): WishlistItem[] | null => {
 // Запрос выполняет WishlistMain (мутация updateWishlist): там же состояние
 // загрузки для кнопки и закрытие модалки после успешного сохранения
 const handleSubmit = (): void => {
+    if (isNote.value) {
+        if (isNoteEmpty.value) return;
+
+        emit('update', {
+            id: props.wishlist.id,
+            color: form.value.color,
+            content: form.value.content,
+        });
+
+        return;
+    }
+
     const items = prepareItems();
 
     if (!items) return;
@@ -177,13 +199,19 @@ const closeModal = (): void => {
         <!-- Фон модалки окрашивается в выбранный цвет: превью цвета списка -->
         <div :class="['modal', `wishlist-color--${form.color}`]">
             <div class="modal-header">
-                <h2>Редактировать список</h2>
+                <h2>
+                    {{
+                        isNote
+                            ? 'Редактировать заметку'
+                            : 'Редактировать список'
+                    }}
+                </h2>
 
                 <button class="close-btn" @click="closeModal"></button>
             </div>
 
             <form @submit.prevent="handleSubmit">
-                <div class="form-group">
+                <div v-if="!isNote" class="form-group">
                     <label>Название списка</label>
 
                     <input
@@ -198,16 +226,34 @@ const closeModal = (): void => {
                 </div>
 
                 <div class="form-group">
-                    <label>Цвет списка</label>
+                    <label>{{ isNote ? 'Цвет заметки' : 'Цвет списка' }}</label>
 
                     <WishlistColorPicker v-model="form.color" />
                 </div>
 
-                <div v-if="!isTodo" class="form-group">
+                <!-- Режим сюрприза есть только у списка желаний: у остальных нет гостей -->
+                <div v-if="!isTodo && !isNote" class="form-group">
                     <WishlistSurpriseToggle v-model="form.hideSelections" />
                 </div>
 
-                <div class="form-group">
+                <div v-if="isNote" class="form-group">
+                    <label for="note-content-edit">Текст заметки</label>
+
+                    <textarea
+                        id="note-content-edit"
+                        v-model="form.content"
+                        class="note-content"
+                        rows="7"
+                        :maxlength="NOTE_CONTENT_MAX_LENGTH"
+                    ></textarea>
+
+                    <span class="note-content-counter">
+                        {{ form.content.length }} /
+                        {{ NOTE_CONTENT_MAX_LENGTH }}
+                    </span>
+                </div>
+
+                <div v-else class="form-group">
                     <label>{{ isTodo ? 'Дела' : 'Список желаний' }}</label>
 
                     <div
@@ -348,7 +394,7 @@ const closeModal = (): void => {
 
                 <button
                     type="submit"
-                    :disabled="props.isPending"
+                    :disabled="props.isPending || isNoteEmpty"
                     class="create-btn"
                 >
                     <LoaderButtonSpinner v-if="props.isPending" :size="18" />

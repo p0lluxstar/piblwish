@@ -29,8 +29,13 @@ class WishlistService
         ) {
             // Если тип, цвет и режим сюрприза не переданы, их задают значения по умолчанию в модели
             $wishlist = $user->wishlists()->create(
-                Arr::only($data, ['type']) + $this->wishlistAttributes($data)
+                Arr::only($data, ['type', 'content']) + $this->wishlistAttributes($data)
             );
+
+            // У заметки нет позиций: её текст уже сохранён в content
+            if ($wishlist->isNote()) {
+                return $wishlist->load('items');
+            }
 
             // Порядок позиций задаётся порядком массива items
             $wishlist->items()->createMany(
@@ -61,6 +66,12 @@ class WishlistService
             // Обновляются только переданные поля
             $attributes = $this->wishlistAttributes($data);
 
+            // У заметки изменяются только цвет и текст: названия, позиций
+            // и режима сюрприза у неё нет
+            if ($wishlist->isNote()) {
+                $attributes = Arr::only($attributes, ['color']) + Arr::only($data, ['content']);
+            }
+
             // У списка дел нет гостей, поэтому режим сюрприза для него не включается
             if ($wishlist->isTodo()) {
                 unset($attributes['hide_selections']);
@@ -70,7 +81,7 @@ class WishlistService
                 $wishlist->update($attributes);
             }
 
-            if (array_key_exists('items', $data)) {
+            if (array_key_exists('items', $data) && ! $wishlist->isNote()) {
                 $this->syncItems($wishlist, $data['items'], $selectionsHidden);
             }
 

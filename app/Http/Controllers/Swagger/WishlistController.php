@@ -36,7 +36,7 @@ use OpenApi\Attributes as OA;
 
                                 new OA\Property(
                                     property: 'type',
-                                    description: 'Тип списка: gift — список желаний, todo — список дел. Список дел недоступен по общей ссылке',
+                                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел и заметка недоступны по общей ссылке',
                                     type: 'string',
                                     enum: WishlistType::class,
                                     example: 'gift'
@@ -44,8 +44,19 @@ use OpenApi\Attributes as OA;
 
                                 new OA\Property(
                                     property: 'title',
+                                    description: 'Название; у заметки — null',
                                     type: 'string',
+                                    nullable: true,
                                     example: 'День рождения'
+                                ),
+
+                                new OA\Property(
+                                    property: 'content',
+                                    description: 'Текст заметки; у списков желаний и дел — null',
+                                    type: 'string',
+                                    maxLength: 5000,
+                                    nullable: true,
+                                    example: null
                                 ),
 
                                 new OA\Property(
@@ -152,11 +163,10 @@ use OpenApi\Attributes as OA;
     requestBody: new OA\RequestBody(
         required: true,
         content: new OA\JsonContent(
-            required: ['title', 'items'],
             properties: [
                 new OA\Property(
                     property: 'type',
-                    description: 'Тип списка: gift — список желаний, todo — список дел. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать url, priority и price, а hideSelections может быть только false',
+                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать url, priority и price. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний',
                     type: 'string',
                     enum: WishlistType::class,
                     example: 'gift'
@@ -164,8 +174,17 @@ use OpenApi\Attributes as OA;
 
                 new OA\Property(
                     property: 'title',
+                    description: 'Название. Обязательно для списков желаний и дел, у заметки (type = note) запрещено',
                     type: 'string',
                     example: 'День рождения 2'
+                ),
+
+                new OA\Property(
+                    property: 'content',
+                    description: 'Текст заметки до 5000 символов. Обязателен для заметки (type = note), у списков запрещён',
+                    type: 'string',
+                    maxLength: 5000,
+                    example: 'Код домофона 1234'
                 ),
 
                 new OA\Property(
@@ -185,6 +204,7 @@ use OpenApi\Attributes as OA;
 
                 new OA\Property(
                     property: 'items',
+                    description: 'Позиции списка, хотя бы одна. Обязательны для списков желаний и дел, у заметки запрещены',
                     type: 'array',
                     items: new OA\Items(
                         properties: [
@@ -248,7 +268,7 @@ use OpenApi\Attributes as OA;
 
                             new OA\Property(
                                 property: 'type',
-                                description: 'Тип списка: gift — список желаний, todo — список дел. Список дел недоступен по общей ссылке',
+                                description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел и заметка недоступны по общей ссылке',
                                 type: 'string',
                                 enum: WishlistType::class,
                                 example: 'gift'
@@ -256,8 +276,19 @@ use OpenApi\Attributes as OA;
 
                             new OA\Property(
                                 property: 'title',
+                                description: 'Название; у заметки — null',
                                 type: 'string',
+                                nullable: true,
                                 example: 'День рождения 2'
+                            ),
+
+                            new OA\Property(
+                                property: 'content',
+                                description: 'Текст заметки; у списков желаний и дел — null',
+                                type: 'string',
+                                maxLength: 5000,
+                                nullable: true,
+                                example: null
                             ),
 
                             new OA\Property(

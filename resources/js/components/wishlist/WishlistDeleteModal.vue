@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 
 import type { Wishlist } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
@@ -13,6 +13,20 @@ const emit = defineEmits<{
     close: [];
     confirm: [];
 }>();
+
+const isNote = computed(() => props.wishlist.type === 'note');
+
+// Наибольшая длина начала заметки в вопросе об удалении
+const NOTE_PREVIEW_LENGTH = 60;
+
+// У заметки нет названия: вместо него показывается начало первой строки текста
+const notePreview = computed(() => {
+    const firstLine = (props.wishlist.content ?? '').trim().split('\n')[0];
+
+    return firstLine.length > NOTE_PREVIEW_LENGTH
+        ? `${firstLine.slice(0, NOTE_PREVIEW_LENGTH).trimEnd()}…`
+        : firstLine;
+});
 
 const closeModal = (): void => {
     emit('close');
@@ -44,12 +58,17 @@ onUnmounted(() => {
     <div class="modal-overlay" @click.self="closeModal">
         <div class="modal">
             <div class="modal-header">
-                <h2>Удаление списка</h2>
+                <h2>{{ isNote ? 'Удаление заметки' : 'Удаление списка' }}</h2>
                 <button class="close-btn" @click="closeModal"></button>
             </div>
 
             <div class="modal-body">
-                <p>
+                <p v-if="isNote">
+                    Вы действительно хотите удалить заметку «
+                    <strong>{{ notePreview }}</strong>
+                    »?
+                </p>
+                <p v-else>
                     Вы действительно хотите удалить список «
                     <strong>{{ wishlist.title }}</strong>
                     »?

@@ -22,16 +22,21 @@ class CreateWishlistRequest extends FormRequest
             // Тип задаётся только при создании и потом не меняется
             'type' => ['sometimes', Rule::enum(WishlistType::class)],
 
-            'title' => ['required', 'string', 'max:255'],
+            // У заметки нет названия: всё её содержимое — текст в content
+            'title' => ['prohibited_if:type,note', 'required_unless:type,note', 'string', 'max:255'],
+
+            // Текст заметки; у списков желаний и дел его нет
+            'content' => ['prohibited_unless:type,note', 'required_if:type,note', 'string', 'max:5000'],
 
             // Необязателен: без него список получает white
             'color' => ['sometimes', Rule::enum(WishlistColor::class)],
 
-            // Режим сюрприза; по умолчанию выключен. У списка дел нет гостей,
-            // поэтому включить режим сюрприза для него нельзя
-            'hideSelections' => ['sometimes', 'boolean', 'declined_if:type,todo'],
+            // Режим сюрприза; по умолчанию выключен. У списка дел и заметки нет гостей,
+            // поэтому включить режим сюрприза для них нельзя
+            'hideSelections' => ['sometimes', 'boolean', 'declined_if:type,todo,note'],
 
-            'items' => ['required', 'array', 'min:1'],
+            // У заметки нет позиций
+            'items' => ['prohibited_if:type,note', 'required_unless:type,note', 'array', 'min:1'],
 
             'items.*.label' => [
                 'required',
@@ -74,13 +79,19 @@ class CreateWishlistRequest extends FormRequest
         return [
             'type.enum' => 'Недопустимый тип списка',
 
-            'title.required' => 'Название обязательно',
+            'title.required_unless' => 'Название обязательно',
+            'title.prohibited_if' => 'У заметки нет названия',
+
+            'content.required_if' => 'Текст заметки обязателен',
+            'content.prohibited_unless' => 'Текст есть только у заметки',
+            'content.max' => 'Текст заметки не может быть длиннее 5000 символов',
 
             'color.enum' => 'Недопустимый цвет списка',
 
-            'hideSelections.declined_if' => 'У списка дел нет режима сюрприза',
+            'hideSelections.declined_if' => 'Режим сюрприза есть только у списка желаний',
 
-            'items.required' => 'Добавьте хотя бы один элемент',
+            'items.required_unless' => 'Добавьте хотя бы один элемент',
+            'items.prohibited_if' => 'У заметки нет позиций',
 
             'items.*.label.required' => 'Описание элемента обязательно',
 
