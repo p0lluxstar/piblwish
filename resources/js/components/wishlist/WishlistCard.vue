@@ -13,6 +13,7 @@ import {
 import { computed, onBeforeUnmount, ref } from 'vue';
 
 import { copyToClipboard } from '../../lib/clipboard';
+import { formatPrice } from '../../lib/itemPrice';
 import { getItemUrlHost } from '../../lib/itemUrl';
 import type { Wishlist } from '../../types/wishlist';
 import ItemPriorityHearts from './ItemPriorityHearts.vue';
@@ -214,23 +215,35 @@ const createdAtLabel = computed(() => {
                 {{ item.label }}
             </span>
 
-            <ItemPriorityHearts
-                v-if="item.priority"
-                :priority="item.priority"
-                :muted="item.isSelected"
-            />
-
-            <a
-                v-if="item.url"
-                :href="item.url"
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                class="item-link"
-                :title="getItemUrlHost(item.url)"
-                :aria-label="`Ссылка на товар: ${getItemUrlHost(item.url)}`"
+            <!-- Приоритет, цена и ссылка — узкой колонкой справа от названия,
+                 каждое на своей строке: в одну строку они сильно сужали название -->
+            <div
+                v-if="item.priority || item.price != null || item.url"
+                class="item-meta"
             >
-                <ExternalLink :size="13" />
-            </a>
+                <ItemPriorityHearts
+                    v-if="item.priority"
+                    :priority="item.priority"
+                    :muted="item.isSelected"
+                />
+
+                <!-- Стоимость 0 ₽ тоже выводится: null — не указана -->
+                <span v-if="item.price != null" class="item-price">
+                    {{ formatPrice(item.price) }}
+                </span>
+
+                <a
+                    v-if="item.url"
+                    :href="item.url"
+                    target="_blank"
+                    rel="noopener noreferrer nofollow"
+                    class="item-link"
+                    :title="getItemUrlHost(item.url)"
+                    :aria-label="`Ссылка на товар: ${getItemUrlHost(item.url)}`"
+                >
+                    <ExternalLink :size="13" />
+                </a>
+            </div>
         </div>
 
         <!-- Прижат к низу карточки, даже если в ней мало позиций -->
@@ -363,6 +376,8 @@ const createdAtLabel = computed(() => {
     color: var(--ink);
 }
 
+// Значок слева и название по центру позиции по вертикали: колонка справа
+// (до трёх строк) бывает выше названия
 .item {
     display: flex;
     align-items: center;
@@ -381,6 +396,31 @@ const createdAtLabel = computed(() => {
     padding-top: 0;
 }
 
+// Приоритет, цена и ссылка справа от названия, каждое на своей строке,
+// прижаты к правому краю. Строки высотой со значок слева (19px):
+// первая строка колонки на одном уровне с первой строкой названия
+.item-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+
+    > * {
+        min-height: 19px;
+        align-items: center;
+    }
+
+    .item-price {
+        line-height: 19px;
+    }
+
+    // Значок ссылки — вровень с правым краем сердец и цены, а не с краем своей кнопки
+    .item-link {
+        height: 19px;
+        margin-right: -4px;
+    }
+}
+
 .item-label {
     flex: 1;
     min-width: 0;
@@ -389,6 +429,14 @@ const createdAtLabel = computed(() => {
     transition: color 0.15s;
     line-height: 1.35;
     overflow-wrap: anywhere;
+}
+
+.item-price {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b5b7b;
+    white-space: nowrap;
 }
 
 /* Забронированная позиция: строка с лёгким розовым фоном.
@@ -400,8 +448,9 @@ const createdAtLabel = computed(() => {
     border-radius: 10px;
     background: rgba(236, 72, 153, 0.06);
 
-    // Серые текст и ссылка в тон значку подарка и сердечкам, как на общей странице
-    .item-label {
+    // Серые текст, цена и ссылка в тон значку подарка и сердечкам, как на общей странице
+    .item-label,
+    .item-price {
         color: #94a3b8;
     }
 

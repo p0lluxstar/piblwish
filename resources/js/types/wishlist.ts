@@ -7,6 +7,8 @@ export interface WishlistItem {
     url?: string | null;
     // Приоритет позиции; null, если не указан
     priority?: WishlistItemPriority | null;
+    // Стоимость в целых рублях (0–10 000 000); null, если не указана
+    price?: number | null;
 }
 
 // Приоритет позиции, совпадает с App\Enums\WishlistItemPriority на бэкенде:

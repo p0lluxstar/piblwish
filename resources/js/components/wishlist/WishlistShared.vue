@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useGuestReservations } from '@/composables/useGuestReservations';
 import { api } from '@/lib/api';
 import { copyToClipboard } from '@/lib/clipboard';
+import { formatPrice } from '@/lib/itemPrice';
 import { getItemUrlHost } from '@/lib/itemUrl';
 import type { Wishlist, WishlistItem } from '@/types/wishlist';
 
@@ -205,29 +206,66 @@ const allSelected = computed(() => {
     return items.length > 0 && items.every((item) => item.isSelected);
 });
 
-// Порядок позиций: заданный владельцем или по приоритету (сначала «очень хочу»)
-type ItemOrder = 'owner' | 'priority';
-
-const ITEM_ORDER_OPTIONS: { value: ItemOrder; label: string }[] = [
-    { value: 'owner', label: 'По порядку' },
-    { value: 'priority', label: 'По приоритету' },
-];
+// Порядок позиций: заданный владельцем, по приоритету (сначала «очень хочу»)
+// или по стоимости
+type ItemOrder = 'owner' | 'priority' | 'price-asc' | 'price-desc';
 
 const itemOrder = ref<ItemOrder>('owner');
 
-// Переключатель нужен, только если владелец указал приоритет хотя бы у одной позиции
 const hasPriorities = computed(() =>
     (wishlist.value?.items ?? []).some((item) => item.priority),
 );
 
-// Сортировка устойчива: позиции с одинаковым приоритетом остаются в порядке владельца,
-// позиции без приоритета выводятся последними
+// Стоимость 0 ₽ тоже считается указанной
+const hasPrices = computed(() =>
+    (wishlist.value?.items ?? []).some((item) => item.price != null),
+);
+
+// Варианты показываются, только если владелец указал приоритет или стоимость
+// хотя бы у одной позиции; без них переключатель не выводится вовсе
+const itemOrderOptions = computed(() => [
+    { value: 'owner' as const, label: 'По порядку' },
+    ...(hasPriorities.value
+        ? [{ value: 'priority' as const, label: 'По приоритету' }]
+        : []),
+    ...(hasPrices.value
+        ? [
+              { value: 'price-asc' as const, label: 'Сначала дешевле' },
+              { value: 'price-desc' as const, label: 'Сначала дороже' },
+          ]
+        : []),
+]);
+
+// Позиции без стоимости выводятся последними при любом направлении сортировки
+const comparePrice = (
+    a: WishlistItem,
+    b: WishlistItem,
+    direction: 1 | -1,
+): number => {
+    if (a.price == null || b.price == null) {
+        return Number(a.price == null) - Number(b.price == null);
+    }
+
+    return (a.price - b.price) * direction;
+};
+
+// Сортировка устойчива: позиции с одинаковым приоритетом или стоимостью остаются
+// в порядке владельца, позиции без приоритета выводятся последними
 const sortedItems = computed<WishlistItem[]>(() => {
     const items = wishlist.value?.items ?? [];
 
-    if (itemOrder.value === 'owner') return items;
-
-    return [...items].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+    switch (itemOrder.value) {
+        case 'priority':
+            return [...items].sort(
+                (a, b) => (b.priority ?? 0) - (a.priority ?? 0),
+            );
+        case 'price-asc':
+            return [...items].sort((a, b) => comparePrice(a, b, 1));
+        case 'price-desc':
+            return [...items].sort((a, b) => comparePrice(a, b, -1));
+        default:
+            return items;
+    }
 });
 
 const toggleItem = (item: WishlistItem): void => {
@@ -352,13 +390,13 @@ onMounted(getWishlist);
                 </div>
 
                 <div
-                    v-if="hasPriorities"
+                    v-if="itemOrderOptions.length > 1"
                     class="item-order"
                     role="group"
                     aria-label="Порядок подарков"
                 >
                     <button
-                        v-for="option in ITEM_ORDER_OPTIONS"
+                        v-for="option in itemOrderOptions"
                         :key="option.value"
                         type="button"
                         :class="[
@@ -436,28 +474,46 @@ onMounted(getWishlist);
                         {{ item.label }}
                     </span>
 
-                    <ItemPriorityHearts
-                        v-if="item.priority"
-                        :priority="item.priority"
-                        :muted="item.isSelected"
-                    />
-
-                    <a
-                        v-if="item.url"
-                        :href="item.url"
-                        target="_blank"
-                        rel="noopener noreferrer nofollow"
-                        :class="[
-                            'item-link',
-                            { 'item-link--muted': item.isSelected },
-                        ]"
-                        :title="item.url"
+                    <!-- Приоритет, цена и ссылка — узкой колонкой справа от названия,
+                         каждое на своей строке: в одну строку они сильно сужали название -->
+                    <div
+                        v-if="item.priority || item.price != null || item.url"
+                        class="item-meta"
                     >
-                        <ExternalLink :size="12" />
-                        <span class="item-link-host">
-                            {{ getItemUrlHost(item.url) }}
+                        <ItemPriorityHearts
+                            v-if="item.priority"
+                            :priority="item.priority"
+                            :muted="item.isSelected"
+                        />
+
+                        <!-- Стоимость 0 ₽ тоже выводится: null — не указана -->
+                        <span
+                            v-if="item.price != null"
+                            :class="[
+                                'item-price',
+                                { 'reserved-text': item.isSelected },
+                            ]"
+                        >
+                            {{ formatPrice(item.price) }}
                         </span>
-                    </a>
+
+                        <a
+                            v-if="item.url"
+                            :href="item.url"
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                            :class="[
+                                'item-link',
+                                { 'item-link--muted': item.isSelected },
+                            ]"
+                            :title="item.url"
+                        >
+                            <ExternalLink :size="12" />
+                            <span class="item-link-host">
+                                {{ getItemUrlHost(item.url) }}
+                            </span>
+                        </a>
+                    </div>
 
                     <button
                         v-if="item.isSelected && tokenForItem(item.id)"
@@ -623,9 +679,12 @@ onMounted(getWishlist);
     color: #3b2146;
 }
 
-// Переключатель порядка позиций: по порядку владельца или по приоритету
+// Переключатель порядка позиций: по порядку владельца, по приоритету или по стоимости.
+// На узком экране четыре варианта переносятся на вторую строку
 .item-order {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     align-self: center;
     gap: 2px;
     margin-bottom: 12px;
@@ -691,12 +750,35 @@ onMounted(getWishlist);
     overflow-wrap: anywhere;
 }
 
+// Приоритет, цена и ссылка справа от названия, каждое на своей строке,
+// прижаты к правому краю. Колонка не шире 40% строки: длинный домен
+// в ссылке обрезается многоточием, а не сужает название
+.item-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    flex-shrink: 0;
+    max-width: 40%;
+
+    > * {
+        max-width: 100%;
+    }
+}
+
+.item-price {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft, #6b5878);
+    white-space: nowrap;
+}
+
 .item-link {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     flex-shrink: 0;
-    max-width: 40%;
     padding: 3px 8px;
     border-radius: 8px;
     background: rgba(139, 92, 246, 0.08);

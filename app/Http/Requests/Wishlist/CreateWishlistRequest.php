@@ -47,6 +47,15 @@ class CreateWishlistRequest extends FormRequest
                 'nullable',
                 Rule::enum(WishlistItemPriority::class),
             ],
+
+            // Стоимость в целых рублях необязательна; верхняя граница отсекает
+            // случайно введённые лишние цифры
+            'items.*.price' => [
+                'nullable',
+                'integer',
+                'min:0',
+                'max:10000000',
+            ],
         ];
     }
 
@@ -65,6 +74,10 @@ class CreateWishlistRequest extends FormRequest
             'items.*.url.max' => 'Ссылка на товар слишком длинная',
 
             'items.*.priority.enum' => 'Недопустимый приоритет позиции',
+
+            'items.*.price.integer' => 'Стоимость должна быть целым числом рублей',
+            'items.*.price.min' => 'Стоимость не может быть отрицательной',
+            'items.*.price.max' => 'Стоимость не может превышать 10 000 000 ₽',
         ];
     }
 }

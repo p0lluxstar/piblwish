@@ -99,6 +99,16 @@ use OpenApi\Attributes as OA;
                                             ),
 
                                             new OA\Property(
+                                                property: 'price',
+                                                description: 'Стоимость в целых рублях (0–10 000 000); null — не указана',
+                                                type: 'integer',
+                                                maximum: 10000000,
+                                                minimum: 0,
+                                                nullable: true,
+                                                example: 1500
+                                            ),
+
+                                            new OA\Property(
                                                 property: 'isSelected',
                                             description: 'Отсутствует, если включён режим сюрприза (hideSelections)',
                                                 type: 'boolean',
@@ -184,6 +194,16 @@ use OpenApi\Attributes as OA;
                                 enum: [1, 2, 3],
                                 nullable: true,
                                 example: 3
+                            ),
+
+                            new OA\Property(
+                                property: 'price',
+                                description: 'Стоимость в целых рублях (0–10 000 000), необязательна; null — не указана',
+                                type: 'integer',
+                                maximum: 10000000,
+                                minimum: 0,
+                                nullable: true,
+                                example: 1500
                             ),
                         ],
                         type: 'object'
@@ -272,6 +292,16 @@ use OpenApi\Attributes as OA;
                                             enum: [1, 2, 3],
                                             nullable: true,
                                             example: 3
+                                        ),
+
+                                        new OA\Property(
+                                            property: 'price',
+                                            description: 'Стоимость в целых рублях (0–10 000 000); null — не указана',
+                                            type: 'integer',
+                                            maximum: 10000000,
+                                            minimum: 0,
+                                            nullable: true,
+                                            example: 1500
                                         ),
 
                                         new OA\Property(

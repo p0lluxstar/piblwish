@@ -117,7 +117,7 @@ function resetImage(): void {
     height: 58px;
     display: grid;
     place-items: center;
-    border-radius: 22px;
+    border-radius: 15px;
     background: var(--logo-gradient);
     color: #ffffff;
     font-weight: 900;

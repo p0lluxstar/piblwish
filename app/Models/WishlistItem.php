@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'description',
     'url',
     'priority',
+    'price',
     'is_selected',
     'reservation_id',
     'position',
@@ -27,6 +28,7 @@ class WishlistItem extends Model
             'is_selected' => 'boolean',
             'position' => 'integer',
             'priority' => WishlistItemPriority::class,
+            'price' => 'integer',
         ];
     }
 

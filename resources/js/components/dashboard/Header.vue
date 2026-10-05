@@ -66,12 +66,16 @@ const handleDeleteAccount = (): void => {
         <div class="container">
             <!-- Авторизованный пользователь попадает на свои списки, гость — на главную -->
             <div class="header-left">
-                <router-link :to="logoLink" class="logo">
+                <router-link :to="logoLink" class="logo" aria-label="PiblWish">
                     <div class="logo-icon">
                         <Gift :size="18" color="#fff" />
                         <span class="logo-spark">✦</span>
                     </div>
-                    <span class="logo-title">PiblWish</span>
+                    <!-- На узком экране вместо полного названия — сокращение -->
+                    <span class="logo-title" aria-hidden="true">
+                        <span class="logo-title-full">PiblWish</span>
+                        <span class="logo-title-short">PW</span>
+                    </span>
                 </router-link>
                 <nav class="header-nav">
                     <!-- Свои списки есть только у авторизованного пользователя -->
@@ -196,7 +200,7 @@ const handleDeleteAccount = (): void => {
 .logo-icon {
     width: 38px;
     height: 38px;
-    border-radius: 14px;
+    border-radius: 10px;
     background: var(--logo-gradient);
     display: grid;
     place-items: center;
@@ -235,6 +239,9 @@ const handleDeleteAccount = (): void => {
     background-clip: text;
     color: transparent;
     letter-spacing: -0.04em;
+}
+.logo-title-short {
+    display: none;
 }
 .header-left {
     display: flex;
@@ -444,9 +451,15 @@ const handleDeleteAccount = (): void => {
     .header-left {
         gap: 8px;
     }
-    /* На узком экране остаётся только значок логотипа */
-    .logo-title {
+    /* На узком экране вместо полного названия — сокращение PW */
+    .logo {
+        gap: 8px;
+    }
+    .logo-title-full {
         display: none;
+    }
+    .logo-title-short {
+        display: inline;
     }
 
     .guest-actions {

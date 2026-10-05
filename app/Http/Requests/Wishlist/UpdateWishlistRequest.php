@@ -28,6 +28,8 @@ class UpdateWishlistRequest extends FormRequest
             // Только http(s): см. CreateWishlistRequest
             'items.*.url' => ['nullable', 'string', 'max:2048', 'url:http,https'],
             'items.*.priority' => ['nullable', Rule::enum(WishlistItemPriority::class)],
+            // Стоимость в целых рублях: см. CreateWishlistRequest
+            'items.*.price' => ['nullable', 'integer', 'min:0', 'max:10000000'],
         ];
     }
 
@@ -40,6 +42,9 @@ class UpdateWishlistRequest extends FormRequest
             'items.*.url.url' => 'Некорректная ссылка на товар',
             'items.*.url.max' => 'Ссылка на товар слишком длинная',
             'items.*.priority.enum' => 'Недопустимый приоритет позиции',
+            'items.*.price.integer' => 'Стоимость должна быть целым числом рублей',
+            'items.*.price.min' => 'Стоимость не может быть отрицательной',
+            'items.*.price.max' => 'Стоимость не может превышать 10 000 000 ₽',
         ];
     }
 }

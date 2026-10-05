@@ -27,6 +27,8 @@ class WishlistItemResource extends JsonResource
             'url' => $this->url,
             // Приоритет 1–3 или null; в отличие от isSelected, виден и в режиме сюрприза
             'priority' => $this->priority?->value,
+            // Стоимость в целых рублях или null; как и приоритет, видна в режиме сюрприза
+            'price' => $this->price,
         ];
     }
 }

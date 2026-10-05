@@ -39,6 +39,7 @@ class WishlistService
                         'description' => $item['label'],
                         'url' => $item['url'] ?? null,
                         'priority' => $item['priority'] ?? null,
+                        'price' => $item['price'] ?? null,
                         'is_selected' => false,
                         'position' => $index,
                     ])
@@ -99,6 +100,7 @@ class WishlistService
                 'description' => $item['label'],
                 'url' => $item['url'] ?? null,
                 'priority' => $item['priority'] ?? null,
+                'price' => $item['price'] ?? null,
                 'position' => $index,
             ];
 

@@ -10,6 +10,7 @@ import type {
     WishlistItem,
 } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
+import ItemPriceInput from './ItemPriceInput.vue';
 import ItemPriorityPicker from './ItemPriorityPicker.vue';
 import WishlistColorPicker from './WishlistColorPicker.vue';
 import WishlistSurpriseToggle from './WishlistSurpriseToggle.vue';
@@ -59,6 +60,7 @@ watch(
                 label: item.label,
                 url: item.url ?? '',
                 priority: item.priority ?? null,
+                price: item.price ?? null,
                 isSelected: item.isSelected ?? false,
             })),
         };
@@ -82,6 +84,7 @@ const addItem = (): void => {
         label: '',
         url: '',
         priority: null,
+        price: null,
     });
 };
 
@@ -209,11 +212,18 @@ const closeModal = (): void => {
                         </label>
 
                         <div class="wishlist-item-fields">
-                            <!-- Приоритет над полем описания, у левого края -->
-                            <ItemPriorityPicker
-                                v-model="item.priority"
-                                :muted="showSelection && item.isSelected"
-                            />
+                            <!-- Приоритет над полем описания у левого края, цена — у правого -->
+                            <div class="item-meta-row">
+                                <ItemPriorityPicker
+                                    v-model="item.priority"
+                                    :muted="showSelection && item.isSelected"
+                                />
+
+                                <ItemPriceInput
+                                    v-model="item.price"
+                                    :muted="showSelection && item.isSelected"
+                                />
+                            </div>
 
                             <input
                                 v-model="item.label"
