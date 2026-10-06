@@ -369,7 +369,7 @@ const createdAtLabel = computed(
                 class="item-bullet"
                 aria-hidden="true"
             >
-                <Sparkles :size="13" />
+                <Sparkles :size="11" />
             </span>
 
             <label v-else class="checkbox-wrapper-disabled">
@@ -699,13 +699,16 @@ const createdAtLabel = computed(
     }
 }
 
+// Та же форма, что у значка выбранного подарка, но в фиолетовых тонах режима сюрприза
 .item-bullet {
     display: grid;
     place-items: center;
     flex-shrink: 0;
     width: 19px;
     height: 19px;
-    color: rgba(139, 92, 246, 0.55);
+    border-radius: 7px;
+    background: linear-gradient(135deg, #ddd6fe, #8b5cf6);
+    color: #fff;
 }
 
 .card-badges {

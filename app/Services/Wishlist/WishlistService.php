@@ -2,6 +2,7 @@
 
 namespace App\Services\Wishlist;
 
+use App\Enums\WishlistType;
 use App\Models\User;
 use App\Models\Wishlist;
 use Illuminate\Database\Eloquent\Collection;
@@ -27,10 +28,19 @@ class WishlistService
             $user,
             $data
         ) {
-            // Если тип, цвет и режим сюрприза не переданы, их задают значения по умолчанию в модели
-            $wishlist = $user->wishlists()->create(
-                Arr::only($data, ['type', 'content']) + $this->wishlistAttributes($data)
-            );
+            // Если тип и цвет не переданы, их задают значения по умолчанию в модели
+            $attributes = Arr::only($data, ['type', 'content']) + $this->wishlistAttributes($data);
+
+            // Список желаний по умолчанию создаётся в режиме сюрприза: выбор гостей,
+            // однажды увиденный владельцем, уже не скрыть. У списка дел и заметки
+            // гостей нет, для них остаётся значение из модели
+            $type = WishlistType::tryFrom($data['type'] ?? '') ?? WishlistType::Gift;
+
+            if ($type === WishlistType::Gift && ! array_key_exists('hide_selections', $attributes)) {
+                $attributes['hide_selections'] = true;
+            }
+
+            $wishlist = $user->wishlists()->create($attributes);
 
             // У заметки нет позиций: её текст уже сохранён в content
             if ($wishlist->isNote()) {

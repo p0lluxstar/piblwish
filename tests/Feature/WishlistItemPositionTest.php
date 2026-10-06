@@ -19,6 +19,8 @@ class WishlistItemPositionTest extends TestCase
         return $this->actingAs($user)
             ->postJson('/v1/wishlists', [
                 'title' => 'День рождения',
+                // Без режима сюрприза владелец может отмечать позиции при редактировании
+                'hideSelections' => false,
                 'items' => array_map(fn($label) => ['label' => $label], $labels),
             ])
             ->assertOk()

@@ -33,13 +33,6 @@ const select = (value: WishlistItemPriority): void => {
         :class="['priority-picker', { 'priority-picker--muted': muted }]"
         @mouseleave="hovered = null"
     >
-        <!-- Подпись над сердцами -->
-        <span
-            :class="['priority-caption', { 'priority-caption--empty': !shown }]"
-        >
-            {{ caption }}
-        </span>
-
         <div class="priority-hearts" role="group" aria-label="Приоритет">
             <button
                 v-for="value in ITEM_PRIORITIES"
@@ -62,15 +55,21 @@ const select = (value: WishlistItemPriority): void => {
                 <Heart :size="12" />
             </button>
         </div>
+
+        <!-- Подпись справа от сердец -->
+        <span
+            :class="['priority-caption', { 'priority-caption--empty': !shown }]"
+        >
+            {{ caption }}
+        </span>
     </div>
 </template>
 
 <style scoped lang="scss">
 .priority-picker {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1px;
+    align-items: center;
+    gap: 4px;
 }
 
 .priority-hearts {
@@ -110,8 +109,6 @@ const select = (value: WishlistItemPriority): void => {
 }
 
 .priority-caption {
-    // Отступ выравнивает подпись по левому краю первого сердца
-    padding-left: 2px;
     font-size: 9px;
     line-height: 1.2;
     color: #ec4899;

@@ -34,7 +34,7 @@ class WishlistHideSelectionsTest extends TestCase
         return $wishlist;
     }
 
-    public function test_wishlist_is_created_without_hidden_selections_by_default(): void
+    public function test_gift_wishlist_is_created_with_hidden_selections_by_default(): void
     {
         $user = User::factory()->create();
 
@@ -44,13 +44,42 @@ class WishlistHideSelectionsTest extends TestCase
                 'items' => [['label' => 'Книга']],
             ])
             ->assertOk()
-            ->assertJsonPath('data.hideSelections', false)
-            ->assertJsonPath('data.items.0.isSelected', false);
+            ->assertJsonPath('data.hideSelections', true)
+            ->assertJsonMissingPath('data.items.0.isSelected');
 
         $this->assertDatabaseHas('wishlists', [
             'id' => $response->json('data.id'),
-            'hide_selections' => false,
+            'hide_selections' => true,
         ]);
+    }
+
+    public function test_wishlist_is_created_without_hidden_selections_when_disabled(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->postJson('/v1/wishlists', [
+                'title' => 'День рождения',
+                'hideSelections' => false,
+                'items' => [['label' => 'Книга']],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.hideSelections', false)
+            ->assertJsonPath('data.items.0.isSelected', false);
+    }
+
+    public function test_todo_list_is_created_without_hidden_selections_by_default(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->postJson('/v1/wishlists', [
+                'type' => 'todo',
+                'title' => 'Дела',
+                'items' => [['label' => 'Купить продукты']],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.hideSelections', false);
     }
 
     public function test_wishlist_is_created_with_hidden_selections(): void

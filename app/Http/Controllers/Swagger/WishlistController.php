@@ -197,7 +197,7 @@ use OpenApi\Attributes as OA;
 
                 new OA\Property(
                     property: 'hideSelections',
-                    description: 'Режим сюрприза: скрывать от владельца, какие позиции выбрали гости. Необязателен, по умолчанию false',
+                    description: 'Режим сюрприза: скрывать от владельца, какие позиции выбрали гости. Необязателен, по умолчанию true для списка желаний и false для списка дел и заметки',
                     type: 'boolean',
                     example: false
                 ),

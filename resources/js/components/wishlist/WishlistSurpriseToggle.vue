@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { EyeOff } from '@lucide/vue';
+import { Eye } from '@lucide/vue';
+import { computed } from 'vue';
 
-// Режим сюрприза: владелец не видит, какие позиции выбрали гости
+// Модель — флаг режима сюрприза (hideSelections), а переключатель показывает
+// обратное значение «Показывать выбранные подарки»: выключенное состояние
+// соответствует сюрпризу, раскрыть выбор гостей владелец решает сам
 const model = defineModel<boolean>({ required: true });
+
+const showSelections = computed(() => !model.value);
 </script>
 
 <template>
@@ -10,20 +15,22 @@ const model = defineModel<boolean>({ required: true });
     <button
         type="button"
         role="switch"
-        :aria-checked="model"
-        :class="['surprise-toggle', { 'is-active': model }]"
+        :aria-checked="showSelections"
+        :class="['surprise-toggle', { 'is-active': showSelections }]"
         @click="model = !model"
     >
         <span class="surprise-toggle-text">
-            <span class="surprise-toggle-title">Режим сюрприза</span>
-            <!-- Значок глаза стоит в одной строке с описанием -->
+            <span class="surprise-toggle-title">
+                Показывать выбранные подарки
+            </span>
+            <!-- Значок глаза стоит в одной строке с подсказкой, перед текстом -->
             <span class="surprise-toggle-hint">
-                <EyeOff
+                <Eye
                     :size="12"
                     class="surprise-toggle-icon"
                     aria-hidden="true"
                 />
-                Не показывать мне, какие подарки уже выбрали гости
+                Вы увидите, какие подарки выбрали гости
             </span>
         </span>
 

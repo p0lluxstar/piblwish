@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Tag } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 import { formatPriceDigits, parsePriceInput } from '../../lib/itemPrice';
@@ -39,6 +40,9 @@ const handleInput = (event: { target: unknown }): void => {
 
 <template>
     <div :class="['price-input', { 'price-input--muted': muted }]">
+        <!-- Значок перед полем, как у поля ссылки -->
+        <Tag :size="13" class="price-input-icon" aria-hidden="true" />
+
         <input
             :value="text"
             type="text"
@@ -60,13 +64,23 @@ const handleInput = (event: { target: unknown }): void => {
 .price-input {
     position: relative;
     flex-shrink: 0;
-    width: 104px;
+    width: 116px;
+}
+
+// Как значок поля ссылки (.item-url-icon в wishlistModal.scss)
+.price-input-icon {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(139, 92, 246, 0.55);
+    pointer-events: none;
 }
 
 .price-input-field {
     width: 100%;
     height: 26px;
-    padding: 0 22px 0 10px;
+    padding: 0 22px 0 30px;
     border: 1.5px solid rgba(139, 92, 246, 0.15);
     border-radius: 9px;
     background: #faf8ff;
@@ -100,7 +114,10 @@ const handleInput = (event: { target: unknown }): void => {
     pointer-events: none;
 }
 
-.price-input--muted .price-input-field {
-    color: #94a3b8;
+.price-input--muted {
+    .price-input-field,
+    .price-input-icon {
+        color: #94a3b8;
+    }
 }
 </style>

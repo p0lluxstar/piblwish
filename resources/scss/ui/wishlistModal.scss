@@ -1,3 +1,8 @@
+// Линия-ветвь от поля описания позиции к полям ссылки и цены
+$item-branch-line: 1.5px solid rgba(139, 92, 246, 0.3);
+// Высота поля цены (.price-input-field в ItemPriceInput.vue)
+$item-price-height: 26px;
+
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -298,16 +303,58 @@
     }
 }
 
-// Строка над полем описания: приоритет слева, цена справа
+// Строка над полем описания: приоритет
 .item-meta-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
 }
 
-// Поле ссылки сдвинуто вправо и соединено с полем описания линией-уголком (└)
+// Ссылка и цена сдвинуты вправо и соединены с полем описания линией-ветвью:
+// общая вертикаль идёт от поля описания, к ссылке отходит отвод (├), к цене — уголок (└)
+.item-branches {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    // Вертикаль от нижнего края поля описания (промежуток .wishlist-item-fields — 6px)
+    // до верхнего края строки цены: дальше линию продолжает уголок строки цены
+    &::before {
+        content: '';
+        position: absolute;
+        left: 8px;
+        top: -6px;
+        bottom: calc(#{$item-price-height} + 6px);
+        border-left: $item-branch-line;
+        pointer-events: none;
+    }
+}
+
 .item-url-row {
+    position: relative;
+    display: flex;
+    padding-left: 20px;
+
+    // Отвод от вертикали к полю ссылки; вертикаль рисует .item-branches
+    &::before {
+        content: '';
+        position: absolute;
+        left: 9.5px;
+        top: 50%;
+        width: 10.5px;
+        border-bottom: $item-branch-line;
+        pointer-events: none;
+    }
+
+    input {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+// Уголок (└) от вертикали к полю цены, им линия-ветвь заканчивается
+.item-price-row {
     position: relative;
     display: flex;
     padding-left: 20px;
@@ -316,19 +363,13 @@
         content: '';
         position: absolute;
         left: 8px;
-        // Линия начинается от нижнего края поля описания (промежуток .wishlist-item-fields — 6px)
         top: -6px;
         width: 12px;
         height: calc(50% + 6px);
-        border-left: 1.5px solid rgba(139, 92, 246, 0.3);
-        border-bottom: 1.5px solid rgba(139, 92, 246, 0.3);
+        border-left: $item-branch-line;
+        border-bottom: $item-branch-line;
         border-bottom-left-radius: 8px;
         pointer-events: none;
-    }
-
-    input {
-        flex: 1;
-        min-width: 0;
     }
 }
 

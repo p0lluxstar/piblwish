@@ -295,15 +295,10 @@ const closeModal = (): void => {
                         </label>
 
                         <div class="wishlist-item-fields">
-                            <!-- Приоритет над полем описания у левого края, цена — у правого -->
+                            <!-- Приоритет над полем описания у левого края -->
                             <div v-if="!isTodo" class="item-meta-row">
                                 <ItemPriorityPicker
                                     v-model="item.priority"
-                                    :muted="showSelection && item.isSelected"
-                                />
-
-                                <ItemPriceInput
-                                    v-model="item.price"
                                     :muted="showSelection && item.isSelected"
                                 />
                             </div>
@@ -318,41 +313,53 @@ const closeModal = (): void => {
                                 "
                             />
 
-                            <!-- Линия-уголок от поля описания: ссылка относится к этой позиции -->
-                            <div v-if="!isTodo" class="item-url-row">
-                                <Link
-                                    :size="13"
-                                    class="item-url-icon"
-                                    aria-hidden="true"
-                                />
+                            <!-- Ссылка и цена соединены с полем описания линиями-ветвями:
+                                 они относятся к этой позиции -->
+                            <div v-if="!isTodo" class="item-branches">
+                                <div class="item-url-row">
+                                    <Link
+                                        :size="13"
+                                        class="item-url-icon"
+                                        aria-hidden="true"
+                                    />
 
-                                <!-- type="text", а не "url": иначе браузер не пропустит адрес без https:// -->
-                                <input
-                                    v-model="item.url"
-                                    type="text"
-                                    inputmode="url"
-                                    autocomplete="off"
-                                    :class="[
-                                        'item-url-input',
-                                        {
-                                            'item-url-input--error':
-                                                urlErrors[index],
-                                        },
-                                    ]"
-                                    placeholder="Ссылка на товар (необязательно)"
-                                    :aria-invalid="
-                                        urlErrors[index] || undefined
-                                    "
-                                    @input="clearUrlError(index)"
-                                />
+                                    <!-- type="text", а не "url": иначе браузер не пропустит адрес без https:// -->
+                                    <input
+                                        v-model="item.url"
+                                        type="text"
+                                        inputmode="url"
+                                        autocomplete="off"
+                                        :class="[
+                                            'item-url-input',
+                                            {
+                                                'item-url-input--error':
+                                                    urlErrors[index],
+                                            },
+                                        ]"
+                                        placeholder="Ссылка на товар (необязательно)"
+                                        :aria-invalid="
+                                            urlErrors[index] || undefined
+                                        "
+                                        @input="clearUrlError(index)"
+                                    />
+                                </div>
+
+                                <span
+                                    v-if="urlErrors[index]"
+                                    class="item-url-error"
+                                >
+                                    Некорректная ссылка
+                                </span>
+
+                                <div class="item-price-row">
+                                    <ItemPriceInput
+                                        v-model="item.price"
+                                        :muted="
+                                            showSelection && item.isSelected
+                                        "
+                                    />
+                                </div>
                             </div>
-
-                            <span
-                                v-if="urlErrors[index]"
-                                class="item-url-error"
-                            >
-                                Некорректная ссылка
-                            </span>
                         </div>
 
                         <!-- Перестановка позиций: порядок сохраняется на сервере -->
