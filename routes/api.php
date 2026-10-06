@@ -52,6 +52,12 @@ Route::prefix('v1')->group(function () {
         '/shared-wishlists/{wishlist}/reservations/cancel',
         [SharedWishlistController::class, 'cancelReservation']
     )->middleware('throttle:shared-write');
+
+    // Совместный подарок на позицию своей брони; токен передаётся в теле запроса
+    Route::put(
+        '/shared-wishlists/{wishlist}/items/{item}/joint-gift',
+        [SharedWishlistController::class, 'updateJointGift']
+    )->middleware('throttle:shared-write');
 });
 
 // Только для авторизованных пользователей (через Sanctum)

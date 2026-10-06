@@ -9,6 +9,24 @@ export interface WishlistItem {
     priority?: WishlistItemPriority | null;
     // Стоимость в целых рублях (0–10 000 000); null, если не указана
     price?: number | null;
+    // Совместный подарок; приходит только на общей странице, владельцу не отдаётся
+    jointGift?: WishlistJointGift | null;
+}
+
+// Совместный подарок: гость-организатор предлагает остальным гостям подарить позицию
+// вместе. Деньги сервис не хранит, участники связываются с организатором сами
+export interface WishlistJointGift {
+    name: string;
+    // Контакт выводится обычным текстом, без ссылки
+    contact: string | null;
+    comment: string | null;
+}
+
+// Данные формы совместного подарка: пустая строка в contact и comment означает «не указано»
+export interface JointGiftDraft {
+    name: string;
+    contact: string;
+    comment: string;
 }
 
 // Приоритет позиции, совпадает с App\Enums\WishlistItemPriority на бэкенде:

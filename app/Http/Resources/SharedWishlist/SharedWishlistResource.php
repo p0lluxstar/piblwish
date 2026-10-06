@@ -24,7 +24,9 @@ class SharedWishlistResource extends ApiResource
             'id' => $this->id,
             'title' => $this->title,
             'username' => $this->whenLoaded('user') ? $this->user->username : null,
-            'items' => WishlistItemResource::collection($this->whenLoaded('items')),
+            'items' => $this->whenLoaded('items', fn () => $this->items->map(
+                fn ($item) => (new WishlistItemResource($item))->withJointGift()
+            )),
         ];
 
         // ApiResource::toResponse не отфильтровывает $this->when(), поэтому поле добавляется явно

@@ -246,6 +246,101 @@
                 ]
             }
         },
+        "/api/v1/shared-wishlists/{id}": {
+            "get": {
+                "tags": [
+                    "Shared wishlists"
+                ],
+                "summary": "Список желаний для гостя",
+                "description": "У каждой позиции есть поле jointGift: данные совместного подарка или null",
+                "operationId": "25a622f31374dd4c709bcc09f807f597",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "ulid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список желаний",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "ulid"
+                                                },
+                                                "title": {
+                                                    "type": "string"
+                                                },
+                                                "username": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "format": "ulid"
+                                                            },
+                                                            "isSelected": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "url": {
+                                                                "type": "string",
+                                                                "nullable": true
+                                                            },
+                                                            "priority": {
+                                                                "type": "integer",
+                                                                "nullable": true
+                                                            },
+                                                            "price": {
+                                                                "type": "integer",
+                                                                "nullable": true
+                                                            },
+                                                            "jointGift": {
+                                                                "oneOf": [
+                                                                    {
+                                                                        "$ref": "#/components/schemas/SharedWishlistJointGift"
+                                                                    }
+                                                                ],
+                                                                "nullable": true
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Список не найден или не является списком желаний"
+                    },
+                    "429": {
+                        "description": "Слишком много запросов"
+                    }
+                }
+            }
+        },
         "/api/v1/shared-wishlists/{wishlist}/items": {
             "patch": {
                 "tags": [
@@ -279,6 +374,37 @@
                                             "type": "string",
                                             "format": "ulid"
                                         }
+                                    },
+                                    "joint_gifts": {
+                                        "description": "Совместные подарки; item_id каждого должен входить в item_ids",
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "item_id",
+                                                "name"
+                                            ],
+                                            "properties": {
+                                                "item_id": {
+                                                    "type": "string",
+                                                    "format": "ulid"
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "maxLength": 50
+                                                },
+                                                "contact": {
+                                                    "type": "string",
+                                                    "nullable": true,
+                                                    "maxLength": 100
+                                                },
+                                                "comment": {
+                                                    "type": "string",
+                                                    "nullable": true,
+                                                    "maxLength": 200
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
                                     }
                                 },
                                 "type": "object"
@@ -308,7 +434,7 @@
                         }
                     },
                     "422": {
-                        "description": "Позиция уже выбрана другим гостем"
+                        "description": "Позиция уже выбрана другим гостем или совместный подарок указан для невыбранной позиции"
                     },
                     "429": {
                         "description": "Слишком много запросов"
@@ -393,7 +519,7 @@
                     "Shared wishlists"
                 ],
                 "summary": "Отменить выбор позиций брони",
-                "description": "Остальные позиции брони остаются выбранными. Бронь без позиций удаляется",
+                "description": "Остальные позиции брони остаются выбранными. Совместные подарки отменённых позиций удаляются. Бронь без позиций удаляется",
                 "operationId": "1be6ce0e66efe8783e3b3ebac2c97d9a",
                 "parameters": [
                     {
@@ -460,6 +586,80 @@
                     },
                     "422": {
                         "description": "Позиция не входит в бронь"
+                    },
+                    "429": {
+                        "description": "Слишком много запросов"
+                    }
+                }
+            }
+        },
+        "/api/v1/shared-wishlists/{wishlist}/items/{item}/joint-gift": {
+            "put": {
+                "tags": [
+                    "Shared wishlists"
+                ],
+                "summary": "Изменить, добавить или убрать совместный подарок",
+                "description": "Доступно организатору по токену брони, в которую входит позиция. Выбор позиции не меняется",
+                "operationId": "a5c81ead93ef420037cefa4fc2864529",
+                "parameters": [
+                    {
+                        "name": "wishlist",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "ulid"
+                        }
+                    },
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "ulid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "token",
+                                    "joint_gift"
+                                ],
+                                "properties": {
+                                    "token": {
+                                        "type": "string",
+                                        "maxLength": 40,
+                                        "minLength": 40
+                                    },
+                                    "joint_gift": {
+                                        "oneOf": [
+                                            {
+                                                "$ref": "#/components/schemas/SharedWishlistJointGift"
+                                            }
+                                        ],
+                                        "nullable": true,
+                                        "description": "Новые данные; null убирает совместный подарок"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Совместный подарок изменён; в ответе — список для гостя"
+                    },
+                    "404": {
+                        "description": "Бронь не найдена"
+                    },
+                    "422": {
+                        "description": "Позиция не входит в бронь или данные не прошли проверку"
                     },
                     "429": {
                         "description": "Слишком много запросов"
@@ -1141,6 +1341,33 @@
                             "type": "string",
                             "format": "ulid"
                         }
+                    }
+                },
+                "type": "object"
+            },
+            "SharedWishlistJointGift": {
+                "description": "Совместный подарок: данные организатора для других гостей. В ответы владельцу списка не попадает",
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Иван, коллега Ани",
+                        "maxLength": 50
+                    },
+                    "contact": {
+                        "description": "Контакт организатора; выводится обычным текстом, без ссылки",
+                        "type": "string",
+                        "example": "@ivan_k",
+                        "nullable": true,
+                        "maxLength": 100
+                    },
+                    "comment": {
+                        "type": "string",
+                        "example": "Собираем до 10 октября",
+                        "nullable": true,
+                        "maxLength": 200
                     }
                 },
                 "type": "object"

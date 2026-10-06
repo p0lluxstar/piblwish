@@ -5,6 +5,7 @@ namespace App\Services\SharedWishlist;
 use App\Enums\WishlistType;
 use App\Models\Wishlist;
 use App\Models\WishlistItem;
+use App\Models\WishlistJointGift;
 use App\Models\WishlistReservation;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ class SharedWishlistService
         string $id
     ): Wishlist {
         return $this->sharedQuery()
-            ->with(['items', 'user'])
+            ->with(['items.jointGift', 'user'])
             ->findOrFail($id);
     }
 
@@ -31,17 +32,22 @@ class SharedWishlistService
      * Возвращает список и бронь: token отдаётся гостю один раз,
      * в БД хранится только его хеш.
      *
+     * $jointGifts — совместные подарки для части выбранных позиций:
+     * [{ item_id, name, contact?, comment? }]. Они привязываются к той же брони,
+     * поэтому отмена выбора позиции удаляет и совместный подарок.
+     *
      * @return array{wishlist: Wishlist, reservation: array{token: string, itemIds: list<string>}}
      */
     public function updateSharedWishlistItems(
         string $wishlistId,
-        array $itemIds
+        array $itemIds,
+        array $jointGifts = []
     ): array {
         $wishlist = $this->sharedQuery()->findOrFail($wishlistId);
         $itemIds = array_values(array_unique($itemIds));
         $token = Str::random(self::RESERVATION_TOKEN_LENGTH);
 
-        DB::transaction(function () use ($wishlist, $itemIds, $token) {
+        DB::transaction(function () use ($wishlist, $itemIds, $jointGifts, $token) {
             $reservation = $wishlist->reservations()->create([
                 'token_hash' => WishlistReservation::hashToken($token),
             ]);
@@ -62,6 +68,18 @@ class SharedWishlistService
                         'items' => 'One or more items have already been selected.',
                     ]);
                 }
+            }
+
+            // Запрос проверил, что каждая позиция совместного подарка выбирается в нём же,
+            // а позиция, выбранная выше, принадлежит этому списку
+            foreach ($jointGifts as $jointGift) {
+                WishlistJointGift::create([
+                    'item_id' => $jointGift['item_id'],
+                    'reservation_id' => $reservation->id,
+                    'organizer_name' => $jointGift['name'],
+                    'contact' => $jointGift['contact'] ?? null,
+                    'comment' => $jointGift['comment'] ?? null,
+                ]);
             }
         });
 
@@ -136,6 +154,9 @@ class SharedWishlistService
                 ]);
             }
 
+            // Гость отказался от позиции: совместный подарок на неё тоже отменяется
+            WishlistJointGift::query()->whereIn('item_id', $itemIds)->delete();
+
             WishlistItem::query()
                 ->whereIn('id', $itemIds)
                 ->update([
@@ -158,9 +179,57 @@ class SharedWishlistService
         ];
     }
 
+    /**
+     * Изменить, добавить или убрать совместный подарок на позицию своей брони.
+     * Выбор позиции при этом не меняется.
+     *
+     * $jointGift — { name, contact?, comment? } или null, чтобы убрать совместный подарок.
+     */
+    public function updateJointGift(string $wishlistId, string $itemId, string $token, ?array $jointGift): Wishlist
+    {
+        $this->sharedQuery()->findOrFail($wishlistId);
+
+        DB::transaction(function () use ($wishlistId, $itemId, $token, $jointGift) {
+            $reservation = WishlistReservation::query()
+                ->where('wishlist_id', $wishlistId)
+                ->where('token_hash', WishlistReservation::hashToken($token))
+                ->lockForUpdate()
+                ->first();
+
+            if ($reservation === null) {
+                abort(404, 'Бронь не найдена');
+            }
+
+            // Изменить можно только совместный подарок на свою позицию
+            if (! $reservation->items()->where('id', $itemId)->lockForUpdate()->exists()) {
+                throw ValidationException::withMessages([
+                    'item' => 'Подарок не входит в вашу бронь',
+                ]);
+            }
+
+            if ($jointGift === null) {
+                WishlistJointGift::query()->where('item_id', $itemId)->delete();
+
+                return;
+            }
+
+            WishlistJointGift::query()->updateOrCreate(
+                ['item_id' => $itemId],
+                [
+                    'reservation_id' => $reservation->id,
+                    'organizer_name' => $jointGift['name'],
+                    'contact' => $jointGift['contact'] ?? null,
+                    'comment' => $jointGift['comment'] ?? null,
+                ]
+            );
+        });
+
+        return $this->freshWishlist($wishlistId);
+    }
+
     private function freshWishlist(string $wishlistId): Wishlist
     {
-        return $this->sharedQuery()->with(['items', 'user'])->findOrFail($wishlistId);
+        return $this->sharedQuery()->with(['items.jointGift', 'user'])->findOrFail($wishlistId);
     }
 
     // По ссылке доступны только списки желаний: список дел и заметку видит лишь владелец,

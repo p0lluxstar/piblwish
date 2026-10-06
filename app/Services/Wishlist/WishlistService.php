@@ -5,6 +5,7 @@ namespace App\Services\Wishlist;
 use App\Enums\WishlistType;
 use App\Models\User;
 use App\Models\Wishlist;
+use App\Models\WishlistJointGift;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -140,6 +141,7 @@ class WishlistService
         // Блокировка строк не даёт гостю отметить позицию, пока владелец её сохраняет
         $existing = $wishlist->items()->lockForUpdate()->get()->keyBy('id');
         $keptIds = [];
+        $unselectedIds = [];
 
         // validated() собирает items в порядке правил: позиции с id (правило items.*.id)
         // идут раньше позиций без id. Исходный порядок восстанавливается по индексам
@@ -170,11 +172,17 @@ class WishlistService
                 // Владелец снял отметку: бронь гостя на эту позицию больше не действует
                 if (! $isSelected) {
                     $attributes['reservation_id'] = null;
+                    $unselectedIds[] = $current->id;
                 }
             }
 
             $current->update($attributes);
             $keptIds[] = $current->id;
+        }
+
+        // Отметку сняли: совместный подарок на позицию больше не действует
+        if ($unselectedIds !== []) {
+            WishlistJointGift::query()->whereIn('item_id', $unselectedIds)->delete();
         }
 
         $removedIds = $existing->keys()->diff($keptIds);

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'wishlist_id',
@@ -41,5 +42,11 @@ class WishlistItem extends Model
     public function reservation(): BelongsTo
     {
         return $this->belongsTo(WishlistReservation::class, 'reservation_id');
+    }
+
+    // Совместный подарок, который предложил выбравший позицию гость; null, если его нет
+    public function jointGift(): HasOne
+    {
+        return $this->hasOne(WishlistJointGift::class, 'item_id');
     }
 }

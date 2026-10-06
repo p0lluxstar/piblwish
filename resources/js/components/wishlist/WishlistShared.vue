@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Copy, ExternalLink, Gift, Save, X } from '@lucide/vue';
+import { Check, Copy, ExternalLink, Gift, Save, Users, X } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -8,11 +8,17 @@ import { api } from '@/lib/api';
 import { copyToClipboard } from '@/lib/clipboard';
 import { formatPrice } from '@/lib/itemPrice';
 import { getItemUrlHost } from '@/lib/itemUrl';
-import type { Wishlist, WishlistItem } from '@/types/wishlist';
+import type {
+    JointGiftDraft,
+    Wishlist,
+    WishlistItem,
+    WishlistJointGift,
+} from '@/types/wishlist';
 
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import ItemPriorityHearts from './ItemPriorityHearts.vue';
+import JointGiftFields from './JointGiftFields.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -22,6 +28,109 @@ const error = ref<string | null>(null);
 const wishlistId = String(route.params.id || '');
 const selectedItems = ref<string[]>([]);
 const isSaving = ref(false);
+
+// Совместные подарки среди выбранных, но ещё не сохранённых позиций: ключ — id позиции.
+// Позиция есть в объекте, если гость включил для неё «Дарим вместе»
+const jointGiftDrafts = ref<Record<string, JointGiftDraft>>({});
+
+const toggleJointGift = (itemId: string): void => {
+    if (isBusy.value) return;
+
+    if (jointGiftDrafts.value[itemId]) {
+        delete jointGiftDrafts.value[itemId];
+    } else {
+        jointGiftDrafts.value[itemId] = { name: '', contact: '', comment: '' };
+    }
+};
+
+// Имя организатора обязательно: без него другие гости не поймут, к кому обращаться
+const hasJointGiftWithoutName = computed(() =>
+    Object.values(jointGiftDrafts.value).some(
+        (draft) => draft.name.trim() === '',
+    ),
+);
+
+// Правка совместного подарка на уже сохранённую позицию своей брони:
+// изменить данные, добавить совместный подарок или убрать его
+const editingJointGiftItemId = ref<string | null>(null);
+const jointGiftEditDraft = ref<JointGiftDraft>({
+    name: '',
+    contact: '',
+    comment: '',
+});
+// Позиция, совместный подарок которой сейчас сохраняется
+const savingJointGiftItemId = ref<string | null>(null);
+// Кнопка, на которой выводится спиннер: «Сохранить» или «Не дарим вместе»
+const jointGiftSaveAction = ref<'save' | 'remove' | null>(null);
+
+const startJointGiftEdit = (item: WishlistItem): void => {
+    if (!item.id || isBusy.value) return;
+
+    editingJointGiftItemId.value = item.id;
+    actionError.value = null;
+    jointGiftEditDraft.value = {
+        name: item.jointGift?.name ?? '',
+        contact: item.jointGift?.contact ?? '',
+        comment: item.jointGift?.comment ?? '',
+    };
+};
+
+const stopJointGiftEdit = (): void => {
+    editingJointGiftItemId.value = null;
+};
+
+// Сохранить данные из формы или, при remove, убрать совместный подарок.
+// Выбор позиции в обоих случаях остаётся за гостем
+const saveJointGift = async (
+    item: WishlistItem,
+    remove = false,
+): Promise<void> => {
+    const token = tokenForItem(item.id);
+
+    if (!token || !item.id || isBusy.value) return;
+
+    const draft = jointGiftEditDraft.value;
+
+    if (!remove && draft.name.trim() === '') {
+        actionError.value =
+            'Укажите имя организатора, чтобы другие гости знали, к кому обращаться.';
+        return;
+    }
+
+    savingJointGiftItemId.value = item.id;
+    jointGiftSaveAction.value = remove ? 'remove' : 'save';
+    actionError.value = null;
+
+    try {
+        const response = await api.put<{ data: Wishlist }>(
+            `/api/v1/shared-wishlists/${wishlistId}/items/${item.id}/joint-gift`,
+            {
+                token,
+                joint_gift: remove
+                    ? null
+                    : {
+                          name: draft.name.trim(),
+                          contact: draft.contact.trim() || null,
+                          comment: draft.comment.trim() || null,
+                      },
+            },
+        );
+
+        wishlist.value = response.data.data;
+        stopJointGiftEdit();
+    } catch (saveError) {
+        console.error('Ошибка сохранения совместного подарка:', saveError);
+        actionError.value =
+            'Не удалось сохранить изменения. Обновите страницу и попробуйте снова.';
+    } finally {
+        savingJointGiftItemId.value = null;
+        jointGiftSaveAction.value = null;
+    }
+};
+
+// Подпись под выбранной позицией: «Иван, коллега Ани · @ivan_k»
+const jointGiftOrganizer = (jointGift: WishlistJointGift): string =>
+    [jointGift.name, jointGift.contact].filter(Boolean).join(' · ');
 
 const {
     tokenForItem,
@@ -41,7 +150,10 @@ const actionError = ref<string | null>(null);
 
 // Идёт сохранение или отмена: выбор в списке временно недоступен
 const isBusy = computed(
-    () => isSaving.value || cancellingItemId.value !== null,
+    () =>
+        isSaving.value ||
+        cancellingItemId.value !== null ||
+        savingJointGiftItemId.value !== null,
 );
 
 // Токен брони из ссылки для отмены (?reservation=…)
@@ -98,6 +210,12 @@ const save = async (): Promise<void> => {
         return;
     }
 
+    if (hasJointGiftWithoutName.value) {
+        actionError.value =
+            'Укажите имя организатора, чтобы другие гости знали, к кому обращаться.';
+        return;
+    }
+
     // Список остаётся на экране: спиннер выводится только на кнопке сохранения
     isSaving.value = true;
     actionError.value = null;
@@ -107,6 +225,14 @@ const save = async (): Promise<void> => {
             `/api/v1/shared-wishlists/${wishlistId}/items`,
             {
                 item_ids: selectedItems.value,
+                joint_gifts: Object.entries(jointGiftDrafts.value).map(
+                    ([itemId, draft]) => ({
+                        item_id: itemId,
+                        name: draft.name.trim(),
+                        contact: draft.contact.trim() || null,
+                        comment: draft.comment.trim() || null,
+                    }),
+                ),
             },
         );
 
@@ -123,6 +249,7 @@ const save = async (): Promise<void> => {
 
         // Очищаем локальный список выбранных элементов
         selectedItems.value = [];
+        jointGiftDrafts.value = {};
     } catch (error) {
         console.error('Ошибка сохранения:', error);
         actionError.value =
@@ -148,6 +275,11 @@ const cancelItem = async (item: WishlistItem): Promise<void> => {
         );
 
         wishlist.value = response.data.data;
+
+        // Выбор отменён: правка совместного подарка на эту позицию больше не нужна
+        if (editingJointGiftItemId.value === item.id) {
+            stopJointGiftEdit();
+        }
 
         const { reservation } = response.data.data;
 
@@ -280,6 +412,8 @@ const toggleItem = (item: WishlistItem): void => {
         selectedItems.value.push(item.id);
     } else {
         selectedItems.value.splice(index, 1);
+        // Снятая позиция не может быть совместным подарком
+        delete jointGiftDrafts.value[item.id];
     }
 };
 
@@ -413,123 +547,294 @@ onMounted(getWishlist);
                     </button>
                 </div>
 
-                <div
+                <template
                     v-for="(item, itemIndex) in sortedItems"
                     :key="item.id ?? itemIndex"
-                    :class="[
-                        'item',
-                        {
-                            disabled: item.isSelected,
-                            'item--mine':
-                                selectedItems.includes(item.id) ||
-                                (item.isSelected && tokenForItem(item.id)),
-                        },
-                    ]"
-                    :title="
-                        item.isSelected
-                            ? tokenForItem(item.id)
-                                ? 'Ваш выбор'
-                                : 'Уже выбрано'
-                            : undefined
-                    "
                 >
-                    <!-- Позицию выбрал этот гость: серый значок подарка, выбор можно отменить кнопкой справа -->
-                    <span
-                        v-if="item.isSelected && tokenForItem(item.id)"
-                        class="reserved-icon"
-                        role="img"
-                        aria-label="Ваш выбор"
-                    >
-                        <Gift :size="11" />
-                    </span>
-
-                    <!-- Позицию уже выбрал другой гость: серый значок подарка вместо чекбокса -->
-                    <span
-                        v-else-if="item.isSelected"
-                        class="reserved-icon"
-                        role="img"
-                        aria-label="Уже выбрано"
-                    >
-                        <Gift :size="11" />
-                    </span>
-
-                    <label v-else class="checkbox-wrapper">
-                        <input
-                            type="checkbox"
-                            class="checkbox-input"
-                            :checked="selectedItems.includes(item.id)"
-                            :disabled="isBusy"
-                            @change="toggleItem(item)"
-                        />
-
-                        <span class="checkbox-custom"></span>
-                    </label>
-
-                    <span
-                        :class="[
-                            'item-label',
-                            { 'reserved-text': item.isSelected },
-                        ]"
-                    >
-                        {{ item.label }}
-                    </span>
-
-                    <!-- Приоритет, цена и ссылка — узкой колонкой справа от названия,
-                         каждое на своей строке: в одну строку они сильно сужали название -->
                     <div
-                        v-if="item.priority || item.price != null || item.url"
-                        class="item-meta"
+                        :class="[
+                            'item',
+                            {
+                                disabled: item.isSelected,
+                                'item--mine':
+                                    selectedItems.includes(item.id) ||
+                                    (item.isSelected && tokenForItem(item.id)),
+                            },
+                        ]"
+                        :title="
+                            item.isSelected
+                                ? tokenForItem(item.id)
+                                    ? 'Ваш выбор'
+                                    : 'Уже выбрано'
+                                : undefined
+                        "
                     >
-                        <ItemPriorityHearts
-                            v-if="item.priority"
-                            :priority="item.priority"
-                            :muted="item.isSelected"
-                        />
-
-                        <!-- Стоимость 0 ₽ тоже выводится: null — не указана -->
+                        <!-- Позицию выбрал этот гость: серый значок подарка, выбор можно отменить кнопкой справа -->
                         <span
-                            v-if="item.price != null"
+                            v-if="item.isSelected && tokenForItem(item.id)"
+                            class="reserved-icon"
+                            role="img"
+                            aria-label="Ваш выбор"
+                        >
+                            <Gift :size="11" />
+                        </span>
+
+                        <!-- Позицию уже выбрал другой гость: серый значок подарка вместо чекбокса -->
+                        <span
+                            v-else-if="item.isSelected"
+                            class="reserved-icon"
+                            role="img"
+                            aria-label="Уже выбрано"
+                        >
+                            <Gift :size="11" />
+                        </span>
+
+                        <label v-else class="checkbox-wrapper">
+                            <input
+                                type="checkbox"
+                                class="checkbox-input"
+                                :checked="selectedItems.includes(item.id)"
+                                :disabled="isBusy"
+                                @change="toggleItem(item)"
+                            />
+
+                            <!-- Галочка — иконка Check, как у выполненного дела на карточке -->
+                            <span class="checkbox-custom">
+                                <Check
+                                    v-if="selectedItems.includes(item.id)"
+                                    :size="12"
+                                />
+                            </span>
+                        </label>
+
+                        <span
                             :class="[
-                                'item-price',
+                                'item-label',
                                 { 'reserved-text': item.isSelected },
                             ]"
                         >
-                            {{ formatPrice(item.price) }}
+                            {{ item.label }}
                         </span>
 
-                        <a
-                            v-if="item.url"
-                            :href="item.url"
-                            target="_blank"
-                            rel="noopener noreferrer nofollow"
-                            :class="[
-                                'item-link',
-                                { 'item-link--muted': item.isSelected },
-                            ]"
-                            :title="item.url"
+                        <!-- Приоритет, цена и ссылка — узкой колонкой справа от названия,
+                         каждое на своей строке: в одну строку они сильно сужали название -->
+                        <div
+                            v-if="
+                                item.priority || item.price != null || item.url
+                            "
+                            class="item-meta"
                         >
-                            <ExternalLink :size="12" />
-                            <span class="item-link-host">
-                                {{ getItemUrlHost(item.url) }}
+                            <ItemPriorityHearts
+                                v-if="item.priority"
+                                :priority="item.priority"
+                                :muted="item.isSelected"
+                            />
+
+                            <!-- Стоимость 0 ₽ тоже выводится: null — не указана -->
+                            <span
+                                v-if="item.price != null"
+                                :class="[
+                                    'item-price',
+                                    { 'reserved-text': item.isSelected },
+                                ]"
+                            >
+                                {{ formatPrice(item.price) }}
                             </span>
-                        </a>
+
+                            <a
+                                v-if="item.url"
+                                :href="item.url"
+                                target="_blank"
+                                rel="noopener noreferrer nofollow"
+                                :class="[
+                                    'item-link',
+                                    { 'item-link--muted': item.isSelected },
+                                ]"
+                                :title="item.url"
+                            >
+                                <ExternalLink :size="12" />
+                                <span class="item-link-host">
+                                    {{ getItemUrlHost(item.url) }}
+                                </span>
+                            </a>
+                        </div>
+
+                        <button
+                            v-if="item.isSelected && tokenForItem(item.id)"
+                            class="cancel-btn"
+                            type="button"
+                            :disabled="isBusy"
+                            :aria-label="`Отменить выбор: ${item.label}`"
+                            :aria-busy="cancellingItemId === item.id"
+                            @click="cancelItem(item)"
+                        >
+                            <span
+                                :class="{
+                                    'btn-text--hidden':
+                                        cancellingItemId === item.id,
+                                }"
+                            >
+                                Отменить
+                            </span>
+                            <LoaderButtonSpinner
+                                v-if="cancellingItemId === item.id"
+                                class="btn-spinner"
+                                :size="12"
+                            />
+                        </button>
                     </div>
 
-                    <button
-                        v-if="item.isSelected && tokenForItem(item.id)"
-                        class="cancel-btn"
-                        type="button"
-                        :disabled="isBusy"
-                        :aria-label="`Отменить выбор: ${item.label}`"
-                        @click="cancelItem(item)"
+                    <!-- Правка совместного подарка на свою сохранённую позицию -->
+                    <div
+                        v-if="
+                            item.isSelected &&
+                            editingJointGiftItemId === item.id
+                        "
+                        class="joint-gift-form"
                     >
-                        {{
-                            cancellingItemId === item.id
-                                ? 'Отмена…'
-                                : 'Отменить'
-                        }}
-                    </button>
-                </div>
+                        <JointGiftFields
+                            v-model="jointGiftEditDraft"
+                            :disabled="isBusy"
+                        />
+
+                        <div class="joint-gift-actions">
+                            <button
+                                type="button"
+                                class="joint-gift-action joint-gift-action--primary"
+                                :disabled="isBusy"
+                                :aria-busy="jointGiftSaveAction === 'save'"
+                                @click="saveJointGift(item)"
+                            >
+                                <!-- Текст скрыт, а не убран: ширина кнопки не меняется -->
+                                <span
+                                    :class="{
+                                        'btn-text--hidden':
+                                            jointGiftSaveAction === 'save',
+                                    }"
+                                >
+                                    Сохранить
+                                </span>
+                                <LoaderButtonSpinner
+                                    v-if="jointGiftSaveAction === 'save'"
+                                    class="btn-spinner"
+                                    :size="12"
+                                />
+                            </button>
+                            <button
+                                v-if="item.jointGift"
+                                type="button"
+                                class="joint-gift-action"
+                                :disabled="isBusy"
+                                :aria-busy="jointGiftSaveAction === 'remove'"
+                                @click="saveJointGift(item, true)"
+                            >
+                                <span
+                                    :class="{
+                                        'btn-text--hidden':
+                                            jointGiftSaveAction === 'remove',
+                                    }"
+                                >
+                                    Не дарим вместе
+                                </span>
+                                <LoaderButtonSpinner
+                                    v-if="jointGiftSaveAction === 'remove'"
+                                    class="btn-spinner"
+                                    :size="12"
+                                />
+                            </button>
+                            <button
+                                type="button"
+                                class="joint-gift-action"
+                                :disabled="isBusy"
+                                @click="stopJointGiftEdit"
+                            >
+                                Отмена
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Совместный подарок: данные организатора выводятся обычным текстом,
+                     без ссылок, чтобы под видом чата нельзя было разместить чужой сайт -->
+                    <div
+                        v-else-if="item.isSelected && item.jointGift"
+                        class="joint-gift-info"
+                    >
+                        <div class="joint-gift-info-text">
+                            <p class="joint-gift-info-title">
+                                <Users :size="12" />
+                                <span>Дарим вместе</span>
+                            </p>
+                            <p class="joint-gift-info-organizer">
+                                {{ jointGiftOrganizer(item.jointGift) }}
+                            </p>
+                            <p
+                                v-if="item.jointGift.comment"
+                                class="joint-gift-info-comment"
+                            >
+                                {{ item.jointGift.comment }}
+                            </p>
+                        </div>
+
+                        <!-- Организатор может исправить свои данные; кнопка справа, по центру блока -->
+                        <button
+                            v-if="tokenForItem(item.id)"
+                            class="cancel-btn"
+                            type="button"
+                            :disabled="isBusy"
+                            :aria-label="`Изменить совместный подарок: ${item.label}`"
+                            @click="startJointGiftEdit(item)"
+                        >
+                            Изменить
+                        </button>
+                    </div>
+
+                    <!-- Своя сохранённая позиция без совместного подарка: его можно добавить -->
+                    <div
+                        v-else-if="item.isSelected && tokenForItem(item.id)"
+                        class="joint-gift-form"
+                    >
+                        <button
+                            type="button"
+                            class="joint-gift-toggle"
+                            :disabled="isBusy"
+                            @click="startJointGiftEdit(item)"
+                        >
+                            <Users :size="12" />
+                            Дарим вместе
+                        </button>
+                    </div>
+
+                    <!-- Позиция отмечена, но ещё не сохранена: её можно предложить подарить вместе -->
+                    <div
+                        v-else-if="
+                            !item.isSelected && selectedItems.includes(item.id)
+                        "
+                        class="joint-gift-form"
+                    >
+                        <button
+                            type="button"
+                            :class="[
+                                'joint-gift-toggle',
+                                {
+                                    'joint-gift-toggle--active':
+                                        jointGiftDrafts[item.id],
+                                },
+                            ]"
+                            :aria-pressed="Boolean(jointGiftDrafts[item.id])"
+                            :disabled="isBusy"
+                            @click="toggleJointGift(item.id)"
+                        >
+                            <Users :size="12" />
+                            Дарим вместе
+                        </button>
+
+                        <JointGiftFields
+                            v-if="jointGiftDrafts[item.id]"
+                            v-model="jointGiftDrafts[item.id]"
+                            :disabled="isBusy"
+                        />
+                    </div>
+                </template>
 
                 <div class="card-actions">
                     <button
@@ -855,6 +1160,16 @@ onMounted(getWishlist);
     color: #94a3b8;
 }
 
+/* Отмеченный чекбокс: вместо символа «✓» из checkboxCard.scss — иконка Check,
+   как у выполненного дела на карточке; фон остаётся фирменным градиентом */
+.checkbox-custom {
+    color: #fff;
+}
+
+.checkbox-input:checked + .checkbox-custom::after {
+    content: none;
+}
+
 /* Чекбоксы недоступны только на время сохранения: отмеченные остаются в фирменных
    цветах, а не становятся серыми, как задано для disabled в checkboxCard.scss */
 .checkbox-input:disabled + .checkbox-custom {
@@ -964,6 +1279,170 @@ onMounted(getWishlist);
 
 .reservation-notice-copy--error {
     background: #ef4444;
+}
+
+// Блок совместного подарка продолжает строку позиции: разделитель выводится под ним
+.item:has(+ .joint-gift-info),
+.item:has(+ .joint-gift-form) {
+    border-bottom-color: transparent;
+}
+
+// Ширина карточки подстраивается под содержимое (страница центрирует её через flex).
+// inline-size исключает эти блоки из расчёта: подсказка формы и длинный комментарий
+// переносятся по ширине карточки, а не расширяют её
+.joint-gift-info,
+.joint-gift-form {
+    contain: inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    // Блок и форма начинаются под названием подарка, а не под значком позиции
+    padding: 4px 0 8px 29px;
+    border-bottom: 1px solid rgba(226, 195, 211, 0.25);
+}
+
+// Три строки совместного подарка слева, кнопка «Изменить» справа по центру блока
+.joint-gift-info {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+// Строки идут вплотную; длинный текст переносится, а не выталкивает кнопку за край
+.joint-gift-info-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-width: 0;
+}
+
+// Плашка «Дарим вместе»: размеры как у кнопки .joint-gift-toggle, фон — фиолетовый
+// градиент с тем же направлением и переходом, что у серого значка подарка (.reserved-icon).
+// Рамка прозрачная, но сохраняет высоту плашки равной высоте кнопки
+.joint-gift-info-title {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 5px;
+    margin: 0;
+    padding: 3px 10px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #c4b5fd, #8b5cf6);
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    overflow-wrap: anywhere;
+
+    svg {
+        flex-shrink: 0;
+    }
+}
+
+// Имя и контакт организатора — отдельной строкой под «Дарим вместе», над комментарием
+.joint-gift-info-organizer {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--ink, #241533);
+    overflow-wrap: anywhere;
+}
+
+.joint-gift-info-comment {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--ink-soft, #6b5878);
+    overflow-wrap: anywhere;
+}
+
+.joint-gift-toggle {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 5px;
+    padding: 3px 10px;
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--brand-violet);
+    cursor: pointer;
+    transition: all 0.18s ease;
+
+    &:hover:not(:disabled) {
+        background: rgba(139, 92, 246, 0.08);
+    }
+
+    &:disabled {
+        cursor: default;
+        opacity: 0.6;
+    }
+}
+
+.joint-gift-toggle--active {
+    border-color: transparent;
+    background: var(--brand-gradient);
+    color: #fff;
+
+    &:hover:not(:disabled) {
+        background: var(--brand-gradient);
+    }
+}
+
+.joint-gift-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.joint-gift-action {
+    padding: 4px 10px;
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--brand-violet);
+    cursor: pointer;
+    transition: all 0.18s ease;
+
+    &:hover:not(:disabled) {
+        background: rgba(139, 92, 246, 0.08);
+    }
+
+    &:disabled {
+        cursor: default;
+        opacity: 0.6;
+    }
+}
+
+// Спиннер на кнопке выводится поверх скрытого текста, по центру:
+// текст продолжает занимать место, поэтому ширина кнопки не меняется
+.joint-gift-action,
+.cancel-btn {
+    position: relative;
+}
+
+.btn-text--hidden {
+    visibility: hidden;
+}
+
+.btn-spinner {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+}
+
+.joint-gift-action--primary {
+    border-color: transparent;
+    background: var(--brand-gradient);
+    color: #fff;
+
+    &:hover:not(:disabled) {
+        background: var(--brand-gradient);
+    }
 }
 
 .cancel-error {
