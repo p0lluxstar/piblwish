@@ -1254,6 +1254,64 @@
                 ]
             }
         },
+        "/v1/wishlists/{id}/selections": {
+            "get": {
+                "tags": [
+                    "Wishlists"
+                ],
+                "summary": "Получить id позиций, выбранных гостями",
+                "description": "Возвращает выбор гостей и в режиме сюрприза. Окно редактирования запрашивает его, когда владелец выключает режим сюрприза, чтобы показать выбор до сохранения списка",
+                "operationId": "d286afd216acb443a60f97cbb601935b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID списка",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "itemIds": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "format": "ulid"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Список не найден"
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/v1/wishlists/{id}/items/{itemId}": {
             "patch": {
                 "tags": [

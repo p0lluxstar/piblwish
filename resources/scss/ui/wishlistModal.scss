@@ -466,7 +466,9 @@ $item-price-height: 26px;
 
     &:disabled {
         opacity: 0.6;
-        cursor: not-allowed;
+        // Неактивная кнопка «Сохранить» — обычное состояние окна без изменений,
+        // поэтому курсор обычный, а не запрещающий
+        cursor: default;
         transform: none;
     }
 }

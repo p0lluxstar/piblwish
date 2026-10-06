@@ -390,6 +390,49 @@ use OpenApi\Attributes as OA;
     ]
 )]
 
+#[OA\Get(
+    path: '/v1/wishlists/{id}/selections',
+    summary: 'Получить id позиций, выбранных гостями',
+    description: 'Возвращает выбор гостей и в режиме сюрприза. Окно редактирования запрашивает его, когда владелец выключает режим сюрприза, чтобы показать выбор до сохранения списка',
+    tags: ['Wishlists'],
+    security: [['bearerAuth' => []]],
+    parameters: [
+        new OA\Parameter(name: 'id', description: 'ID списка', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+    ],
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Успешный ответ',
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(
+                        property: 'data',
+                        properties: [
+                            new OA\Property(
+                                property: 'itemIds',
+                                type: 'array',
+                                items: new OA\Items(type: 'string', format: 'ulid')
+                            ),
+                        ],
+                        type: 'object'
+                    ),
+                ],
+                type: 'object'
+            )
+        ),
+
+        new OA\Response(
+            response: 404,
+            description: 'Список не найден'
+        ),
+
+        new OA\Response(
+            response: 401,
+            description: 'Не авторизован'
+        ),
+    ]
+)]
+
 #[OA\Patch(
     path: '/v1/wishlists/{id}/items/{itemId}',
     summary: 'Отметить дело в списке дел выполненным или снять отметку',

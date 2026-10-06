@@ -124,6 +124,39 @@ class WishlistHideSelectionsTest extends TestCase
             ->assertJsonPath('data.0.items.1.isSelected', false);
     }
 
+    public function test_owner_gets_selected_item_ids_in_surprise_mode(): void
+    {
+        $user = User::factory()->create();
+        $wishlist = $this->createWishlist($user, true);
+        $pledId = $wishlist->items()->where('description', 'Плед')->value('id');
+
+        // Окно редактирования показывает выбор гостей, как только владелец выключает режим
+        $this->actingAs($user)
+            ->getJson("/v1/wishlists/{$wishlist->id}/selections")
+            ->assertOk()
+            ->assertJsonPath('data.itemIds', [$pledId]);
+
+        // Сам запрос режим не выключает
+        $this->assertTrue($wishlist->fresh()->hide_selections);
+    }
+
+    public function test_selected_item_ids_are_not_available_to_another_user(): void
+    {
+        $wishlist = $this->createWishlist(User::factory()->create(), true);
+
+        $this->actingAs(User::factory()->create())
+            ->getJson("/v1/wishlists/{$wishlist->id}/selections")
+            ->assertNotFound();
+    }
+
+    public function test_selected_item_ids_require_authentication(): void
+    {
+        $wishlist = $this->createWishlist(User::factory()->create(), true);
+
+        $this->getJson("/v1/wishlists/{$wishlist->id}/selections")
+            ->assertUnauthorized();
+    }
+
     public function test_guests_see_selections_when_hidden_from_owner(): void
     {
         $wishlist = $this->createWishlist(User::factory()->create(), true);

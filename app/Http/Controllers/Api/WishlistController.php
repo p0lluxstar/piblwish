@@ -56,6 +56,23 @@ class WishlistController extends Controller
         return new WishlistResource($wishlist);
     }
 
+    // Выбор гостей для окна редактирования: id выбранных позиций, в том числе в режиме сюрприза
+    public function getSelectedItems(
+        Request $request,
+        string $id
+    ): \Illuminate\Http\JsonResponse {
+        $itemIds = $this->wishlistService->getSelectedItemIds(
+            $request->user(),
+            $id
+        );
+
+        return response()->json([
+            'success' => true,
+            'statusCode' => 200,
+            'data' => ['itemIds' => $itemIds],
+        ]);
+    }
+
     // Отметить дело в списке дел выполненным или снять отметку
     public function updateWishlistItem(
         UpdateWishlistItemRequest $request,

@@ -9,7 +9,6 @@ import {
     Gift,
     Link,
     ListChecks,
-    Sparkles,
     StickyNote,
     Trash2,
 } from '@lucide/vue';
@@ -332,8 +331,8 @@ const createdAtLabel = computed(
                 },
             ]"
         >
-            <!-- Дело отмечается прямо с карточки: выполненное — серая галочка
-                 на том же фоне, что и значок подарка -->
+            <!-- Дело отмечается прямо с карточки: выполненное — белая галочка
+                 на зелёном фоне, в тон прогрессу списка дел -->
             <button
                 v-if="isTodo"
                 type="button"
@@ -363,13 +362,13 @@ const createdAtLabel = computed(
                 <Gift :size="11" />
             </span>
 
-            <!-- Режим сюрприза: выбор скрыт, значок-искорка вместо чекбокса -->
+            <!-- Режим сюрприза: выбор скрыт, значок подарка на фиолетовом фоне вместо чекбокса -->
             <span
                 v-else-if="wishlist.hideSelections"
                 class="item-bullet"
                 aria-hidden="true"
             >
-                <Sparkles :size="11" />
+                <Gift :size="11" />
             </span>
 
             <label v-else class="checkbox-wrapper-disabled">
@@ -676,8 +675,8 @@ const createdAtLabel = computed(
     width: 19px;
     height: 19px;
     border-radius: 7px;
-    // Серый градиент: выбранная позиция приглушена, как и её сердечки приоритета
-    background: linear-gradient(135deg, #dbe2ea, #64748b);
+    // Фирменный градиент, как у отмеченного чекбокса на общей странице
+    background: var(--brand-gradient);
     color: #fff;
 }
 
@@ -688,6 +687,12 @@ const createdAtLabel = computed(
 
     &:hover {
         transform: scale(1.08);
+    }
+
+    // Выполненное дело: форма значка выбранного подарка, но зелёный градиент,
+    // как у полосы прогресса списка дел
+    &.reserved-icon {
+        background: linear-gradient(135deg, #6ee7b7, #10b981);
     }
 
     &.checkbox-custom {

@@ -2,6 +2,8 @@
 import { Check, ChevronDown, ChevronUp, Gift, Link, Trash2 } from '@lucide/vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
+import { api } from '@/lib/api';
+
 import { useItemReorder } from '../../composables/useItemReorder';
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
 import { isValidItemUrl, normalizeItemUrl } from '../../lib/itemUrl';
@@ -54,9 +56,43 @@ const form = ref<EditForm>({
 // Индексы позиций с некорректной ссылкой; ошибка снимается, когда ссылку начинают править
 const urlErrors = ref<boolean[]>([]);
 
+// Выбор гостей, полученный после выключения режима сюрприза в этом окне
+const isSelectionRevealed = ref(false);
+const isSelectionLoading = ref(false);
+const selectionError = ref<string | null>(null);
+
+// Форма в том виде, в котором её сохранит сервер: пустые позиции отброшены,
+// ссылки нормализованы, пробелы по краям текста не учитываются.
+// При ignoreSelection отметки выбора не сравниваются: в режиме сюрприза
+// сервер их не принимает, а раскрытый в окне выбор изменением не считается
+const formSnapshot = (value: EditForm, ignoreSelection: boolean): string =>
+    JSON.stringify({
+        title: value.title.trim(),
+        content: value.content.trim(),
+        color: value.color,
+        hideSelections: value.hideSelections,
+        items: value.items
+            .filter((item) => item.label.trim())
+            .map((item) => ({
+                id: item.id ?? null,
+                label: item.label.trim(),
+                url: normalizeItemUrl(item.url),
+                priority: item.priority ?? null,
+                price: item.price ?? null,
+                isSelected: ignoreSelection ? null : Boolean(item.isSelected),
+            })),
+    });
+
+// Снимок формы при открытии окна: с ним сравнивается текущая форма
+const initialSnapshot = ref('');
+
 watch(
     () => props.wishlist,
     (wishlist) => {
+        // Форма заполняется заново, с режимом сюрприза из сохранённого списка
+        isSelectionRevealed.value = false;
+        selectionError.value = null;
+
         form.value = {
             title: wishlist.title ?? '',
             content: wishlist.content ?? '',
@@ -72,10 +108,23 @@ watch(
                 isSelected: item.isSelected ?? false,
             })),
         };
+
+        initialSnapshot.value = formSnapshot(
+            form.value,
+            Boolean(wishlist.hideSelections),
+        );
     },
     {
         immediate: true,
     },
+);
+
+// Кнопка «Сохранить» активна, только если форма отличается от сохранённого списка.
+// Если вернуть всё как было, кнопка снова станет неактивной
+const isDirty = computed(
+    () =>
+        formSnapshot(form.value, Boolean(props.wishlist.hideSelections)) !==
+        initialSnapshot.value,
 );
 
 // Список дел: у позиций только текст и отметка «выполнено»
@@ -87,11 +136,61 @@ const isNote = computed(() => props.wishlist.type === 'note');
 // Пустую заметку сервер не принимает, поэтому кнопка сохранения недоступна
 const isNoteEmpty = computed(() => isNote.value && !form.value.content.trim());
 
-// Чекбоксы выбора показываются, только если владелец видит выбор гостей:
-// при скрытом выборе сервер не принимает isSelected из формы
-const showSelection = computed(
-    () => !props.wishlist.hideSelections && !form.value.hideSelections,
+// Режим сюрприза был включён при открытии окна: сервер не прислал isSelected,
+// а при сохранении не примет его из формы
+const wasSelectionHidden = computed(() => Boolean(props.wishlist.hideSelections));
+
+// Владелец выключил режим сюрприза: выбор гостей запрашивается сразу,
+// чтобы показать его до сохранения списка
+const revealSelections = async (): Promise<void> => {
+    isSelectionLoading.value = true;
+    selectionError.value = null;
+
+    try {
+        const response = await api.get<{ data: { itemIds: string[] } }>(
+            `/v1/wishlists/${props.wishlist.id}/selections`,
+        );
+        const selectedIds = new Set(response.data.data.itemIds);
+
+        // Позиции, добавленные в этом окне, ещё не сохранены и выбраны быть не могут
+        form.value.items.forEach((item) => {
+            item.isSelected = Boolean(item.id && selectedIds.has(item.id));
+        });
+
+        isSelectionRevealed.value = true;
+    } catch (error) {
+        console.error('Ошибка загрузки выбора гостей:', error);
+        selectionError.value =
+            'Не удалось загрузить выбор гостей. Он будет виден после сохранения списка.';
+    } finally {
+        isSelectionLoading.value = false;
+    }
+};
+
+watch(
+    () => form.value.hideSelections,
+    (hideSelections) => {
+        if (
+            !hideSelections &&
+            wasSelectionHidden.value &&
+            !isSelectionRevealed.value &&
+            !isSelectionLoading.value
+        ) {
+            void revealSelections();
+        }
+    },
 );
+
+// Чекбоксы выбора показываются, только если владелец видит выбор гостей
+const showSelection = computed(
+    () =>
+        !form.value.hideSelections &&
+        (!wasSelectionHidden.value || isSelectionRevealed.value),
+);
+
+// Выбор, раскрытый в этом окне, только показывается: сервер не учитывает isSelected,
+// пока список сохранён в режиме сюрприза. Изменить отметки можно после сохранения
+const isSelectionReadonly = computed(() => wasSelectionHidden.value);
 
 const { itemKey, moveItem } = useItemReorder(() => form.value.items, urlErrors);
 
@@ -143,6 +242,9 @@ const prepareItems = (): WishlistItem[] | null => {
 // Запрос выполняет WishlistMain (мутация updateWishlist): там же состояние
 // загрузки для кнопки и закрытие модалки после успешного сохранения
 const handleSubmit = (): void => {
+    // Сохранять нечего: форма совпадает с сохранённым списком
+    if (!isDirty.value) return;
+
     if (isNote.value) {
         if (isNoteEmpty.value) return;
 
@@ -234,6 +336,25 @@ const closeModal = (): void => {
                 <!-- Режим сюрприза есть только у списка желаний: у остальных нет гостей -->
                 <div v-if="!isTodo && !isNote" class="form-group">
                     <WishlistSurpriseToggle v-model="form.hideSelections" />
+
+                    <p
+                        v-if="
+                            !form.hideSelections &&
+                            (isSelectionLoading || selectionError)
+                        "
+                        :class="[
+                            'selection-status',
+                            { 'selection-status--error': selectionError },
+                        ]"
+                    >
+                        {{ selectionError ?? 'Загружаем выбор гостей…' }}
+                    </p>
+                    <p
+                        v-else-if="showSelection && isSelectionReadonly"
+                        class="selection-status"
+                    >
+                        Изменить отметки можно будет после сохранения списка.
+                    </p>
                 </div>
 
                 <div v-if="isNote" class="form-group">
@@ -268,13 +389,14 @@ const closeModal = (): void => {
                             },
                         ]"
                     >
-                        <!-- Выбранная гостем позиция или выполненное дело: значок на сером фоне,
-                             как в карточке. Повторный клик снимает отметку -->
+                        <!-- Выбранная гостем позиция — значок на фирменном градиенте, выполненное
+                             дело — на зелёном, как в карточке. Повторный клик снимает отметку -->
                         <label v-if="showSelection" class="checkbox-wrapper">
                             <input
                                 type="checkbox"
                                 v-model="item.isSelected"
                                 class="checkbox-input"
+                                :disabled="isSelectionReadonly"
                                 :aria-label="
                                     isTodo
                                         ? item.isSelected
@@ -401,7 +523,7 @@ const closeModal = (): void => {
 
                 <button
                     type="submit"
-                    :disabled="props.isPending || isNoteEmpty"
+                    :disabled="props.isPending || isNoteEmpty || !isDirty"
                     class="create-btn"
                 >
                     <LoaderButtonSpinner v-if="props.isPending" :size="18" />
@@ -435,14 +557,41 @@ const closeModal = (): void => {
     margin-top: calc(var(--item-label-offset) + 12px);
 }
 
-// Вместо галочки из checkboxCard.scss — значок подарка или галочка Lucide на сером градиенте
+// Вместо галочки из checkboxCard.scss — значок подарка на фирменном градиенте, как в карточке
 .checkbox-input:checked + .checkbox-custom {
-    background: linear-gradient(135deg, #dbe2ea, #64748b);
+    background: var(--brand-gradient);
     color: #fff;
 
     &::after {
         content: none;
     }
+}
+
+// Выбор, раскрытый до сохранения, только показывается: отмеченный подарок сохраняет
+// фирменный градиент, а не серый фон недоступного чекбокса из checkboxCard.scss
+.checkbox-input:disabled + .checkbox-custom {
+    cursor: default;
+}
+
+.checkbox-input:disabled:checked + .checkbox-custom {
+    background: var(--brand-gradient);
+}
+
+// Состояние выбора гостей под переключателем «Показывать выбранные подарки»
+.selection-status {
+    margin: 4px 0 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #8a7a99;
+}
+
+.selection-status--error {
+    color: #e11d48;
+}
+
+// Выполненное дело: зелёный градиент, как в карточке списка дел
+.wishlist-item--todo .checkbox-input:checked + .checkbox-custom {
+    background: linear-gradient(135deg, #6ee7b7, #10b981);
 }
 
 // Выполненное дело: текст серый и зачёркнут, как в карточке

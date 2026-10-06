@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
@@ -37,7 +37,14 @@ const defaultForm = (): PasswordForm => ({
 
 const form = ref(defaultForm());
 
+// Кнопка «Сохранить» активна, только когда заполнены все три поля пароля
+const isPasswordFormFilled = computed(() =>
+    Object.values(form.value).every((value) => value !== ''),
+);
+
 const handleSubmit = (): void => {
+    if (!isPasswordFormFilled.value) return;
+
     emit('changePassword', { ...form.value });
 };
 
@@ -144,7 +151,7 @@ const closeModal = (): void => {
 
                     <button
                         type="submit"
-                        :disabled="props.isPending"
+                        :disabled="props.isPending || !isPasswordFormFilled"
                         class="create-btn"
                     >
                         <LoaderButtonSpinner
