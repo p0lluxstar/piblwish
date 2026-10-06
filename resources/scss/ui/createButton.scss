@@ -1,0 +1,38 @@
+// Основная кнопка формы: «Сохранить» и «Создать» в модальных окнах,
+// «Я подарю» на общей странице
+.create-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(
+        --brand-gradient,
+        linear-gradient(135deg, #8b5cf6, #ec4899)
+    );
+    border: none;
+    color: #fff;
+    border-radius: 18px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    width: 100%;
+    padding: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-glow, 0 14px 34px -12px rgba(139, 92, 246, 0.38));
+
+    &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: var(
+            --shadow-glow-lg,
+            0 22px 48px -16px rgba(139, 92, 246, 0.4)
+        );
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        // Неактивная кнопка «Сохранить» — обычное состояние окна без изменений,
+        // поэтому курсор обычный, а не запрещающий
+        cursor: default;
+        transform: none;
+    }
+}

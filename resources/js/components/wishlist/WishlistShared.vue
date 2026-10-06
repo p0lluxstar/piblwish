@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Copy, ExternalLink, Gift, Save, Users, X } from '@lucide/vue';
+import { Check, Copy, ExternalLink, Gift, Users, X } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -434,13 +434,32 @@ onMounted(getWishlist);
         <div v-else-if="wishlist" class="content">
             <!-- Пояснение для гостя: чей это список подарков -->
             <section class="intro" aria-labelledby="shared-intro-title">
-                <h1 id="shared-intro-title" class="intro-title">
-                    {{
-                        wishlist.username
-                            ? `${wishlist.username} делится с вами списком подарков`
-                            : 'С вами поделились списком подарков'
-                    }}
-                </h1>
+                <!-- Шапка автора: кружок с первой буквой слева, справа имя и подпись
+                     отдельными строками. Для экранного диктора заголовок читается
+                     одной фразой: «Аня делится с вами списком подарков» -->
+                <div class="intro-author">
+                    <span
+                        v-if="wishlist.username"
+                        class="intro-author-avatar"
+                        aria-hidden="true"
+                    >
+                        {{ wishlist.username.charAt(0).toUpperCase() }}
+                    </span>
+
+                    <h1 id="shared-intro-title" class="intro-title">
+                        <template v-if="wishlist.username">
+                            <span class="intro-author-name">
+                                {{ wishlist.username }}
+                            </span>
+                            <span class="intro-subtitle">
+                                делится с вами списком подарков
+                            </span>
+                        </template>
+                        <template v-else>
+                            С вами поделились списком подарков
+                        </template>
+                    </h1>
+                </div>
 
                 <p v-if="allSelected" class="intro-note">
                     Все подарки из этого списка уже выбраны
@@ -508,16 +527,6 @@ onMounted(getWishlist);
 
             <div class="card">
                 <div class="card-header">
-                    <div class="card-author">
-                        <span class="card-author-avatar">
-                            {{ wishlist.username?.charAt(0).toUpperCase() }}
-                        </span>
-                        <span>
-                            <span class="card-author-name">
-                                {{ wishlist.username }}
-                            </span>
-                        </span>
-                    </div>
                     <span class="card-title">
                         {{ wishlist.title }}
                     </span>
@@ -836,21 +845,20 @@ onMounted(getWishlist);
                     </div>
                 </template>
 
-                <div class="card-actions">
-                    <button
-                        v-if="hasChanges"
-                        class="card-actions-btn"
-                        :disabled="isBusy"
-                        :aria-label="
-                            isSaving ? 'Сохранение…' : 'Сохранить выбор'
-                        "
-                        :aria-busy="isSaving"
-                        @click="save"
-                    >
-                        <LoaderButtonSpinner v-if="isSaving" :size="18" />
-                        <Save v-else :size="20" />
-                    </button>
-                </div>
+                <!-- Как «Сохранить» в модальных окнах: неактивна, пока не отмечен ни один подарок.
+                     Если все подарки уже выбраны, бронировать нечего и кнопки нет -->
+                <button
+                    v-if="!allSelected"
+                    type="button"
+                    class="create-btn reserve-btn"
+                    :disabled="isBusy || !hasChanges"
+                    :aria-busy="isSaving"
+                    @click="save"
+                >
+                    <LoaderButtonSpinner v-if="isSaving" :size="18" />
+
+                    <span v-else>Я подарю</span>
+                </button>
             </div>
         </div>
 
@@ -862,6 +870,7 @@ onMounted(getWishlist);
 
 <style scoped lang="scss">
 @use '../../../scss/ui/checkboxCard.scss';
+@use '../../../scss/ui/createButton.scss';
 
 .wishlist-view {
     max-width: 800px;
@@ -885,6 +894,52 @@ onMounted(getWishlist);
     line-height: 1.3;
     color: var(--ink, #241533);
     overflow-wrap: anywhere;
+}
+
+// Кружок слева, имя и подпись справа; вся шапка — по центру страницы
+.intro-author {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 100%;
+}
+
+// Кружок с первой буквой имени, как аватар в профиле
+.intro-author-avatar {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: var(--brand-gradient);
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    box-shadow: var(--shadow-glow);
+}
+
+// Имя и подпись — отдельными строками: имя крупно и цветом, подпись мельче и спокойнее
+// Рядом с кружком текст выровнен по левому краю; длинное имя переносится, не сдвигая кружок
+.intro-title:has(.intro-author-name) {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    text-align: left;
+}
+
+.intro-author-name {
+    font-size: 24px;
+    line-height: 1.2;
+    color: #8b5cf6;
+}
+
+.intro-subtitle {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink-soft, #6b5878);
 }
 
 .intro-note {
@@ -917,29 +972,9 @@ onMounted(getWishlist);
     min-width: 300px;
 }
 
-.card-actions {
-    position: absolute;
-    display: flex;
-    gap: 4px;
-    top: 6px;
-    right: 10px;
-    font-size: 10px;
-    color: #b3b3b3;
-
-    .card-actions-btn {
-        display: grid;
-        place-items: center;
-        width: 30px;
-        height: 30px;
-        border-radius: 8px;
-        transition: all 0.18s ease;
-
-        &:hover:not(:disabled) {
-            color: #fff;
-            background: var(--brand-gradient);
-            cursor: pointer;
-        }
-    }
+// Отступ от списка подарков; остальные стили — в createButton.scss
+.reserve-btn {
+    margin-top: 16px;
 }
 
 .card-header {
@@ -952,34 +987,8 @@ onMounted(getWishlist);
     margin-bottom: 14px;
 }
 
-.card-author {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: #b08cbe;
-}
-
-.card-author-avatar {
-    display: grid;
-    place-items: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--brand-gradient);
-    font-size: 10px;
-    font-weight: 700;
-    color: #fff;
-    box-shadow: var(--shadow-glow);
-}
-
-.card-author-name {
-    font-weight: 600;
-    color: #8b5cf6;
-}
-
 .card-title {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
     color: #3b2146;
 }
