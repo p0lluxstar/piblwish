@@ -54,14 +54,13 @@ class WishlistItemPositionTest extends TestCase
         $this->actingAs($user)
             ->patchJson("/v1/wishlists/{$id}", [
                 'items' => [
-                    ['label' => 'Плед', 'isSelected' => true],
-                    ['label' => 'Книга', 'isSelected' => false],
-                    ['label' => 'Свеча', 'isSelected' => false],
+                    ['label' => 'Плед'],
+                    ['label' => 'Книга'],
+                    ['label' => 'Свеча'],
                 ],
             ])
             ->assertOk()
-            ->assertJsonPath('data.items.0.label', 'Плед')
-            ->assertJsonPath('data.items.0.isSelected', true);
+            ->assertJsonPath('data.items.0.label', 'Плед');
 
         $items = $this->actingAs($user)
             ->getJson('/v1/wishlists')

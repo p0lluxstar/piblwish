@@ -320,100 +320,106 @@ const createdAtLabel = computed(
             </span>
         </div>
 
-        <div
-            v-for="(item, itemIndex) in wishlist.items"
-            :key="itemIndex"
-            :class="[
-                'item',
-                {
-                    'item--reserved': !isTodo && item.isSelected,
-                    'item--done': isTodo && item.isSelected,
-                },
-            ]"
-        >
-            <!-- Дело отмечается прямо с карточки: выполненное — белая галочка
-                 на зелёном фоне, в тон прогрессу списка дел -->
-            <button
-                v-if="isTodo"
-                type="button"
-                role="checkbox"
-                :aria-checked="Boolean(item.isSelected)"
-                :aria-label="`${item.isSelected ? 'Снять отметку' : 'Отметить выполненным'}: ${item.label}`"
-                :title="
-                    item.isSelected ? 'Снять отметку' : 'Отметить выполненным'
-                "
-                :class="[
-                    'todo-toggle',
-                    item.isSelected ? 'reserved-icon' : 'checkbox-custom',
-                ]"
-                @click="toggleItem(item)"
-            >
-                <Check v-if="item.isSelected" :size="12" />
-            </button>
-
-            <!-- Позицию выбрал гость: вместо чекбокса значок подарка -->
-            <span
-                v-else-if="item.isSelected"
-                class="reserved-icon"
-                role="img"
-                aria-label="Забронировано"
-                title="Забронировано"
-            >
-                <Gift :size="11" />
-            </span>
-
-            <!-- Режим сюрприза: выбор скрыт, значок подарка на фиолетовом фоне вместо чекбокса -->
-            <span
-                v-else-if="wishlist.hideSelections"
-                class="item-bullet"
-                aria-hidden="true"
-            >
-                <Gift :size="11" />
-            </span>
-
-            <label v-else class="checkbox-wrapper-disabled">
-                <input
-                    type="checkbox"
-                    v-model="item.isSelected"
-                    disabled
-                    class="checkbox-input"
-                />
-
-                <span class="checkbox-custom"></span>
-            </label>
-
-            <span class="item-label">
-                {{ item.label }}
-            </span>
-
-            <!-- Приоритет, цена и ссылка — узкой колонкой справа от названия,
-                 каждое на своей строке: в одну строку они сильно сужали название -->
+        <!-- Длинный список прокручивается внутри карточки, как текст заметки,
+             а не растягивает весь ряд -->
+        <div v-if="!isNote" class="card-items">
             <div
-                v-if="item.priority || item.price != null || item.url"
-                class="item-meta"
+                v-for="(item, itemIndex) in wishlist.items"
+                :key="itemIndex"
+                :class="[
+                    'item',
+                    {
+                        'item--reserved': !isTodo && item.isSelected,
+                        'item--done': isTodo && item.isSelected,
+                    },
+                ]"
             >
-                <ItemPriorityHearts
-                    v-if="item.priority"
-                    :priority="item.priority"
-                    :muted="item.isSelected"
-                />
+                <!-- Дело отмечается прямо с карточки: выполненное — белая галочка
+                 на зелёном фоне, в тон прогрессу списка дел -->
+                <button
+                    v-if="isTodo"
+                    type="button"
+                    role="checkbox"
+                    :aria-checked="Boolean(item.isSelected)"
+                    :aria-label="`${item.isSelected ? 'Снять отметку' : 'Отметить выполненным'}: ${item.label}`"
+                    :title="
+                        item.isSelected
+                            ? 'Снять отметку'
+                            : 'Отметить выполненным'
+                    "
+                    :class="[
+                        'todo-toggle',
+                        item.isSelected ? 'reserved-icon' : 'checkbox-custom',
+                    ]"
+                    @click="toggleItem(item)"
+                >
+                    <Check v-if="item.isSelected" :size="12" />
+                </button>
 
-                <!-- Стоимость 0 ₽ тоже выводится: null — не указана -->
-                <span v-if="item.price != null" class="item-price">
-                    {{ formatPrice(item.price) }}
+                <!-- Позицию выбрал гость: вместо чекбокса значок подарка -->
+                <span
+                    v-else-if="item.isSelected"
+                    class="reserved-icon"
+                    role="img"
+                    aria-label="Забронировано"
+                    title="Забронировано"
+                >
+                    <Gift :size="11" />
                 </span>
 
-                <a
-                    v-if="item.url"
-                    :href="item.url"
-                    target="_blank"
-                    rel="noopener noreferrer nofollow"
-                    class="item-link"
-                    :title="getItemUrlHost(item.url)"
-                    :aria-label="`Ссылка на товар: ${getItemUrlHost(item.url)}`"
+                <!-- Режим сюрприза: выбор скрыт, значок подарка на фиолетовом фоне вместо чекбокса -->
+                <span
+                    v-else-if="wishlist.hideSelections"
+                    class="item-bullet"
+                    aria-hidden="true"
                 >
-                    <ExternalLink :size="13" />
-                </a>
+                    <Gift :size="11" />
+                </span>
+
+                <label v-else class="checkbox-wrapper-disabled">
+                    <input
+                        type="checkbox"
+                        v-model="item.isSelected"
+                        disabled
+                        class="checkbox-input"
+                    />
+
+                    <span class="checkbox-custom"></span>
+                </label>
+
+                <span class="item-label">
+                    {{ item.label }}
+                </span>
+
+                <!-- Приоритет, цена и ссылка — узкой колонкой справа от названия,
+                 каждое на своей строке: в одну строку они сильно сужали название -->
+                <div
+                    v-if="item.priority || item.price != null || item.url"
+                    class="item-meta"
+                >
+                    <ItemPriorityHearts
+                        v-if="item.priority"
+                        :priority="item.priority"
+                        :muted="item.isSelected"
+                    />
+
+                    <!-- Стоимость 0 ₽ тоже выводится: null — не указана -->
+                    <span v-if="item.price != null" class="item-price">
+                        {{ formatPrice(item.price) }}
+                    </span>
+
+                    <a
+                        v-if="item.url"
+                        :href="item.url"
+                        target="_blank"
+                        rel="noopener noreferrer nofollow"
+                        class="item-link"
+                        :title="getItemUrlHost(item.url)"
+                        :aria-label="`Ссылка на товар: ${getItemUrlHost(item.url)}`"
+                    >
+                        <ExternalLink :size="13" />
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -553,6 +559,46 @@ const createdAtLabel = computed(
     font-size: 15px;
     font-weight: 700;
     color: var(--ink);
+}
+
+// Высота позиций и текста заметки, после которой появляется полоса прокрутки
+$card-content-max-height: 180px;
+
+// Тонкая полоса прокрутки в фирменных цветах, как у модалки (wishlistModal.scss).
+// В Chrome 121+ стандартные scrollbar-width и scrollbar-color отключают
+// ::-webkit-scrollbar, поэтому они заданы только для браузеров без него (Firefox)
+@mixin card-scrollbar {
+    @supports not selector(::-webkit-scrollbar) {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(139, 92, 246, 0.35) transparent;
+    }
+
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: rgba(139, 92, 246, 0.3);
+
+        &:hover {
+            background: linear-gradient(180deg, #8b5cf6, #ec4899);
+        }
+    }
+}
+
+// Позиции списка: та же высота, что у текста заметки. Полоса прокрутки
+// вынесена в правый отступ карточки и не наезжает на цену и ссылку
+.card-items {
+    max-height: $card-content-max-height;
+    overflow-y: auto;
+    margin-right: -12px;
+    padding-right: 12px;
+    @include card-scrollbar;
 }
 
 // Значок слева и название по центру позиции по вертикали: колонка справа
@@ -761,7 +807,7 @@ const createdAtLabel = computed(
     // Отступ под метками типа
     margin: 15px 0 0;
     padding: 0;
-    max-height: 320px;
+    max-height: $card-content-max-height;
     overflow-y: auto;
     border: none;
     border-radius: 6px;
@@ -777,6 +823,7 @@ const createdAtLabel = computed(
     resize: none;
     field-sizing: content;
     cursor: text;
+    @include card-scrollbar;
 
     &:focus {
         outline: none;

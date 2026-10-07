@@ -32,6 +32,12 @@ class Wishlist extends Model
         ];
     }
 
+    // Список желаний: позиции выбирают гости по ссылке
+    public function isGift(): bool
+    {
+        return $this->type === WishlistType::Gift;
+    }
+
     // Список дел: доступен только владельцу, у позиций нет ссылки, цены и приоритета
     public function isTodo(): bool
     {

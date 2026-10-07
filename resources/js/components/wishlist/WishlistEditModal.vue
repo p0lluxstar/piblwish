@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { Check, ChevronDown, ChevronUp, Gift, Link, Trash2 } from '@lucide/vue';
+import {
+    Check,
+    ChevronDown,
+    ChevronUp,
+    Ellipsis,
+    Gift,
+    Link,
+    Trash2,
+} from '@lucide/vue';
+import { isAxiosError } from 'axios';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { api } from '@/lib/api';
@@ -27,6 +36,8 @@ const props = defineProps<{
 const emit = defineEmits<{
     close: [];
     update: [payload: WishlistUpdatePayload];
+    // Владелец снял выбор гостя: список с сервера, чтобы обновить карточку
+    selectionCleared: [wishlist: Wishlist];
 }>();
 
 // Тип списка при редактировании не меняется, поэтому в форме его нет
@@ -61,10 +72,25 @@ const isSelectionRevealed = ref(false);
 const isSelectionLoading = ref(false);
 const selectionError = ref<string | null>(null);
 
+// Серверное время, на которое окно получило выбор гостей. Передаётся при снятии
+// выбора: сервер не снимет выбор, сделанный позже, — его владелец не видел
+const checkedAt = ref<string | null>(null);
+
+// Номер последнего запроса выбора: ответ на более ранний запрос не применяется
+let selectionRequestId = 0;
+
+// Снятие выбора гостя: позиция, по которой идёт запрос, позиция, для которой
+// показано подтверждение, и сообщения под позициями
+const clearingItemId = ref<string | null>(null);
+const confirmingItemId = ref<string | null>(null);
+const itemMessages = ref<Record<string, { text: string; isError: boolean }>>(
+    {},
+);
+
 // Форма в том виде, в котором её сохранит сервер: пустые позиции отброшены,
 // ссылки нормализованы, пробелы по краям текста не учитываются.
-// При ignoreSelection отметки выбора не сравниваются: в режиме сюрприза
-// сервер их не принимает, а раскрытый в окне выбор изменением не считается
+// При ignoreSelection отметки не сравниваются: в списке желаний сервер
+// не принимает их из формы, а владелец снимает выбор гостя отдельным запросом
 const formSnapshot = (value: EditForm, ignoreSelection: boolean): string =>
     JSON.stringify({
         title: value.title.trim(),
@@ -92,6 +118,9 @@ watch(
         // Форма заполняется заново, с режимом сюрприза из сохранённого списка
         isSelectionRevealed.value = false;
         selectionError.value = null;
+        checkedAt.value = null;
+        confirmingItemId.value = null;
+        itemMessages.value = {};
 
         form.value = {
             title: wishlist.title ?? '',
@@ -111,7 +140,7 @@ watch(
 
         initialSnapshot.value = formSnapshot(
             form.value,
-            Boolean(wishlist.hideSelections),
+            wishlist.type !== 'todo',
         );
     },
     {
@@ -123,7 +152,7 @@ watch(
 // Если вернуть всё как было, кнопка снова станет неактивной
 const isDirty = computed(
     () =>
-        formSnapshot(form.value, Boolean(props.wishlist.hideSelections)) !==
+        formSnapshot(form.value, props.wishlist.type !== 'todo') !==
         initialSnapshot.value,
 );
 
@@ -138,45 +167,71 @@ const isNoteEmpty = computed(() => isNote.value && !form.value.content.trim());
 
 // Режим сюрприза был включён при открытии окна: сервер не прислал isSelected,
 // а при сохранении не примет его из формы
-const wasSelectionHidden = computed(() => Boolean(props.wishlist.hideSelections));
+const wasSelectionHidden = computed(() =>
+    Boolean(props.wishlist.hideSelections),
+);
 
-// Владелец выключил режим сюрприза: выбор гостей запрашивается сразу,
-// чтобы показать его до сохранения списка
-const revealSelections = async (): Promise<void> => {
+// Выбор гостей и время, на которое он получен. Окно запрашивает его при открытии,
+// чтобы отметки были актуальны не на время загрузки дашборда, а на время открытия.
+// В режиме сюрприза id позиций приходят только с reveal: владелец выключил режим в окне.
+// Отметки и checkedAt обновляются вместе, поэтому окно показывает выбор ровно на checkedAt
+const loadSelections = async (reveal: boolean): Promise<void> => {
+    const requestId = ++selectionRequestId;
+
     isSelectionLoading.value = true;
     selectionError.value = null;
 
     try {
-        const response = await api.get<{ data: { itemIds: string[] } }>(
-            `/v1/wishlists/${props.wishlist.id}/selections`,
-        );
-        const selectedIds = new Set(response.data.data.itemIds);
-
-        // Позиции, добавленные в этом окне, ещё не сохранены и выбраны быть не могут
-        form.value.items.forEach((item) => {
-            item.isSelected = Boolean(item.id && selectedIds.has(item.id));
+        const response = await api.get<{
+            data: { checkedAt: string; itemIds?: string[] };
+        }>(`/v1/wishlists/${props.wishlist.id}/selections`, {
+            params: reveal ? { reveal: 1 } : undefined,
         });
 
-        isSelectionRevealed.value = true;
+        if (requestId !== selectionRequestId) return;
+
+        const { checkedAt: time, itemIds } = response.data.data;
+
+        checkedAt.value = time;
+
+        if (itemIds) {
+            const selectedIds = new Set(itemIds);
+
+            // Позиции, добавленные в этом окне, ещё не сохранены и выбраны быть не могут
+            form.value.items.forEach((item) => {
+                item.isSelected = Boolean(item.id && selectedIds.has(item.id));
+            });
+        }
+
+        if (reveal) isSelectionRevealed.value = true;
     } catch (error) {
+        if (requestId !== selectionRequestId) return;
+
         console.error('Ошибка загрузки выбора гостей:', error);
-        selectionError.value =
-            'Не удалось загрузить выбор гостей. Он будет виден после сохранения списка.';
+        selectionError.value = reveal
+            ? 'Не удалось загрузить выбор гостей. Он будет виден после сохранения списка.'
+            : 'Не удалось загрузить выбор гостей. Закройте окно и откройте снова.';
     } finally {
-        isSelectionLoading.value = false;
+        if (requestId === selectionRequestId) isSelectionLoading.value = false;
     }
 };
 
+// Выбор запрашивается с reveal, если владелец видит его в окне, хотя список
+// сохранён в режиме сюрприза
+const refreshSelections = (): Promise<void> =>
+    loadSelections(wasSelectionHidden.value && !form.value.hideSelections);
+
+// Владелец выключил режим сюрприза: выбор гостей запрашивается сразу,
+// чтобы показать его до сохранения списка
 watch(
     () => form.value.hideSelections,
     (hideSelections) => {
         if (
             !hideSelections &&
             wasSelectionHidden.value &&
-            !isSelectionRevealed.value &&
-            !isSelectionLoading.value
+            !isSelectionRevealed.value
         ) {
-            void revealSelections();
+            void loadSelections(true);
         }
     },
 );
@@ -188,9 +243,91 @@ const showSelection = computed(
         (!wasSelectionHidden.value || isSelectionRevealed.value),
 );
 
-// Выбор, раскрытый в этом окне, только показывается: сервер не учитывает isSelected,
-// пока список сохранён в режиме сюрприза. Изменить отметки можно после сохранения
-const isSelectionReadonly = computed(() => wasSelectionHidden.value);
+const setItemMessage = (
+    itemId: string,
+    text: string | null,
+    isError = false,
+): void => {
+    const messages = { ...itemMessages.value };
+
+    if (text) {
+        messages[itemId] = { text, isError };
+    } else {
+        delete messages[itemId];
+    }
+
+    itemMessages.value = messages;
+};
+
+// Снять выбор гостя: отдельный запрос, сразу, без сохранения формы, поэтому
+// несохранённые правки не теряются (окно получает копию списка, и её сервер
+// не меняет). Если владелец видит выбор, кнопка есть только у выбранных позиций.
+// В режиме сюрприза владелец освобождает позицию вслепую: ответ сервера не
+// раскрывает, была ли она выбрана, поэтому и сообщение нейтральное
+const clearSelection = async (item: WishlistItem): Promise<void> => {
+    if (!item.id) return;
+
+    const itemId = item.id;
+    const isBlind = form.value.hideSelections;
+
+    setItemMessage(itemId, null);
+
+    if (!checkedAt.value) {
+        setItemMessage(
+            itemId,
+            'Не удалось получить состояние позиций. Закройте окно и откройте снова.',
+            true,
+        );
+
+        return;
+    }
+
+    clearingItemId.value = itemId;
+
+    try {
+        const response = await api.delete<{ data: Wishlist }>(
+            `/v1/wishlists/${props.wishlist.id}/items/${itemId}/selection`,
+            { data: { checkedAt: checkedAt.value } },
+        );
+
+        item.isSelected = false;
+        confirmingItemId.value = null;
+        emit('selectionCleared', response.data.data);
+
+        if (isBlind) setItemMessage(itemId, 'Позиция свободна для гостей');
+    } catch (error) {
+        // Позицию выбрали после checkedAt: окно получает актуальный выбор,
+        // а владелец решает заново, уже видя новое состояние
+        if (isAxiosError(error) && error.response?.status === 409) {
+            confirmingItemId.value = null;
+            await refreshSelections();
+
+            setItemMessage(
+                itemId,
+                isBlind
+                    ? 'Состояние позиции изменилось после открытия окна. Если её всё равно нужно освободить, повторите.'
+                    : 'Позицию выбрали заново, пока было открыто окно. Выбор не снят.',
+                true,
+            );
+
+            return;
+        }
+
+        console.error('Ошибка снятия выбора гостя:', error);
+        setItemMessage(
+            itemId,
+            'Не удалось снять выбор. Попробуйте ещё раз.',
+            true,
+        );
+    } finally {
+        clearingItemId.value = null;
+    }
+};
+
+const toggleConfirm = (itemId: string): void => {
+    setItemMessage(itemId, null);
+    confirmingItemId.value = confirmingItemId.value === itemId ? null : itemId;
+};
 
 const { itemKey, moveItem } = useItemReorder(() => form.value.items, urlErrors);
 
@@ -234,9 +371,16 @@ const prepareItems = (): WishlistItem[] | null => {
 
     if (urlErrors.value.some(Boolean)) return null;
 
+    // Отметки в списке желаний ставят гости: сервер не принимает их из формы
     return form.value.items
         .filter((item) => item.label.trim())
-        .map((item) => ({ ...item, url: normalizeItemUrl(item.url) }));
+        .map((item) => ({
+            id: item.id,
+            label: item.label,
+            url: normalizeItemUrl(item.url),
+            priority: item.priority,
+            price: item.price,
+        }));
 };
 
 // Запрос выполняет WishlistMain (мутация updateWishlist): там же состояние
@@ -282,6 +426,9 @@ const enableBodyScroll = (): void => {
 
 onMounted(() => {
     disableBodyScroll();
+
+    // Выбор гостей есть только у списка желаний
+    if (!isTodo.value && !isNote.value) void loadSelections(false);
 });
 
 onUnmounted(() => {
@@ -337,23 +484,14 @@ const closeModal = (): void => {
                 <div v-if="!isTodo && !isNote" class="form-group">
                     <WishlistSurpriseToggle v-model="form.hideSelections" />
 
+                    <!-- Ошибка показывается и в режиме сюрприза: без выбора
+                         гостей окно не может освободить позицию. Пока выбор
+                         загружается, вместо позиций виден лоадер -->
                     <p
-                        v-if="
-                            !form.hideSelections &&
-                            (isSelectionLoading || selectionError)
-                        "
-                        :class="[
-                            'selection-status',
-                            { 'selection-status--error': selectionError },
-                        ]"
+                        v-if="selectionError"
+                        class="selection-status selection-status--error"
                     >
-                        {{ selectionError ?? 'Загружаем выбор гостей…' }}
-                    </p>
-                    <p
-                        v-else-if="showSelection && isSelectionReadonly"
-                        class="selection-status"
-                    >
-                        Изменить отметки можно будет после сохранения списка.
+                        {{ selectionError }}
                     </p>
                 </div>
 
@@ -377,148 +515,332 @@ const closeModal = (): void => {
                 <div v-else class="form-group">
                     <label>{{ isTodo ? 'Дела' : 'Список желаний' }}</label>
 
+                    <!-- Пока загружается выбор гостей, позиции не показываются:
+                         отметки и действия с выбором ещё не соответствуют серверу.
+                         Правки формы при этом сохраняются -->
                     <div
-                        v-for="(item, index) in form.items"
-                        :key="itemKey(item)"
-                        :class="[
-                            'wishlist-item',
-                            {
-                                'wishlist-item--todo': isTodo,
-                                'wishlist-item--done':
-                                    isTodo && item.isSelected,
-                            },
-                        ]"
+                        v-if="isSelectionLoading"
+                        class="items-loader"
+                        role="status"
+                        aria-label="Загружаем выбор гостей"
                     >
-                        <!-- Выбранная гостем позиция — значок на фирменном градиенте, выполненное
-                             дело — на зелёном, как в карточке. Повторный клик снимает отметку -->
-                        <label v-if="showSelection" class="checkbox-wrapper">
-                            <input
-                                type="checkbox"
-                                v-model="item.isSelected"
-                                class="checkbox-input"
-                                :disabled="isSelectionReadonly"
-                                :aria-label="
-                                    isTodo
-                                        ? item.isSelected
+                        <LoaderButtonSpinner :size="22" />
+                    </div>
+
+                    <template v-else>
+                        <div
+                            v-for="(item, index) in form.items"
+                            :key="itemKey(item)"
+                            :class="[
+                                'wishlist-item',
+                                {
+                                    'wishlist-item--todo': isTodo,
+                                    'wishlist-item--done':
+                                        isTodo && item.isSelected,
+                                },
+                            ]"
+                        >
+                            <!-- Выполненное дело — галочка на зелёном, как в карточке.
+                             Повторный клик снимает отметку -->
+                            <label v-if="isTodo" class="checkbox-wrapper">
+                                <input
+                                    type="checkbox"
+                                    v-model="item.isSelected"
+                                    class="checkbox-input"
+                                    :aria-label="
+                                        item.isSelected
                                             ? 'Выполнено, снять отметку'
                                             : 'Отметить как выполненное'
-                                        : item.isSelected
-                                          ? 'Забронировано, снять выбор'
-                                          : 'Отметить как выбранное'
-                                "
-                            />
-
-                            <span class="checkbox-custom">
-                                <template v-if="item.isSelected">
-                                    <Check v-if="isTodo" :size="12" />
-                                    <Gift v-else :size="11" />
-                                </template>
-                            </span>
-                        </label>
-
-                        <div class="wishlist-item-fields">
-                            <!-- Приоритет над полем описания у левого края -->
-                            <div v-if="!isTodo" class="item-meta-row">
-                                <ItemPriorityPicker
-                                    v-model="item.priority"
-                                    :muted="showSelection && item.isSelected"
+                                    "
                                 />
-                            </div>
 
-                            <input
-                                v-model="item.label"
-                                type="text"
-                                :placeholder="
-                                    isTodo
-                                        ? 'Например: Купить продукты'
-                                        : 'Например: Книга'
-                                "
-                            />
-
-                            <!-- Ссылка и цена соединены с полем описания линиями-ветвями:
-                                 они относятся к этой позиции -->
-                            <div v-if="!isTodo" class="item-branches">
-                                <div class="item-url-row">
-                                    <Link
-                                        :size="13"
-                                        class="item-url-icon"
-                                        aria-hidden="true"
-                                    />
-
-                                    <!-- type="text", а не "url": иначе браузер не пропустит адрес без https:// -->
-                                    <input
-                                        v-model="item.url"
-                                        type="text"
-                                        inputmode="url"
-                                        autocomplete="off"
-                                        :class="[
-                                            'item-url-input',
-                                            {
-                                                'item-url-input--error':
-                                                    urlErrors[index],
-                                            },
-                                        ]"
-                                        placeholder="Ссылка на товар (необязательно)"
-                                        :aria-invalid="
-                                            urlErrors[index] || undefined
-                                        "
-                                        @input="clearUrlError(index)"
-                                    />
-                                </div>
-
-                                <span
-                                    v-if="urlErrors[index]"
-                                    class="item-url-error"
-                                >
-                                    Некорректная ссылка
+                                <span class="checkbox-custom">
+                                    <Check v-if="item.isSelected" :size="12" />
                                 </span>
+                            </label>
 
-                                <div class="item-price-row">
-                                    <ItemPriceInput
-                                        v-model="item.price"
+                            <!-- Выбранная гостем позиция — значок подарка на фирменном градиенте.
+                             Отметку ставит только гость, поэтому значок не нажимается -->
+                            <span
+                                v-else-if="showSelection"
+                                :class="[
+                                    'checkbox-custom',
+                                    'selection-mark',
+                                    {
+                                        'selection-mark--selected':
+                                            item.isSelected,
+                                    },
+                                ]"
+                                role="img"
+                                :aria-label="
+                                    item.isSelected
+                                        ? 'Выбрано гостем'
+                                        : 'Не выбрано гостями'
+                                "
+                            >
+                                <Gift v-if="item.isSelected" :size="11" />
+                            </span>
+
+                            <div class="wishlist-item-fields">
+                                <!-- Приоритет над полем описания у левого края,
+                                 снятие выбора гостя — у правого -->
+                                <div v-if="!isTodo" class="item-meta-row">
+                                    <ItemPriorityPicker
+                                        v-model="item.priority"
                                         :muted="
                                             showSelection && item.isSelected
                                         "
                                     />
+
+                                    <div
+                                        v-if="
+                                            showSelection &&
+                                            item.isSelected &&
+                                            item.id
+                                        "
+                                        class="clear-selection"
+                                    >
+                                        <button
+                                            type="button"
+                                            :class="[
+                                                'clear-selection-btn',
+                                                {
+                                                    'clear-selection-btn--active':
+                                                        confirmingItemId ===
+                                                        item.id,
+                                                },
+                                            ]"
+                                            :aria-label="`Снять выбор гостя: ${item.label}`"
+                                            :aria-expanded="
+                                                confirmingItemId === item.id
+                                            "
+                                            @click="toggleConfirm(item.id)"
+                                        >
+                                            Снять выбор
+                                        </button>
+                                    </div>
+
+                                    <!-- Режим сюрприза: освободить позицию, не узнавая,
+                                     выбрана ли она. Действие редкое, поэтому скрыто за «⋯» -->
+                                    <div
+                                        v-else-if="
+                                            form.hideSelections && item.id
+                                        "
+                                        class="clear-selection"
+                                    >
+                                        <button
+                                            type="button"
+                                            :class="[
+                                                'free-menu-btn',
+                                                {
+                                                    'free-menu-btn--active':
+                                                        confirmingItemId ===
+                                                        item.id,
+                                                },
+                                            ]"
+                                            title="Освободить позицию"
+                                            :aria-label="`Освободить позицию: ${item.label}`"
+                                            :aria-expanded="
+                                                confirmingItemId === item.id
+                                            "
+                                            @click="toggleConfirm(item.id)"
+                                        >
+                                            <Ellipsis :size="16" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Снятие выбора подтверждается: кнопку можно нажать
+                                     случайно, а вернуть выбор гостя владелец не может.
+                                     В режиме сюрприза владелец действует вслепую -->
+                                <div
+                                    v-if="
+                                        item.id &&
+                                        confirmingItemId === item.id &&
+                                        (form.hideSelections ||
+                                            (showSelection && item.isSelected))
+                                    "
+                                    class="free-confirm"
+                                >
+                                    <p
+                                        v-if="form.hideSelections"
+                                        class="free-confirm-text"
+                                    >
+                                        Если эту позицию выбрал гость, его выбор
+                                        будет снят. Вы не узнаете, была ли она
+                                        выбрана.
+                                    </p>
+                                    <p v-else class="free-confirm-text">
+                                        Снять выбор гостя? Позиция станет
+                                        доступна другим гостям, а вернуть выбор
+                                        сможет только сам гость.
+                                    </p>
+
+                                    <div class="free-confirm-actions">
+                                        <button
+                                            type="button"
+                                            class="clear-selection-btn"
+                                            :disabled="clearingItemId !== null"
+                                            :aria-busy="
+                                                clearingItemId === item.id
+                                            "
+                                            @click="clearSelection(item)"
+                                        >
+                                            <span
+                                                :class="{
+                                                    'clear-selection-text--hidden':
+                                                        clearingItemId ===
+                                                        item.id,
+                                                }"
+                                            >
+                                                {{
+                                                    form.hideSelections
+                                                        ? 'Освободить'
+                                                        : 'Снять'
+                                                }}
+                                            </span>
+
+                                            <LoaderButtonSpinner
+                                                v-if="
+                                                    clearingItemId === item.id
+                                                "
+                                                class="clear-selection-spinner"
+                                                :size="11"
+                                            />
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            class="clear-selection-btn clear-selection-btn--secondary"
+                                            :disabled="clearingItemId !== null"
+                                            @click="confirmingItemId = null"
+                                        >
+                                            Отмена
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <p
+                                    v-if="item.id && itemMessages[item.id]"
+                                    :class="[
+                                        'item-selection-message',
+                                        {
+                                            'item-selection-message--error':
+                                                itemMessages[item.id].isError,
+                                        },
+                                    ]"
+                                    :role="
+                                        itemMessages[item.id].isError
+                                            ? 'alert'
+                                            : 'status'
+                                    "
+                                >
+                                    {{ itemMessages[item.id].text }}
+                                </p>
+
+                                <input
+                                    v-model="item.label"
+                                    type="text"
+                                    :placeholder="
+                                        isTodo
+                                            ? 'Например: Купить продукты'
+                                            : 'Например: Книга'
+                                    "
+                                />
+
+                                <!-- Ссылка и цена соединены с полем описания линиями-ветвями:
+                                 они относятся к этой позиции -->
+                                <div v-if="!isTodo" class="item-branches">
+                                    <div class="item-url-row">
+                                        <Link
+                                            :size="13"
+                                            class="item-url-icon"
+                                            aria-hidden="true"
+                                        />
+
+                                        <!-- type="text", а не "url": иначе браузер не пропустит адрес без https:// -->
+                                        <input
+                                            v-model="item.url"
+                                            type="text"
+                                            inputmode="url"
+                                            autocomplete="off"
+                                            :class="[
+                                                'item-url-input',
+                                                {
+                                                    'item-url-input--error':
+                                                        urlErrors[index],
+                                                },
+                                            ]"
+                                            placeholder="Ссылка на товар (необязательно)"
+                                            :aria-invalid="
+                                                urlErrors[index] || undefined
+                                            "
+                                            @input="clearUrlError(index)"
+                                        />
+                                    </div>
+
+                                    <span
+                                        v-if="urlErrors[index]"
+                                        class="item-url-error"
+                                    >
+                                        Некорректная ссылка
+                                    </span>
+
+                                    <div class="item-price-row">
+                                        <ItemPriceInput
+                                            v-model="item.price"
+                                            :muted="
+                                                showSelection && item.isSelected
+                                            "
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Перестановка позиций: порядок сохраняется на сервере -->
-                        <div v-if="form.items.length > 1" class="move-btns">
-                            <button
-                                class="move-btn"
-                                type="button"
-                                aria-label="Переместить выше"
-                                :disabled="index === 0"
-                                @click="moveItem(index, -1, $event)"
-                            >
-                                <ChevronUp :size="16" />
-                            </button>
+                            <!-- Перестановка позиций: порядок сохраняется на сервере -->
+                            <div v-if="form.items.length > 1" class="move-btns">
+                                <button
+                                    class="move-btn"
+                                    type="button"
+                                    aria-label="Переместить выше"
+                                    :disabled="index === 0"
+                                    @click="moveItem(index, -1, $event)"
+                                >
+                                    <ChevronUp :size="16" />
+                                </button>
+
+                                <button
+                                    class="move-btn"
+                                    type="button"
+                                    aria-label="Переместить ниже"
+                                    :disabled="index === form.items.length - 1"
+                                    @click="moveItem(index, 1, $event)"
+                                >
+                                    <ChevronDown :size="16" />
+                                </button>
+                            </div>
 
                             <button
-                                class="move-btn"
+                                class="remove-btn"
                                 type="button"
-                                aria-label="Переместить ниже"
-                                :disabled="index === form.items.length - 1"
-                                @click="moveItem(index, 1, $event)"
+                                @click="removeItem(index)"
                             >
-                                <ChevronDown :size="16" />
+                                <Trash2 />
                             </button>
                         </div>
 
                         <button
-                            class="remove-btn"
+                            class="add-item-btn"
                             type="button"
-                            @click="removeItem(index)"
+                            @click="addItem"
                         >
-                            <Trash2 />
+                            {{
+                                isTodo
+                                    ? '+ Добавить дело'
+                                    : '+ Добавить желание'
+                            }}
                         </button>
-                    </div>
-
-                    <button class="add-item-btn" type="button" @click="addItem">
-                        {{ isTodo ? '+ Добавить дело' : '+ Добавить желание' }}
-                    </button>
+                    </template>
                 </div>
 
                 <button
@@ -552,14 +874,14 @@ const closeModal = (): void => {
 }
 
 // По центру поля описания (см. .wishlist-item в wishlistModal.scss)
-.wishlist-item > .checkbox-wrapper {
+.wishlist-item > .checkbox-wrapper,
+.wishlist-item > .selection-mark {
     flex-shrink: 0;
     margin-top: calc(var(--item-label-offset) + 12px);
 }
 
-// Вместо галочки из checkboxCard.scss — значок подарка на фирменном градиенте, как в карточке
+// Вместо галочки из checkboxCard.scss — значок на градиенте, как в карточке
 .checkbox-input:checked + .checkbox-custom {
-    background: var(--brand-gradient);
     color: #fff;
 
     &::after {
@@ -567,14 +889,148 @@ const closeModal = (): void => {
     }
 }
 
-// Выбор, раскрытый до сохранения, только показывается: отмеченный подарок сохраняет
-// фирменный градиент, а не серый фон недоступного чекбокса из checkboxCard.scss
-.checkbox-input:disabled + .checkbox-custom {
+// Отметку гостя владелец только видит: значок не реагирует на наведение
+.selection-mark {
     cursor: default;
+
+    &:hover {
+        transform: none;
+        border-color: rgba(139, 92, 246, 0.35);
+    }
 }
 
-.checkbox-input:disabled:checked + .checkbox-custom {
+.selection-mark--selected,
+.selection-mark--selected:hover {
     background: var(--brand-gradient);
+    border-color: transparent;
+    color: #fff;
+}
+
+// Снятие выбора гостя: справа в строке приоритета
+.clear-selection {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+}
+
+.clear-selection-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    padding: 2px 8px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    font-size: 11px;
+    font-weight: 600;
+    color: #db2777;
+    cursor: pointer;
+    transition: all 0.18s ease;
+
+    &:hover:not(:disabled) {
+        color: #fff;
+        background: #ec4899;
+    }
+
+    &:disabled {
+        cursor: default;
+        opacity: 0.6;
+    }
+}
+
+// Подтверждение для этой позиции открыто
+.clear-selection-btn--active {
+    color: #fff;
+    background: #ec4899;
+}
+
+.clear-selection-btn--secondary {
+    color: #8a7a99;
+
+    &:hover:not(:disabled) {
+        background: #8a7a99;
+    }
+}
+
+.clear-selection-text--hidden {
+    visibility: hidden;
+}
+
+// «⋯» в режиме сюрприза: неприметная, как кнопки перестановки позиций
+.free-menu-btn {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 20px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #b3b3b3;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover,
+    &--active {
+        color: var(--brand-violet);
+        background: rgba(139, 92, 246, 0.1);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--brand-violet);
+        outline-offset: -2px;
+    }
+}
+
+// Подтверждение освобождения позиции в режиме сюрприза
+.free-confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(236, 72, 153, 0.06);
+}
+
+.free-confirm-text {
+    flex: 1 1 200px;
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #6b5a7b;
+}
+
+.free-confirm-actions {
+    display: flex;
+    gap: 4px;
+}
+
+// Итог снятия выбора под строкой приоритета
+.item-selection-message {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #8a7a99;
+}
+
+.item-selection-message--error {
+    color: #e11d48;
+}
+
+.clear-selection-spinner {
+    position: absolute;
+}
+
+// Лоадер на месте позиций, пока загружается выбор гостей
+.items-loader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    color: var(--brand-violet);
 }
 
 // Состояние выбора гостей под переключателем «Показывать выбранные подарки»

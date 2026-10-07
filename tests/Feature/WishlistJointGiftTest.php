@@ -184,17 +184,13 @@ class WishlistJointGiftTest extends TestCase
         $this->assertDatabaseCount('wishlist_joint_gifts', 0);
     }
 
-    public function test_owner_unselecting_item_removes_joint_gift(): void
+    public function test_owner_clearing_selection_removes_joint_gift(): void
     {
         $this->selectBicycleTogether();
-        $ids = $this->wishlist->items()->pluck('id', 'description');
 
         $this->actingAs($this->owner)
-            ->patchJson("/v1/wishlists/{$this->wishlist->id}", [
-                'items' => [
-                    ['id' => $ids['Велосипед'], 'label' => 'Велосипед', 'isSelected' => false],
-                    ['id' => $ids['Книга'], 'label' => 'Книга', 'isSelected' => true],
-                ],
+            ->deleteJson("/v1/wishlists/{$this->wishlist->id}/items/{$this->itemId('Велосипед')}/selection", [
+                'checkedAt' => now()->addSecond()->toIso8601String(),
             ])
             ->assertOk();
 

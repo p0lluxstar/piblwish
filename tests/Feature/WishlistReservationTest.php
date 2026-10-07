@@ -248,18 +248,18 @@ class WishlistReservationTest extends TestCase
         ])->assertJsonPath('data.0.itemIds', [$ids['Плед']]);
     }
 
-    public function test_owner_unselecting_item_removes_it_from_reservation(): void
+    public function test_owner_clearing_selection_removes_item_from_reservation(): void
     {
         $token = $this->reserve('Плед');
         $ids = $this->wishlist->items()->pluck('id', 'description');
 
         $this->actingAs($this->owner)
-            ->patchJson("/v1/wishlists/{$this->wishlist->id}", [
-                'items' => [
-                    ['id' => $ids['Плед'], 'label' => 'Плед', 'isSelected' => false],
-                ],
+            ->deleteJson("/v1/wishlists/{$this->wishlist->id}/items/{$ids['Плед']}/selection", [
+                'checkedAt' => now()->addSecond()->toIso8601String(),
             ])
             ->assertOk();
+
+        $this->assertFalse($this->isSelected('Плед'));
 
         $this->assertNull($this->wishlist->items()->where('id', $ids['Плед'])->value('reservation_id'));
 

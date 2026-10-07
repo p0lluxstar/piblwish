@@ -49,6 +49,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard'])->group(f
     Route::patch('/wishlists/{id}', [WishlistController::class, 'updateWishlist']);
     Route::get('/wishlists/{id}/selections', [WishlistController::class, 'getSelectedItems']);
     Route::patch('/wishlists/{id}/items/{itemId}', [WishlistController::class, 'updateWishlistItem']);
+    Route::delete('/wishlists/{id}/items/{itemId}/selection', [WishlistController::class, 'clearItemSelection']);
     Route::delete('/wishlists/{id}', [WishlistController::class, 'deleteWishlist']);
 });
 

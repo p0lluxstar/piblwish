@@ -257,20 +257,22 @@ const updateWishlistRequest = async ({
 };
 
 // Цепочка обновления списка: emit('update') → мутация (PATCH) → queryClient.setQueryData() с ответом сервера → computed wishLists пересчитывается → WishlistCard получает новые props
+// Список из ответа сервера записывается в кэш дашборда
+const setCachedWishlist = (updated: Wishlist): void => {
+    queryClient.setQueryData<Wishlist[]>(['wishlists'], (oldData) => {
+        if (!oldData) return [];
+
+        return oldData.map((wishlist) =>
+            wishlist.id === updated.id ? { ...wishlist, ...updated } : wishlist,
+        );
+    });
+};
+
 const { mutate: updateWishlist, isPending: isUpdating } = useMutation({
     mutationFn: updateWishlistRequest,
 
     onSuccess: (updated) => {
-        queryClient.setQueryData<Wishlist[]>(['wishlists'], (oldData) => {
-            if (!oldData) return [];
-
-            return oldData.map((wishlist) =>
-                wishlist.id === updated.id
-                    ? { ...wishlist, ...updated }
-                    : wishlist,
-            );
-        });
-
+        setCachedWishlist(updated);
         closeEditModal();
         generateRandomPhrase();
     },
@@ -581,6 +583,7 @@ onMounted(generateRandomPhrase);
         :is-pending="isUpdating"
         @close="closeEditModal"
         @update="updateWishlist"
+        @selection-cleared="setCachedWishlist"
     />
 
     <WishlistDeleteModal

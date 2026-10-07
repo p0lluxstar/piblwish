@@ -1259,8 +1259,8 @@
                 "tags": [
                     "Wishlists"
                 ],
-                "summary": "Получить id позиций, выбранных гостями",
-                "description": "Возвращает выбор гостей и в режиме сюрприза. Окно редактирования запрашивает его, когда владелец выключает режим сюрприза, чтобы показать выбор до сохранения списка",
+                "summary": "Получить выбор гостей и время, на которое он получен",
+                "description": "Окно редактирования запрашивает выбор при открытии и когда владелец выключает режим сюрприза. checkedAt передаётся при снятии выбора. В режиме сюрприза itemIds есть только при reveal=1, иначе ответ выбор не раскрывает",
                 "operationId": "d286afd216acb443a60f97cbb601935b",
                 "parameters": [
                     {
@@ -1270,6 +1270,15 @@
                         "required": true,
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "reveal",
+                        "in": "query",
+                        "description": "Вернуть itemIds и в режиме сюрприза: владелец выключил режим в окне",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
                         }
                     }
                 ],
@@ -1282,7 +1291,14 @@
                                     "properties": {
                                         "data": {
                                             "properties": {
+                                                "checkedAt": {
+                                                    "description": "Серверное время, на которое получен выбор",
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "example": "2026-10-07T09:15:00+00:00"
+                                                },
                                                 "itemIds": {
+                                                    "description": "id выбранных позиций; нет в режиме сюрприза без reveal=1",
                                                     "type": "array",
                                                     "items": {
                                                         "type": "string",
@@ -1369,6 +1385,79 @@
                     },
                     "422": {
                         "description": "Ошибка валидации или список не является списком дел"
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/v1/wishlists/{id}/items/{itemId}/selection": {
+            "delete": {
+                "tags": [
+                    "Wishlists"
+                ],
+                "summary": "Снять выбор гостя с позиции списка желаний",
+                "description": "Владелец не ставит отметки в списке желаний сам и не меняет их при изменении списка (isSelected в items игнорируется), а только снимает выбор гостя этим запросом. Бронь позиции и совместный подарок на неё удаляются. Выбор, сделанный не раньше checkedAt, не снимается (409): владелец его не видел. Ответ одинаков, была позиция выбрана или нет, поэтому в режиме сюрприза владелец освобождает позицию, не узнавая этого. Для списка дел возвращается 422",
+                "operationId": "1ba7b89a04b82baf55b9e81be100b7f7",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID списка",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "itemId",
+                        "in": "path",
+                        "description": "ID позиции",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "checkedAt"
+                                ],
+                                "properties": {
+                                    "checkedAt": {
+                                        "description": "Время, на которое окно получило выбор гостей (checkedAt из GET /v1/wishlists/{id}/selections)",
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2026-10-07T09:15:00+00:00"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Список целиком, в том же формате, что и при изменении списка"
+                    },
+                    "404": {
+                        "description": "Список или позиция не найдены"
+                    },
+                    "409": {
+                        "description": "Позицию выбрали после checkedAt, выбор не снят"
+                    },
+                    "422": {
+                        "description": "Ошибка валидации или список не является списком желаний"
                     },
                     "401": {
                         "description": "Не авторизован"

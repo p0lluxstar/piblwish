@@ -7,6 +7,7 @@ use App\Http\Resources\Wishlist\WishlistCollection;
 use Illuminate\Http\Request;
 use App\Http\Resources\Wishlist\WishlistResource;
 use Illuminate\Support\Facades\DB;
+use App\Http\Requests\Wishlist\ClearItemSelectionRequest;
 use App\Http\Requests\Wishlist\CreateWishlistRequest;
 use App\Services\Wishlist\WishlistService;
 use Illuminate\Support\Facades\Log;
@@ -56,20 +57,22 @@ class WishlistController extends Controller
         return new WishlistResource($wishlist);
     }
 
-    // Выбор гостей для окна редактирования: id выбранных позиций, в том числе в режиме сюрприза
+    // Выбор гостей для окна редактирования и время, на которое он получен.
+    // В режиме сюрприза id позиций отдаются только с ?reveal=1
     public function getSelectedItems(
         Request $request,
         string $id
     ): \Illuminate\Http\JsonResponse {
-        $itemIds = $this->wishlistService->getSelectedItemIds(
+        $selections = $this->wishlistService->getSelections(
             $request->user(),
-            $id
+            $id,
+            $request->boolean('reveal')
         );
 
         return response()->json([
             'success' => true,
             'statusCode' => 200,
-            'data' => ['itemIds' => $itemIds],
+            'data' => $selections,
         ]);
     }
 
@@ -84,6 +87,22 @@ class WishlistController extends Controller
             $id,
             $itemId,
             $request->boolean('isSelected')
+        );
+
+        return new WishlistResource($wishlist);
+    }
+
+    // Снять выбор гостя с позиции списка желаний
+    public function clearItemSelection(
+        ClearItemSelectionRequest $request,
+        string $id,
+        string $itemId
+    ): WishlistResource {
+        $wishlist = $this->wishlistService->clearItemSelection(
+            $request->user(),
+            $id,
+            $itemId,
+            $request->date('checkedAt')
         );
 
         return new WishlistResource($wishlist);

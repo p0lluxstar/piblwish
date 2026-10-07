@@ -6,6 +6,7 @@ use App\Enums\WishlistType;
 use App\Models\User;
 use App\Models\Wishlist;
 use App\Models\WishlistJointGift;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -70,10 +71,6 @@ class WishlistService
                 ->where('id', $id)
                 ->firstOrFail();
 
-            // Владелец не видел выбор гостей, если режим сюрприза был включён
-            // до этого запроса: тогда isSelected из запроса не учитывается
-            $selectionsHidden = $wishlist->hide_selections;
-
             // Обновляются только переданные поля
             $attributes = $this->wishlistAttributes($data);
 
@@ -93,7 +90,7 @@ class WishlistService
             }
 
             if (array_key_exists('items', $data) && ! $wishlist->isNote()) {
-                $this->syncItems($wishlist, $data['items'], $selectionsHidden);
+                $this->syncItems($wishlist, $data['items']);
             }
 
             return $wishlist->load('items');
@@ -101,24 +98,37 @@ class WishlistService
     }
 
     /**
-     * id выбранных гостями позиций независимо от режима сюрприза.
+     * Выбор гостей для окна редактирования и время, на которое он получен.
      *
-     * Окно редактирования запрашивает их, когда владелец выключает режим сюрприза,
-     * чтобы показать выбор гостей до сохранения списка.
+     * checkedAt окно передаёт при снятии выбора: сервер снимает только выбор,
+     * сделанный раньше, то есть тот, который владелец мог видеть (clearItemSelection).
+     * id выбранных позиций в режиме сюрприза отдаются, только если владелец
+     * выключил режим в окне ($reveal), иначе ответ выбор не раскрывает.
      *
-     * @return list<string>
+     * @return array{checkedAt: string, itemIds?: list<string>}
      */
-    public function getSelectedItemIds(User $user, string $id): array
+    public function getSelections(User $user, string $id, bool $reveal): array
     {
         $wishlist = Wishlist::query()
             ->where('user_id', $user->id)
             ->where('id', $id)
             ->firstOrFail();
 
-        return $wishlist->items()
+        // Время берётся до чтения выбора: позиция, выбранная между ними, попадёт
+        // в ответ, но её бронь не раньше checkedAt, и сервер откажет в снятии,
+        // а не снимет выбор, которого владелец не видел
+        $result = ['checkedAt' => now()->toIso8601String()];
+
+        if ($wishlist->hide_selections && ! $reveal) {
+            return $result;
+        }
+
+        $result['itemIds'] = $wishlist->items()
             ->where('is_selected', true)
             ->pluck('id')
             ->all();
+
+        return $result;
     }
 
     /**
@@ -150,19 +160,80 @@ class WishlistService
     }
 
     /**
+     * Снять выбор гостя с позиции списка желаний.
+     *
+     * Владелец не ставит отметки сам, а только снимает выбор гостя: например, если гость
+     * передумал и потерял токен брони. Снятие выполняется отдельным запросом, а не при
+     * сохранении списка, поэтому не зависит от несохранённой формы.
+     *
+     * $checkedAt — время, на которое окно получило выбор (getSelections). Бронь, созданная
+     * не раньше него, означает, что позицию выбрали заново после открытия окна: владелец
+     * этот выбор не видел, поэтому он не снимается (409). Ответ одинаков, была позиция
+     * выбрана или нет: в режиме сюрприза владелец освобождает позицию, не узнавая этого.
+     */
+    public function clearItemSelection(User $user, string $id, string $itemId, CarbonInterface $checkedAt): Wishlist
+    {
+        return DB::transaction(function () use ($user, $id, $itemId, $checkedAt) {
+            $wishlist = Wishlist::query()
+                ->where('user_id', $user->id)
+                ->where('id', $id)
+                ->firstOrFail();
+
+            // В списке дел отметка означает «выполнено» и меняется через setItemSelected
+            if (! $wishlist->isGift()) {
+                throw ValidationException::withMessages([
+                    'isSelected' => 'Снять выбор гостя можно только в списке желаний',
+                ]);
+            }
+
+            // Блокировка строки не даёт гостю изменить выбор, пока владелец его снимает
+            $item = $wishlist->items()
+                ->where('id', $itemId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $item->is_selected) {
+                return $wishlist->load('items');
+            }
+
+            // Отметка без брони (поставлена владельцем до того, как это запретили)
+            // снимается всегда. created_at хранится с точностью до секунды, поэтому
+            // сравнение строгое: при совпадении секунды выбор гостя не снимается
+            $reservedAt = $item->reservation?->created_at;
+
+            if ($reservedAt !== null && $reservedAt->greaterThanOrEqualTo($checkedAt)) {
+                abort(409, 'Состояние позиции изменилось после открытия окна');
+            }
+
+            $item->update([
+                'is_selected' => false,
+                'reservation_id' => null,
+            ]);
+
+            // Выбор снят: совместный подарок на позицию больше не действует
+            WishlistJointGift::query()->where('item_id', $item->id)->delete();
+
+            return $wishlist->load('items');
+        });
+    }
+
+    /**
      * Позиции изменяются на месте, а не пересоздаются: у них сохраняются id,
      * а с ними выбор гостей и брони, по которым гость может отменить выбор.
      *
      * Позиция с id существующей позиции списка обновляется, позиция без id
      * (или с чужим id) создаётся, позиции, которых нет в запросе, удаляются.
      * Порядок позиций задаётся порядком массива items.
+     *
+     * isSelected из запроса учитывается только в списке дел. В списке желаний
+     * отметки ставят гости, а владелец снимает их через clearItemSelection
      */
-    private function syncItems(Wishlist $wishlist, array $items, bool $selectionsHidden): void
+    private function syncItems(Wishlist $wishlist, array $items): void
     {
         // Блокировка строк не даёт гостю отметить позицию, пока владелец её сохраняет
         $existing = $wishlist->items()->lockForUpdate()->get()->keyBy('id');
         $keptIds = [];
-        $unselectedIds = [];
+        $isTodo = $wishlist->isTodo();
 
         // validated() собирает items в порядке правил: позиции с id (правило items.*.id)
         // идут раньше позиций без id. Исходный порядок восстанавливается по индексам
@@ -171,39 +242,23 @@ class WishlistService
         foreach (array_values($items) as $index => $item) {
             $attributes = $this->itemAttributes($wishlist, $item, $index);
 
-            $isSelected = (bool) ($item['isSelected'] ?? false);
+            if ($isTodo) {
+                $attributes['is_selected'] = (bool) ($item['isSelected'] ?? false);
+            }
+
             $current = $existing->get((string) ($item['id'] ?? ''));
 
             // Повтор одного id в запросе создаёт новую позицию, а не перезаписывает ту же
             if ($current === null || in_array($current->id, $keptIds, true)) {
-                // В режиме сюрприза владелец не видит выбор, поэтому новая позиция не выбрана
-                $created = $wishlist->items()->create($attributes + [
-                    'is_selected' => ! $selectionsHidden && $isSelected,
-                ]);
+                $created = $wishlist->items()->create($attributes + ['is_selected' => false]);
 
                 $keptIds[] = $created->id;
 
                 continue;
             }
 
-            // В режиме сюрприза isSelected из запроса не учитывается: владелец его не видел
-            if (! $selectionsHidden) {
-                $attributes['is_selected'] = $isSelected;
-
-                // Владелец снял отметку: бронь гостя на эту позицию больше не действует
-                if (! $isSelected) {
-                    $attributes['reservation_id'] = null;
-                    $unselectedIds[] = $current->id;
-                }
-            }
-
             $current->update($attributes);
             $keptIds[] = $current->id;
-        }
-
-        // Отметку сняли: совместный подарок на позицию больше не действует
-        if ($unselectedIds !== []) {
-            WishlistJointGift::query()->whereIn('item_id', $unselectedIds)->delete();
         }
 
         $removedIds = $existing->keys()->diff($keptIds);

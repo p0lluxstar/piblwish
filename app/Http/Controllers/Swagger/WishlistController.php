@@ -392,12 +392,13 @@ use OpenApi\Attributes as OA;
 
 #[OA\Get(
     path: '/v1/wishlists/{id}/selections',
-    summary: 'Получить id позиций, выбранных гостями',
-    description: 'Возвращает выбор гостей и в режиме сюрприза. Окно редактирования запрашивает его, когда владелец выключает режим сюрприза, чтобы показать выбор до сохранения списка',
+    summary: 'Получить выбор гостей и время, на которое он получен',
+    description: 'Окно редактирования запрашивает выбор при открытии и когда владелец выключает режим сюрприза. checkedAt передаётся при снятии выбора. В режиме сюрприза itemIds есть только при reveal=1, иначе ответ выбор не раскрывает',
     tags: ['Wishlists'],
     security: [['bearerAuth' => []]],
     parameters: [
         new OA\Parameter(name: 'id', description: 'ID списка', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+        new OA\Parameter(name: 'reveal', description: 'Вернуть itemIds и в режиме сюрприза: владелец выключил режим в окне', in: 'query', required: false, schema: new OA\Schema(type: 'boolean')),
     ],
     responses: [
         new OA\Response(
@@ -409,7 +410,16 @@ use OpenApi\Attributes as OA;
                         property: 'data',
                         properties: [
                             new OA\Property(
+                                property: 'checkedAt',
+                                description: 'Серверное время, на которое получен выбор',
+                                type: 'string',
+                                format: 'date-time',
+                                example: '2026-10-07T09:15:00+00:00'
+                            ),
+
+                            new OA\Property(
                                 property: 'itemIds',
+                                description: 'id выбранных позиций; нет в режиме сюрприза без reveal=1',
                                 type: 'array',
                                 items: new OA\Items(type: 'string', format: 'ulid')
                             ),
@@ -472,6 +482,60 @@ use OpenApi\Attributes as OA;
         new OA\Response(
             response: 422,
             description: 'Ошибка валидации или список не является списком дел'
+        ),
+
+        new OA\Response(
+            response: 401,
+            description: 'Не авторизован'
+        ),
+    ]
+)]
+
+#[OA\Delete(
+    path: '/v1/wishlists/{id}/items/{itemId}/selection',
+    summary: 'Снять выбор гостя с позиции списка желаний',
+    description: 'Владелец не ставит отметки в списке желаний сам и не меняет их при изменении списка (isSelected в items игнорируется), а только снимает выбор гостя этим запросом. Бронь позиции и совместный подарок на неё удаляются. Выбор, сделанный не раньше checkedAt, не снимается (409): владелец его не видел. Ответ одинаков, была позиция выбрана или нет, поэтому в режиме сюрприза владелец освобождает позицию, не узнавая этого. Для списка дел возвращается 422',
+    tags: ['Wishlists'],
+    security: [['bearerAuth' => []]],
+    parameters: [
+        new OA\Parameter(name: 'id', description: 'ID списка', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+        new OA\Parameter(name: 'itemId', description: 'ID позиции', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+    ],
+    requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['checkedAt'],
+            properties: [
+                new OA\Property(
+                    property: 'checkedAt',
+                    description: 'Время, на которое окно получило выбор гостей (checkedAt из GET /v1/wishlists/{id}/selections)',
+                    type: 'string',
+                    format: 'date-time',
+                    example: '2026-10-07T09:15:00+00:00'
+                ),
+            ],
+            type: 'object'
+        )
+    ),
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Список целиком, в том же формате, что и при изменении списка'
+        ),
+
+        new OA\Response(
+            response: 404,
+            description: 'Список или позиция не найдены'
+        ),
+
+        new OA\Response(
+            response: 409,
+            description: 'Позицию выбрали после checkedAt, выбор не снят'
+        ),
+
+        new OA\Response(
+            response: 422,
+            description: 'Ошибка валидации или список не является списком желаний'
         ),
 
         new OA\Response(
