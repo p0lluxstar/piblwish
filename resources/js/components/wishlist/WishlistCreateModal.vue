@@ -25,10 +25,15 @@ import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import ItemPriceInput from './ItemPriceInput.vue';
 import ItemPriorityPicker from './ItemPriorityPicker.vue';
 import WishlistColorPicker from './WishlistColorPicker.vue';
+import WishlistGuestCheckToggle from './WishlistGuestCheckToggle.vue';
+import WishlistGuestNameToggle from './WishlistGuestNameToggle.vue';
+import WishlistShareToggle from './WishlistShareToggle.vue';
 import WishlistSurpriseToggle from './WishlistSurpriseToggle.vue';
 
 const props = defineProps<{
     isPending: boolean;
+    // Текст ошибки сервера после неудачной попытки создать список
+    errorMessage?: string | null;
     // Список-источник при дублировании: форма заполняется его значениями
     source?: Wishlist | null;
 }>();
@@ -47,6 +52,11 @@ const defaultForm = (type: WishlistType = 'gift'): WishlistForm => ({
     // Выбор гостей, однажды увиденный владельцем, уже не скрыть,
     // поэтому список желаний по умолчанию создаётся в режиме сюрприза
     hideSelections: true,
+    // Список дел по умолчанию личный: доступ по ссылке владелец включает сам
+    isShared: false,
+    guestsCanCheck: false,
+    // Имя гостя по умолчанию обязательно: ради подписей под делами отметки и включают
+    guestNameRequired: true,
     items: [
         {
             label: '',
@@ -66,6 +76,10 @@ const sourceForm = (source: Wishlist): WishlistForm => ({
     content: source.content ?? '',
     color: source.color,
     hideSelections: source.hideSelections ?? false,
+    // Копия списка дел создаётся личной: ссылку на неё владелец ещё никому не давал
+    isShared: false,
+    guestsCanCheck: source.guestsCanCheck ?? false,
+    guestNameRequired: source.guestNameRequired ?? true,
     items: source.items.length
         ? source.items.map((item) => ({
               label: item.label,
@@ -101,6 +115,10 @@ const modalTitle = computed(() => {
 // Пустую заметку сервер не принимает, поэтому кнопка создания недоступна
 const isNoteEmpty = computed(() => isNote.value && !form.value.content.trim());
 
+// Название списка не заполнено: ошибка выводится под полем после попытки отправки
+// и снимается, как только название начинают вводить
+const isTitleMissing = ref(false);
+
 // Индексы позиций с некорректной ссылкой; ошибка снимается, когда ссылку начинают править
 const urlErrors = ref<boolean[]>([]);
 
@@ -128,6 +146,7 @@ const clearUrlError = (index: number): void => {
 const chooseType = (type: WishlistType): void => {
     form.value = defaultForm(type);
     urlErrors.value = [];
+    isTitleMissing.value = false;
     step.value = 'form';
 };
 
@@ -171,6 +190,12 @@ const handleSubmit = (): void => {
         return;
     }
 
+    // Название обязательно у списков желаний и дел: без него сервер список не примет
+    if (!form.value.title.trim()) {
+        isTitleMissing.value = true;
+        return;
+    }
+
     const items = prepareItems();
 
     if (!items) return;
@@ -179,8 +204,15 @@ const handleSubmit = (): void => {
         type: form.value.type,
         title: form.value.title,
         color: form.value.color,
-        // У списка дел нет гостей и режима сюрприза
+        // У списка дел нет режима сюрприза, а доступ по ссылке включается только у него
         hideSelections: !isTodo.value && form.value.hideSelections,
+        ...(isTodo.value
+            ? {
+                  isShared: form.value.isShared,
+                  guestsCanCheck: form.value.guestsCanCheck,
+                  guestNameRequired: form.value.guestNameRequired,
+              }
+            : {}),
         items,
     });
 };
@@ -251,8 +283,8 @@ const closeModal = (): void => {
                     <span class="type-option-text">
                         <span class="type-option-title">Список дел</span>
                         <span class="type-option-description">
-                            Задачи, которые вы отмечаете выполненными; список
-                            виден только вам
+                            Задачи, которые вы отмечаете выполненными; списком
+                            можно поделиться по ссылке для просмотра
                         </span>
                     </span>
                 </button>
@@ -293,12 +325,23 @@ const closeModal = (): void => {
                     <input
                         v-model="form.title"
                         type="text"
+                        :class="{ 'field--error': isTitleMissing }"
+                        :aria-invalid="isTitleMissing"
                         :placeholder="
                             isTodo
                                 ? 'Например: Дела на выходные'
                                 : 'Например: День рождения'
                         "
+                        @input="isTitleMissing = false"
                     />
+
+                    <span
+                        v-if="isTitleMissing"
+                        class="field-error"
+                        role="alert"
+                    >
+                        Укажите название списка
+                    </span>
                 </div>
 
                 <div class="form-group">
@@ -307,9 +350,26 @@ const closeModal = (): void => {
                     <WishlistColorPicker v-model="form.color" />
                 </div>
 
-                <!-- Режим сюрприза есть только у списка желаний: у остальных нет гостей -->
+                <!-- Режим сюрприза есть только у списка желаний: у остальных гости ничего не выбирают -->
                 <div v-if="form.type === 'gift'" class="form-group">
                     <WishlistSurpriseToggle v-model="form.hideSelections" />
+                </div>
+
+                <!-- Список желаний доступен по ссылке всегда, а список дел — по выбору владельца -->
+                <div v-if="isTodo" class="form-group">
+                    <WishlistShareToggle v-model="form.isShared" />
+
+                    <!-- Отмечать дела гости могут только в списке, открытом по ссылке -->
+                    <WishlistGuestCheckToggle
+                        v-if="form.isShared"
+                        v-model="form.guestsCanCheck"
+                    />
+
+                    <!-- Имя гостя нужно, только если гости отмечают дела -->
+                    <WishlistGuestNameToggle
+                        v-if="form.isShared && form.guestsCanCheck"
+                        v-model="form.guestNameRequired"
+                    />
                 </div>
 
                 <div v-if="isNote" class="form-group">
@@ -437,6 +497,11 @@ const closeModal = (): void => {
                         {{ isTodo ? '+ Добавить дело' : '+ Добавить желание' }}
                     </button>
                 </div>
+
+                <!-- Ошибка сервера, например при потере соединения -->
+                <p v-if="props.errorMessage" class="form-error" role="alert">
+                    {{ props.errorMessage }}
+                </p>
 
                 <button
                     type="submit"

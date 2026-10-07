@@ -35,7 +35,7 @@ class WishlistService
 
             // Список желаний по умолчанию создаётся в режиме сюрприза: выбор гостей,
             // однажды увиденный владельцем, уже не скрыть. У списка дел и заметки
-            // гостей нет, для них остаётся значение из модели
+            // гости ничего не выбирают, для них остаётся значение из модели
             $type = WishlistType::tryFrom($data['type'] ?? '') ?? WishlistType::Gift;
 
             if ($type === WishlistType::Gift && ! array_key_exists('hide_selections', $attributes)) {
@@ -80,9 +80,13 @@ class WishlistService
                 $attributes = Arr::only($attributes, ['color']) + Arr::only($data, ['content']);
             }
 
-            // У списка дел нет гостей, поэтому режим сюрприза для него не включается
+            // Выбор гостей в списке дел не скрывается: отметка гостя означает «выполнено»,
+            // поэтому режим сюрприза для него не включается. Доступ по ссылке и отметки
+            // гостей настраиваются только у списка дел: список желаний доступен по ссылке всегда
             if ($wishlist->isTodo()) {
                 unset($attributes['hide_selections']);
+            } else {
+                unset($attributes['is_shared'], $attributes['guests_can_check'], $attributes['guest_name_required']);
             }
 
             if ($attributes !== []) {
@@ -150,10 +154,15 @@ class WishlistService
                 ]);
             }
 
+            // Отметку ставит или снимает владелец: прежний автор отметки не сохраняется
             $wishlist->items()
                 ->where('id', $itemId)
                 ->firstOrFail()
-                ->update(['is_selected' => $isSelected]);
+                ->update([
+                    'is_selected' => $isSelected,
+                    'checked_by_guest' => false,
+                    'checked_by_name' => null,
+                ]);
 
             return $wishlist->load('items');
         });
@@ -242,11 +251,18 @@ class WishlistService
         foreach (array_values($items) as $index => $item) {
             $attributes = $this->itemAttributes($wishlist, $item, $index);
 
+            $current = $existing->get((string) ($item['id'] ?? ''));
+
             if ($isTodo) {
                 $attributes['is_selected'] = (bool) ($item['isSelected'] ?? false);
-            }
 
-            $current = $existing->get((string) ($item['id'] ?? ''));
+                // Автор отметки сохраняется, только если дело осталось выполненным.
+                // Отметку, которую владелец поставил или снял в форме, он делает сам
+                if (! $attributes['is_selected'] || ! $current?->is_selected) {
+                    $attributes['checked_by_guest'] = false;
+                    $attributes['checked_by_name'] = null;
+                }
+            }
 
             // Повтор одного id в запросе создаёт новую позицию, а не перезаписывает ту же
             if ($current === null || in_array($current->id, $keptIds, true)) {
@@ -290,6 +306,18 @@ class WishlistService
 
         if (array_key_exists('hideSelections', $data)) {
             $attributes['hide_selections'] = (bool) $data['hideSelections'];
+        }
+
+        if (array_key_exists('isShared', $data)) {
+            $attributes['is_shared'] = (bool) $data['isShared'];
+        }
+
+        if (array_key_exists('guestsCanCheck', $data)) {
+            $attributes['guests_can_check'] = (bool) $data['guestsCanCheck'];
+        }
+
+        if (array_key_exists('guestNameRequired', $data)) {
+            $attributes['guest_name_required'] = (bool) $data['guestNameRequired'];
         }
 
         return $attributes;

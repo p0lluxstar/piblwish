@@ -17,11 +17,18 @@ class SharedWishlistService
     // Длина токена брони: 40 символов из [A-Za-z0-9], перебор невозможен
     public const RESERVATION_TOKEN_LENGTH = 40;
 
-    // Получить конкретный вишлист по ID
+    // Получить конкретный вишлист по ID. Кроме списка желаний, по ссылке открывается
+    // список дел с включённым доступом, но только для просмотра: остальные публичные
+    // эндпоинты работают лишь со списками желаний (sharedQuery)
     public function getWishlistById(
         string $id
     ): Wishlist {
-        return $this->sharedQuery()
+        return Wishlist::query()
+            ->where(fn (Builder $query) => $query
+                ->where('type', WishlistType::Gift)
+                ->orWhere(fn (Builder $query) => $query
+                    ->where('type', WishlistType::Todo)
+                    ->where('is_shared', true)))
             ->with(['items.jointGift', 'user'])
             ->findOrFail($id);
     }
@@ -227,13 +234,73 @@ class SharedWishlistService
         return $this->freshWishlist($wishlistId);
     }
 
+    /**
+     * Отметить дела выполненными по ссылке.
+     *
+     * Доступно только в списке дел, где владелец разрешил гостям отмечать дела:
+     * для остальных списков ответ 404. Гость только ставит отметку, снять её может
+     * лишь владелец. Уже выполненное дело не изменяется: при одновременных запросах
+     * действует отметка из запроса, пришедшего первым, а повторная ничего не меняет,
+     * в том числе не заменяет имя того, кто отметил дело.
+     *
+     * $name — имя гостя для подписи под делами; если владелец требует имя,
+     * без него запрос отклоняется.
+     */
+    public function checkTodoItems(string $wishlistId, array $itemIds, ?string $name): Wishlist
+    {
+        $wishlist = Wishlist::query()
+            ->where('type', WishlistType::Todo)
+            ->where('is_shared', true)
+            ->where('guests_can_check', true)
+            ->findOrFail($wishlistId);
+
+        $name = $name === null ? null : trim($name);
+        $name = $name === '' ? null : $name;
+
+        if ($name === null && $wishlist->guest_name_required) {
+            throw ValidationException::withMessages([
+                'name' => 'Укажите имя, чтобы владелец и другие участники знали, кто отметил дела',
+            ]);
+        }
+
+        $itemIds = array_values(array_unique($itemIds));
+
+        DB::transaction(function () use ($wishlist, $itemIds, $name) {
+            // Блокировка строк не даёт владельцу удалить или изменить дело,
+            // пока гость его отмечает
+            $items = $wishlist->items()
+                ->whereIn('id', $itemIds)
+                ->lockForUpdate()
+                ->get();
+
+            // Удалённое или чужое дело отклоняет весь запрос
+            if ($items->count() !== count($itemIds)) {
+                throw ValidationException::withMessages([
+                    'item_ids' => 'Некоторых дел нет в этом списке',
+                ]);
+            }
+
+            $wishlist->items()
+                ->whereIn('id', $itemIds)
+                ->where('is_selected', false)
+                ->update([
+                    'is_selected' => true,
+                    'checked_by_guest' => true,
+                    'checked_by_name' => $name,
+                ]);
+        });
+
+        return $this->getWishlistById($wishlistId);
+    }
+
     private function freshWishlist(string $wishlistId): Wishlist
     {
         return $this->sharedQuery()->with(['items.jointGift', 'user'])->findOrFail($wishlistId);
     }
 
-    // По ссылке доступны только списки желаний: список дел и заметку видит лишь владелец,
-    // поэтому для гостя он не существует и все публичные эндпоинты отвечают 404
+    // Выбирать позиции, отменять выбор и менять совместный подарок можно только в списке
+    // желаний. Для списка дел, даже открытого по ссылке, и для заметки эти эндпоинты
+    // отвечают 404: гость не изменяет их ни в каком режиме
     private function sharedQuery(): Builder
     {
         return Wishlist::query()->where('type', WishlistType::Gift);

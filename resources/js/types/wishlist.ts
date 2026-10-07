@@ -11,6 +11,16 @@ export interface WishlistItem {
     price?: number | null;
     // Совместный подарок; приходит только на общей странице, владельцу не отдаётся
     jointGift?: WishlistJointGift | null;
+    // Кто отметил дело выполненным; есть только у позиций списка дел,
+    // у невыполненного дела null
+    checkedBy?: WishlistItemCheckedBy | null;
+}
+
+// Автор отметки выполненного дела: guest = false — владелец списка,
+// guest = true — гость по ссылке; name — имя гостя или null, если он его не указал
+export interface WishlistItemCheckedBy {
+    guest: boolean;
+    name: string | null;
 }
 
 // Совместный подарок: гость-организатор предлагает остальным гостям подарить позицию
@@ -50,7 +60,8 @@ export type WishlistColor =
 
 export interface Wishlist {
     id: string;
-    // Тип списка; приходит только в дашборде: общая страница доступна лишь для списков желаний
+    // Тип списка. На общей странице бывает gift или todo: список дел открывается
+    // по ссылке только для просмотра, если владелец включил доступ
     type?: WishlistType;
     // У заметки названия нет: null
     title: string | null;
@@ -61,6 +72,14 @@ export interface Wishlist {
     createdAt?: string;
     // Режим сюрприза: выбор гостей скрыт от владельца; приходит только в дашборде
     hideSelections?: boolean;
+    // Открывается ли список по общей ссылке: у списка желаний всегда true,
+    // у заметки false, у списка дел — если владелец включил доступ; приходит только в дашборде
+    isShared?: boolean;
+    // Могут ли гости по ссылке отмечать дела выполненными; у списка желаний и заметки false.
+    // В дашборде — сохранённое разрешение, на общей странице — действующее
+    guestsCanCheck?: boolean;
+    // Должен ли гость указать имя, отмечая дела; у списка желаний и заметки false
+    guestNameRequired?: boolean;
     username: string | null;
     items: WishlistItem[];
     // Бронь гостя: приходит на общей странице после сохранения или отмены выбора
@@ -79,13 +98,29 @@ export type WishlistForm = Pick<Wishlist, 'color' | 'items'> & {
     title: string;
     content: string;
     hideSelections: boolean;
+    // Доступ к списку дел по ссылке для просмотра; у других типов не отправляется
+    isShared: boolean;
+    // Разрешение гостям отмечать дела по ссылке; у других типов не отправляется
+    guestsCanCheck: boolean;
+    // Обязательно ли гостю указывать имя; у других типов не отправляется
+    guestNameRequired: boolean;
 };
 
 // Данные запроса на создание: у списка нет content, у заметки — title, items
-// и hideSelections, поэтому эти поля необязательны
+// и hideSelections, а isShared, guestsCanCheck и guestNameRequired есть только у списка дел,
+// поэтому эти поля необязательны
 export type WishlistCreatePayload = Pick<WishlistForm, 'type' | 'color'> &
     Partial<
-        Pick<WishlistForm, 'title' | 'content' | 'hideSelections' | 'items'>
+        Pick<
+            WishlistForm,
+            | 'title'
+            | 'content'
+            | 'hideSelections'
+            | 'isShared'
+            | 'guestsCanCheck'
+            | 'guestNameRequired'
+            | 'items'
+        >
     >;
 
 // Данные запроса на изменение: тип после создания не меняется

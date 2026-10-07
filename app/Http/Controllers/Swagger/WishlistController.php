@@ -36,7 +36,7 @@ use OpenApi\Attributes as OA;
 
                                 new OA\Property(
                                     property: 'type',
-                                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел и заметка недоступны по общей ссылке',
+                                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел открывается по общей ссылке только при isShared = true, а отмечать в нём дела гости могут при guestsCanCheck = true, заметка недоступна по ссылке',
                                     type: 'string',
                                     enum: WishlistType::class,
                                     example: 'gift'
@@ -80,6 +80,27 @@ use OpenApi\Attributes as OA;
                                     description: 'Режим сюрприза: если true, у позиций нет поля isSelected',
                                     type: 'boolean',
                                     example: false
+                                ),
+
+                                new OA\Property(
+                                    property: 'isShared',
+                                    description: 'Открывается ли список по общей ссылке: у списка желаний всегда true, у заметки false, у списка дел — если владелец включил доступ',
+                                    type: 'boolean',
+                                    example: true
+                                ),
+
+                                new OA\Property(
+                                    property: 'guestsCanCheck',
+                                    description: 'Разрешено ли гостям отмечать дела по ссылке; у списка желаний и заметки false. Действует, только если isShared = true',
+                                    type: 'boolean',
+                                    example: false
+                                ),
+
+                                new OA\Property(
+                                    property: 'guestNameRequired',
+                                    description: 'Должен ли гость указать имя, отмечая дела; у списка желаний и заметки false',
+                                    type: 'boolean',
+                                    example: true
                                 ),
 
                                 new OA\Property(
@@ -133,6 +154,13 @@ use OpenApi\Attributes as OA;
                                                 description: 'Отсутствует, если включён режим сюрприза (hideSelections)',
                                                 type: 'boolean',
                                                 example: false
+                                            ),
+
+                                            new OA\Property(
+                                                property: 'checkedBy',
+                                                description: 'Только у позиций списка дел: кто отметил дело выполненным',
+                                                ref: '#/components/schemas/TodoItemCheckedBy',
+                                                nullable: true
                                             ),
                                         ],
                                         type: 'object'
@@ -203,6 +231,27 @@ use OpenApi\Attributes as OA;
                 ),
 
                 new OA\Property(
+                    property: 'isShared',
+                    description: 'Доступ к списку дел по общей ссылке. Необязателен, по умолчанию false; передаётся только для списка дел (type = todo)',
+                    type: 'boolean',
+                    example: false
+                ),
+
+                new OA\Property(
+                    property: 'guestNameRequired',
+                    description: 'Должен ли гость указать имя, отмечая дела по ссылке. Необязателен, по умолчанию true; передаётся только для списка дел',
+                    type: 'boolean',
+                    example: true
+                ),
+
+                new OA\Property(
+                    property: 'guestsCanCheck',
+                    description: 'Разрешить гостям отмечать дела выполненными по ссылке (снять отметку может только владелец). Необязателен, по умолчанию false; передаётся только для списка дел и действует при isShared = true',
+                    type: 'boolean',
+                    example: false
+                ),
+
+                new OA\Property(
                     property: 'items',
                     description: 'Позиции списка, хотя бы одна. Обязательны для списков желаний и дел, у заметки запрещены',
                     type: 'array',
@@ -268,7 +317,7 @@ use OpenApi\Attributes as OA;
 
                             new OA\Property(
                                 property: 'type',
-                                description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел и заметка недоступны по общей ссылке',
+                                description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел открывается по общей ссылке только при isShared = true, а отмечать в нём дела гости могут при guestsCanCheck = true, заметка недоступна по ссылке',
                                 type: 'string',
                                 enum: WishlistType::class,
                                 example: 'gift'
@@ -312,6 +361,27 @@ use OpenApi\Attributes as OA;
                                 description: 'Режим сюрприза: если true, у позиций нет поля isSelected',
                                 type: 'boolean',
                                 example: false
+                            ),
+
+                            new OA\Property(
+                                property: 'isShared',
+                                description: 'Открывается ли список по общей ссылке: у списка желаний всегда true, у заметки false, у списка дел — если владелец включил доступ',
+                                type: 'boolean',
+                                example: true
+                            ),
+
+                            new OA\Property(
+                                property: 'guestsCanCheck',
+                                description: 'Разрешено ли гостям отмечать дела по ссылке; у списка желаний и заметки false. Действует, только если isShared = true',
+                                type: 'boolean',
+                                example: false
+                            ),
+
+                            new OA\Property(
+                                property: 'guestNameRequired',
+                                description: 'Должен ли гость указать имя, отмечая дела; у списка желаний и заметки false',
+                                type: 'boolean',
+                                example: true
                             ),
 
                             new OA\Property(
@@ -365,6 +435,13 @@ use OpenApi\Attributes as OA;
                                             description: 'Отсутствует, если включён режим сюрприза (hideSelections)',
                                             type: 'boolean',
                                             example: false
+                                        ),
+
+                                        new OA\Property(
+                                            property: 'checkedBy',
+                                            description: 'Только у позиций списка дел: кто отметил дело выполненным',
+                                            ref: '#/components/schemas/TodoItemCheckedBy',
+                                            nullable: true
                                         ),
                                     ],
                                     type: 'object'

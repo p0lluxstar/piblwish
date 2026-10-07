@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'priority',
     'price',
     'is_selected',
+    'checked_by_guest',
+    'checked_by_name',
     'reservation_id',
     'position',
 ])]
@@ -27,6 +29,7 @@ class WishlistItem extends Model
     {
         return [
             'is_selected' => 'boolean',
+            'checked_by_guest' => 'boolean',
             'position' => 'integer',
             'priority' => WishlistItemPriority::class,
             'price' => 'integer',

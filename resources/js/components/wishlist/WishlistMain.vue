@@ -10,6 +10,7 @@ import {
     StickyNote,
 } from '@lucide/vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
+import { isAxiosError } from 'axios';
 import { type Component, computed, onMounted, ref, watch } from 'vue';
 
 import {
@@ -18,11 +19,13 @@ import {
 } from '@/composables/useWishlistSort';
 import { MOTIVATIONAL_PHRASES } from '@/constants/phrases';
 import { api } from '@/lib/api';
+import type { ApiErrorResponse } from '@/types/api';
 
 import type {
     Wishlist,
     WishlistCreatePayload,
     WishlistItem,
+    WishlistItemCheckedBy,
     WishlistType,
     WishlistUpdatePayload,
 } from '../../types/wishlist';
@@ -199,8 +202,27 @@ const openDuplicateModal = (wishlist: Wishlist): void => {
 
 const closeCreateModal = (): void => {
     isCreateModalOpen.value = false;
+    createErrorMessage.value = null;
     duplicateSource.value = null;
 };
+
+// Текст ошибки сервера для окна: первая ошибка валидации (422). Общий message
+// не используется: Laravel дописывает к нему английское «(and N more errors)»,
+// а у ошибок 5xx он и вовсе «Server Error». В остальных случаях, в том числе
+// при потере соединения, выводится общий текст
+const getErrorMessage = (error: unknown): string => {
+    const errors = isAxiosError<ApiErrorResponse>(error)
+        ? error.response?.data?.data?.errors
+        : null;
+
+    return (
+        Object.values(errors ?? {})[0]?.[0] ??
+        'Не удалось сохранить список. Попробуйте ещё раз.'
+    );
+};
+
+const createErrorMessage = ref<string | null>(null);
+const updateErrorMessage = ref<string | null>(null);
 
 const createWishlistRequest = async (
     payload: WishlistCreatePayload,
@@ -216,6 +238,10 @@ const createWishlistRequest = async (
 const { mutate: createWishlist, isPending: isCreating } = useMutation({
     mutationFn: createWishlistRequest,
 
+    onMutate: () => {
+        createErrorMessage.value = null;
+    },
+
     onSuccess: async () => {
         await queryClient.invalidateQueries({
             queryKey: ['wishlists'],
@@ -227,6 +253,7 @@ const { mutate: createWishlist, isPending: isCreating } = useMutation({
 
     onError: (error) => {
         console.error('Ошибка создания списка', error);
+        createErrorMessage.value = getErrorMessage(error);
     },
 });
 
@@ -241,6 +268,7 @@ const openEditModal = (wishlist: Wishlist): void => {
 
 const closeEditModal = (): void => {
     isEditModalOpen.value = false;
+    updateErrorMessage.value = null;
     selectedWishlist.value = null;
 };
 
@@ -271,6 +299,10 @@ const setCachedWishlist = (updated: Wishlist): void => {
 const { mutate: updateWishlist, isPending: isUpdating } = useMutation({
     mutationFn: updateWishlistRequest,
 
+    onMutate: () => {
+        updateErrorMessage.value = null;
+    },
+
     onSuccess: (updated) => {
         setCachedWishlist(updated);
         closeEditModal();
@@ -279,6 +311,7 @@ const { mutate: updateWishlist, isPending: isUpdating } = useMutation({
 
     onError: (error) => {
         console.error('Ошибка обновления списка', error);
+        updateErrorMessage.value = getErrorMessage(error);
     },
 });
 
@@ -301,25 +334,41 @@ const toggleItemRequest = async ({
     return response.data.data;
 };
 
-// Отметка позиции в кэше дашборда без перезапроса списков
-const setCachedItemSelected = ({
-    wishlistId,
-    itemId,
-    isSelected,
-}: ToggleItemPayload): void => {
+// Отметка позиции в кэше дашборда без перезапроса списков. Вместе с отметкой
+// записывается её автор (checkedBy), как его сохранит сервер: отметку ставит
+// владелец, а при снятии отметки автора нет
+const setCachedItemSelected = (
+    { wishlistId, itemId, isSelected }: ToggleItemPayload,
+    checkedBy: WishlistItemCheckedBy | null = isSelected
+        ? { guest: false, name: null }
+        : null,
+): void => {
     queryClient.setQueryData<Wishlist[]>(['wishlists'], (oldData) =>
         oldData?.map((wishlist) =>
             wishlist.id === wishlistId
                 ? {
                       ...wishlist,
                       items: wishlist.items.map((item) =>
-                          item.id === itemId ? { ...item, isSelected } : item,
+                          item.id === itemId
+                              ? { ...item, isSelected, checkedBy }
+                              : item,
                       ),
                   }
                 : wishlist,
         ),
     );
 };
+
+// Автор отметки позиции в кэше до её изменения: при ошибке он восстанавливается,
+// чтобы не потерять имя гостя, отметку которого владелец пытался снять
+const getCachedCheckedBy = ({
+    wishlistId,
+    itemId,
+}: ToggleItemPayload): WishlistItemCheckedBy | null =>
+    queryClient
+        .getQueryData<Wishlist[]>(['wishlists'])
+        ?.find((wishlist) => wishlist.id === wishlistId)
+        ?.items.find((item) => item.id === itemId)?.checkedBy ?? null;
 
 // Отметка дела с карточки: галочка ставится сразу, не дожидаясь ответа сервера.
 // Ответ сервером в кэш не записывается: при быстрых повторных кликах ответ
@@ -328,12 +377,21 @@ const setCachedItemSelected = ({
 const { mutate: toggleItemMutation } = useMutation({
     mutationFn: toggleItemRequest,
 
-    onMutate: setCachedItemSelected,
+    onMutate: (payload) => {
+        const previousCheckedBy = getCachedCheckedBy(payload);
 
-    onError: (error, payload) => {
+        setCachedItemSelected(payload);
+
+        return { previousCheckedBy };
+    },
+
+    onError: (error, payload, context) => {
         console.error('Ошибка отметки дела', error);
 
-        setCachedItemSelected({ ...payload, isSelected: !payload.isSelected });
+        setCachedItemSelected(
+            { ...payload, isSelected: !payload.isSelected },
+            context?.previousCheckedBy ?? null,
+        );
     },
 });
 
@@ -572,6 +630,7 @@ onMounted(generateRandomPhrase);
     <WishlistCreateModal
         v-if="isCreateModalOpen"
         :is-pending="isCreating"
+        :error-message="createErrorMessage"
         :source="duplicateSource"
         @close="closeCreateModal"
         @create="createWishlist"
@@ -581,6 +640,7 @@ onMounted(generateRandomPhrase);
         v-if="isEditModalOpen && selectedWishlist"
         :wishlist="selectedWishlist"
         :is-pending="isUpdating"
+        :error-message="updateErrorMessage"
         @close="closeEditModal"
         @update="updateWishlist"
         @selection-cleared="setCachedWishlist"

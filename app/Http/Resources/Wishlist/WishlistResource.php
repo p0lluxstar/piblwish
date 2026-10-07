@@ -23,9 +23,19 @@ class WishlistResource extends ApiResource
             'createdAt' => $this->created_at?->toIso8601String(),
             // Режим сюрприза: при включённом флаге у позиций нет поля isSelected
             'hideSelections' => $this->hide_selections,
+            // Открывается ли список по общей ссылке: у списка желаний всегда true,
+            // у заметки false, у списка дел — если владелец включил доступ
+            'isShared' => $this->isShared(),
+            // Разрешено ли гостям отмечать дела по ссылке; у списка желаний и заметки false.
+            // Сохранённое значение, а не действующее: при выключенном доступе по ссылке
+            // окно редактирования показывает выбор владельца
+            'guestsCanCheck' => $this->isTodo() && $this->guests_can_check,
+            // Должен ли гость указать имя, отмечая дела; у списка желаний и заметки false
+            'guestNameRequired' => $this->isTodo() && $this->guest_name_required,
             'items' => $this->whenLoaded('items', fn () => $this->items->map(
                 fn ($item) => (new WishlistItemResource($item))
                     ->hideSelection($this->hide_selections)
+                    ->withCheckedBy($this->isTodo())
             )),
         ];
     }

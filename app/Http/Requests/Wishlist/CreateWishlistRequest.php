@@ -35,6 +35,18 @@ class CreateWishlistRequest extends FormRequest
             // поэтому включить режим сюрприза для них нельзя
             'hideSelections' => ['sometimes', 'boolean', 'declined_if:type,todo,note'],
 
+            // Доступ по ссылке для просмотра; по умолчанию выключен. Включается только
+            // у списка дел: список желаний доступен по ссылке всегда, заметка — никогда
+            'isShared' => ['sometimes', 'boolean', 'prohibited_unless:type,todo'],
+
+            // Разрешение гостям отмечать дела по ссылке; по умолчанию выключено.
+            // Действует, только если включён isShared
+            'guestsCanCheck' => ['sometimes', 'boolean', 'prohibited_unless:type,todo'],
+
+            // Должен ли гость указать имя, отмечая дела; по умолчанию true.
+            // Действует, только если включён guestsCanCheck
+            'guestNameRequired' => ['sometimes', 'boolean', 'prohibited_unless:type,todo'],
+
             // У заметки нет позиций
             'items' => ['prohibited_if:type,note', 'required_unless:type,note', 'array', 'min:1'],
 
@@ -89,6 +101,10 @@ class CreateWishlistRequest extends FormRequest
             'color.enum' => 'Недопустимый цвет списка',
 
             'hideSelections.declined_if' => 'Режим сюрприза есть только у списка желаний',
+
+            'isShared.prohibited_unless' => 'Доступ по ссылке включается только у списка дел',
+            'guestsCanCheck.prohibited_unless' => 'Отмечать позиции по ссылке гости могут только в списке дел',
+            'guestNameRequired.prohibited_unless' => 'Имя гостя запрашивается только в списке дел',
 
             'items.required_unless' => 'Добавьте хотя бы один элемент',
             'items.prohibited_if' => 'У заметки нет позиций',

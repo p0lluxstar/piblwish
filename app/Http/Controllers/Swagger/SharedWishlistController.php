@@ -50,10 +50,20 @@ use OpenApi\Attributes as OA;
     type: 'object'
 )]
 
+#[OA\Schema(
+    schema: 'TodoItemCheckedBy',
+    description: 'Кто отметил дело выполненным; есть только у позиций списка дел, у невыполненного дела null. guest = false — отметил владелец, guest = true — гость по ссылке, name — его имя или null, если гость имя не указал',
+    properties: [
+        new OA\Property(property: 'guest', type: 'boolean'),
+        new OA\Property(property: 'name', type: 'string', maxLength: 50, nullable: true),
+    ],
+    type: 'object'
+)]
+
 #[OA\Get(
     path: '/api/v1/shared-wishlists/{id}',
-    summary: 'Список желаний для гостя',
-    description: 'У каждой позиции есть поле jointGift: данные совместного подарка или null',
+    summary: 'Список желаний или список дел для гостя',
+    description: 'Список дел (type = todo) открывается, только если владелец включил доступ по ссылке; у его позиций isSelected означает «выполнено», а поля jointGift нет. Отмечать дела гость может, только если guestsCanCheck = true. У позиций списка желаний есть поле jointGift: данные совместного подарка или null',
     tags: ['Shared wishlists'],
     parameters: [
         new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'ulid')),
@@ -68,7 +78,18 @@ use OpenApi\Attributes as OA;
                         property: 'data',
                         properties: [
                             new OA\Property(property: 'id', type: 'string', format: 'ulid'),
+                            new OA\Property(property: 'type', type: 'string', enum: ['gift', 'todo']),
                             new OA\Property(property: 'title', type: 'string'),
+                            new OA\Property(
+                                property: 'guestsCanCheck',
+                                description: 'Может ли гость отмечать дела выполненными (POST /items/check); у списка желаний false',
+                                type: 'boolean'
+                            ),
+                            new OA\Property(
+                                property: 'guestNameRequired',
+                                description: 'Должен ли гость указать имя, отмечая дела; false, если отмечать нельзя',
+                                type: 'boolean'
+                            ),
                             new OA\Property(property: 'username', type: 'string', nullable: true),
                             new OA\Property(
                                 property: 'items',
@@ -81,6 +102,11 @@ use OpenApi\Attributes as OA;
                                         new OA\Property(property: 'url', type: 'string', nullable: true),
                                         new OA\Property(property: 'priority', type: 'integer', nullable: true),
                                         new OA\Property(property: 'price', type: 'integer', nullable: true),
+                                        new OA\Property(
+                                            property: 'checkedBy',
+                                            ref: '#/components/schemas/TodoItemCheckedBy',
+                                            nullable: true
+                                        ),
                                         new OA\Property(
                                             property: 'jointGift',
                                             ref: '#/components/schemas/SharedWishlistJointGift',
@@ -97,7 +123,7 @@ use OpenApi\Attributes as OA;
                 type: 'object'
             )
         ),
-        new OA\Response(response: 404, description: 'Список не найден или не является списком желаний'),
+        new OA\Response(response: 404, description: 'Список не найден, является заметкой или списком дел без доступа по ссылке'),
         new OA\Response(response: 429, description: 'Слишком много запросов'),
     ]
 )]
@@ -156,6 +182,43 @@ use OpenApi\Attributes as OA;
             )
         ),
         new OA\Response(response: 422, description: 'Позиция уже выбрана другим гостем или совместный подарок указан для невыбранной позиции'),
+        new OA\Response(response: 429, description: 'Слишком много запросов'),
+    ]
+)]
+
+#[OA\Post(
+    path: '/api/v1/shared-wishlists/{wishlist}/items/check',
+    summary: 'Отметить дела выполненными',
+    description: 'Только для списка дел с доступом по ссылке, где владелец разрешил гостям отмечать дела (guestsCanCheck). Гость только ставит отметку, снять её может лишь владелец. Уже выполненные дела не изменяются, в том числе не меняется имя того, кто их отметил',
+    tags: ['Shared wishlists'],
+    parameters: [
+        new OA\Parameter(name: 'wishlist', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'ulid')),
+    ],
+    requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['item_ids'],
+            properties: [
+                new OA\Property(
+                    property: 'item_ids',
+                    type: 'array',
+                    items: new OA\Items(type: 'string', format: 'ulid')
+                ),
+                new OA\Property(
+                    property: 'name',
+                    description: 'Имя гостя для подписи под делами. Обязательно, если guestNameRequired = true',
+                    type: 'string',
+                    maxLength: 50,
+                    nullable: true
+                ),
+            ],
+            type: 'object'
+        )
+    ),
+    responses: [
+        new OA\Response(response: 200, description: 'Дела отмечены; в ответе актуальный список, как в GET /api/v1/shared-wishlists/{id}'),
+        new OA\Response(response: 404, description: 'Список не найден или гостям не разрешено отмечать в нём дела'),
+        new OA\Response(response: 422, description: 'Некоторых дел нет в этом списке или не указано обязательное имя'),
         new OA\Response(response: 429, description: 'Слишком много запросов'),
     ]
 )]

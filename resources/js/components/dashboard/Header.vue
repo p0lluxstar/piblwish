@@ -11,11 +11,7 @@ import { computed, ref } from 'vue';
 
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import UserSettingsModal from '@/components/user/UserSettingsModal.vue';
-import {
-    useChangePassword,
-    useDeleteAccount,
-    useLogout,
-} from '@/composables/useAuth';
+import { useDeleteAccount, useLogout } from '@/composables/useAuth';
 import { useAuthStore } from '@/stores/auth';
 
 const auth = useAuthStore();
@@ -24,13 +20,6 @@ const logoLink = computed(() => (auth.user ? '/dashboard' : '/'));
 const { mutate: logout, isPending } = useLogout();
 const { mutate: deleteAccount, isPending: isDeletingAccount } =
     useDeleteAccount();
-const {
-    mutate: changePassword,
-    isPending: isChangingPassword,
-    isSuccess: isPasswordChanged,
-    errorMessage: passwordErrorMessage,
-    reset: resetChangePassword,
-} = useChangePassword();
 
 const isSettingsModalOpen = ref(false);
 
@@ -40,20 +29,6 @@ const openSettingsModal = (): void => {
 
 const closeSettingsModal = (): void => {
     isSettingsModalOpen.value = false;
-    // При повторном открытии модалки не показываем результат прошлой попытки
-    resetChangePassword();
-};
-
-const handleChangePassword = (payload: {
-    currentPassword: string;
-    newPassword: string;
-    newPasswordConfirmation: string;
-}): void => {
-    changePassword({
-        current_password: payload.currentPassword,
-        password: payload.newPassword,
-        password_confirmation: payload.newPasswordConfirmation,
-    });
 };
 
 const handleDeleteAccount = (): void => {
@@ -158,12 +133,8 @@ const handleDeleteAccount = (): void => {
 
         <UserSettingsModal
             v-if="auth.user && isSettingsModalOpen"
-            :is-pending="isChangingPassword"
             :is-deleting-account="isDeletingAccount"
-            :password-error-message="passwordErrorMessage"
-            :is-password-changed="isPasswordChanged"
             @close="closeSettingsModal"
-            @change-password="handleChangePassword"
             @delete-account="handleDeleteAccount"
         />
     </header>

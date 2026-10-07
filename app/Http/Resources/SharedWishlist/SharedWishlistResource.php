@@ -22,10 +22,20 @@ class SharedWishlistResource extends ApiResource
     {
         $data = [
             'id' => $this->id,
+            // gift — список желаний; todo — список дел, открытый владельцем только
+            // для просмотра: у его позиций isSelected означает «выполнено»
+            'type' => $this->type->value,
             'title' => $this->title,
+            // Может ли гость отмечать дела выполненными; у списка желаний false
+            'guestsCanCheck' => $this->guestsCanCheck(),
+            // Должен ли гость указать имя, отмечая дела; false, если отмечать нельзя
+            'guestNameRequired' => $this->guestsCanCheck() && $this->guest_name_required,
             'username' => $this->whenLoaded('user') ? $this->user->username : null,
+            // Совместный подарок бывает только у позиций списка желаний
             'items' => $this->whenLoaded('items', fn () => $this->items->map(
-                fn ($item) => (new WishlistItemResource($item))->withJointGift()
+                fn ($item) => (new WishlistItemResource($item))
+                    ->withJointGift($this->isGift())
+                    ->withCheckedBy($this->isTodo())
             )),
         ];
 

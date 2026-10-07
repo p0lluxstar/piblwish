@@ -28,6 +28,17 @@ class WishlistItemResource extends JsonResource
         return $this;
     }
 
+    // Кто отметил дело: только у позиций списка дел. В списке желаний позиции
+    // выбирают гости через брони, и это поле там не нужно
+    private bool $withCheckedBy = false;
+
+    public function withCheckedBy(bool $with = true): static
+    {
+        $this->withCheckedBy = $with;
+
+        return $this;
+    }
+
     public function toArray($request): array
     {
         $data = [
@@ -41,6 +52,16 @@ class WishlistItemResource extends JsonResource
             // Стоимость в целых рублях или null; как и приоритет, видна в режиме сюрприза
             'price' => $this->price,
         ];
+
+        // Автор отметки выполненного дела: { guest: false, name: null } — владелец,
+        // { guest: true, name } — гость по ссылке, name = null, если он не указал имя.
+        // У невыполненного дела — null
+        if ($this->withCheckedBy) {
+            $data['checkedBy'] = ! $this->is_selected ? null : [
+                'guest' => $this->checked_by_guest,
+                'name' => $this->checked_by_name,
+            ];
+        }
 
         // ApiResource::toResponse не отфильтровывает $this->when(), поэтому поле добавляется явно
         if ($this->withJointGift) {

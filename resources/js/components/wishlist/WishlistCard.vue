@@ -20,6 +20,7 @@ import { formatPrice } from '../../lib/itemPrice';
 import { getItemUrlHost } from '../../lib/itemUrl';
 import type { Wishlist, WishlistItem } from '../../types/wishlist';
 import ItemPriorityHearts from './ItemPriorityHearts.vue';
+import TodoCheckedBy from './TodoCheckedBy.vue';
 
 const props = defineProps<{
     wishlist: Wishlist;
@@ -33,14 +34,34 @@ const emit = defineEmits<{
     updateContent: [wishlist: Wishlist, content: string];
 }>();
 
-// Список дел: нет ссылки для гостей, выполненные дела зачёркнуты
+// Список дел: выполненные дела зачёркнуты, ссылка для просмотра — по выбору владельца
 const isTodo = computed(() => props.wishlist.type === 'todo');
 
 // Заметка: вместо названия и позиций текст, нет ссылки для гостей и прогресса
 const isNote = computed(() => props.wishlist.type === 'note');
 
-// Ссылка для гостей есть только у списка желаний
+// Список желаний: позиции выбирают гости по ссылке
 const isGift = computed(() => !isTodo.value && !isNote.value);
+
+// Ссылка для гостей: у списка желаний всегда, у списка дел — если владелец
+// включил доступ, у заметки её нет
+const hasShareLink = computed(() =>
+    isTodo.value ? Boolean(props.wishlist.isShared) : isGift.value,
+);
+
+// Свои отметки владелец видит подписью «Вы», если в списке есть и отметки гостей
+// или гости могут их поставить. Отметки гостей подписываются их именами всегда,
+// даже после закрытия доступа, поэтому и «Вы» остаётся рядом с ними. В личном списке,
+// где все отметки собственные, подпись у каждого дела была бы лишней
+const ownCheckLabel = computed(() => {
+    const guestsCanCheck =
+        props.wishlist.isShared && props.wishlist.guestsCanCheck;
+    const hasGuestChecks = props.wishlist.items.some(
+        (item) => item.checkedBy?.guest,
+    );
+
+    return guestsCanCheck || hasGuestChecks ? 'Вы' : null;
+});
 
 // «список» или «заметку» в подписях кнопок
 const subject = computed(() => (isNote.value ? 'заметку' : 'список'));
@@ -254,8 +275,8 @@ const createdAtLabel = computed(
             >
                 <CopyPlus :size="14" />
             </button>
-            <!-- Список дел и заметка видны только владельцу: ссылки для гостей у них нет -->
-            <div v-if="isGift" class="copy-action">
+            <!-- Заметка и список дел без доступа по ссылке видны только владельцу -->
+            <div v-if="hasShareLink" class="copy-action">
                 <button
                     :class="[
                         'card-actions-btn',
@@ -387,8 +408,16 @@ const createdAtLabel = computed(
                     <span class="checkbox-custom"></span>
                 </label>
 
-                <span class="item-label">
-                    {{ item.label }}
+                <!-- Справа от выполненного дела — кто его отметил: имя гостя или «Вы» -->
+                <span class="item-text">
+                    <span class="item-label">
+                        {{ item.label }}
+                    </span>
+                    <TodoCheckedBy
+                        v-if="isTodo"
+                        :checked-by="item.checkedBy"
+                        :owner-name="ownCheckLabel"
+                    />
                 </span>
 
                 <!-- Приоритет, цена и ссылка — узкой колонкой справа от названия,
@@ -646,8 +675,20 @@ $card-content-max-height: 150px;
     }
 }
 
-.item-label {
+// Название слева, имя того, кто отметил дело (TodoCheckedBy), справа в той же строке
+.item-text {
+    display: flex;
     flex: 1;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+
+    .item-label {
+        flex: 1;
+    }
+}
+
+.item-label {
     min-width: 0;
     font-size: 13px;
     // Чуть плотнее обычного текста: название важнее цены рядом с ним.

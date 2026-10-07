@@ -251,8 +251,8 @@
                 "tags": [
                     "Shared wishlists"
                 ],
-                "summary": "Список желаний для гостя",
-                "description": "У каждой позиции есть поле jointGift: данные совместного подарка или null",
+                "summary": "Список желаний или список дел для гостя",
+                "description": "Список дел (type = todo) открывается, только если владелец включил доступ по ссылке; у его позиций isSelected означает «выполнено», а поля jointGift нет. Отмечать дела гость может, только если guestsCanCheck = true. У позиций списка желаний есть поле jointGift: данные совместного подарка или null",
                 "operationId": "25a622f31374dd4c709bcc09f807f597",
                 "parameters": [
                     {
@@ -278,8 +278,23 @@
                                                     "type": "string",
                                                     "format": "ulid"
                                                 },
+                                                "type": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "gift",
+                                                        "todo"
+                                                    ]
+                                                },
                                                 "title": {
                                                     "type": "string"
+                                                },
+                                                "guestsCanCheck": {
+                                                    "description": "Может ли гость отмечать дела выполненными (POST /items/check); у списка желаний false",
+                                                    "type": "boolean"
+                                                },
+                                                "guestNameRequired": {
+                                                    "description": "Должен ли гость указать имя, отмечая дела; false, если отмечать нельзя",
+                                                    "type": "boolean"
                                                 },
                                                 "username": {
                                                     "type": "string",
@@ -311,6 +326,14 @@
                                                                 "type": "integer",
                                                                 "nullable": true
                                                             },
+                                                            "checkedBy": {
+                                                                "oneOf": [
+                                                                    {
+                                                                        "$ref": "#/components/schemas/TodoItemCheckedBy"
+                                                                    }
+                                                                ],
+                                                                "nullable": true
+                                                            },
                                                             "jointGift": {
                                                                 "oneOf": [
                                                                     {
@@ -333,7 +356,7 @@
                         }
                     },
                     "404": {
-                        "description": "Список не найден или не является списком желаний"
+                        "description": "Список не найден, является заметкой или списком дел без доступа по ссылке"
                     },
                     "429": {
                         "description": "Слишком много запросов"
@@ -435,6 +458,69 @@
                     },
                     "422": {
                         "description": "Позиция уже выбрана другим гостем или совместный подарок указан для невыбранной позиции"
+                    },
+                    "429": {
+                        "description": "Слишком много запросов"
+                    }
+                }
+            }
+        },
+        "/api/v1/shared-wishlists/{wishlist}/items/check": {
+            "post": {
+                "tags": [
+                    "Shared wishlists"
+                ],
+                "summary": "Отметить дела выполненными",
+                "description": "Только для списка дел с доступом по ссылке, где владелец разрешил гостям отмечать дела (guestsCanCheck). Гость только ставит отметку, снять её может лишь владелец. Уже выполненные дела не изменяются, в том числе не меняется имя того, кто их отметил",
+                "operationId": "76a19235b47692c253563f6cd6cf0f14",
+                "parameters": [
+                    {
+                        "name": "wishlist",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "ulid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "item_ids"
+                                ],
+                                "properties": {
+                                    "item_ids": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "ulid"
+                                        }
+                                    },
+                                    "name": {
+                                        "description": "Имя гостя для подписи под делами. Обязательно, если guestNameRequired = true",
+                                        "type": "string",
+                                        "nullable": true,
+                                        "maxLength": 50
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Дела отмечены; в ответе актуальный список, как в GET /api/v1/shared-wishlists/{id}"
+                    },
+                    "404": {
+                        "description": "Список не найден или гостям не разрешено отмечать в нём дела"
+                    },
+                    "422": {
+                        "description": "Некоторых дел нет в этом списке или не указано обязательное имя"
                     },
                     "429": {
                         "description": "Слишком много запросов"
@@ -1289,7 +1375,7 @@
                                                         "example": 1
                                                     },
                                                     "type": {
-                                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел и заметка недоступны по общей ссылке",
+                                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел открывается по общей ссылке только при isShared = true, а отмечать в нём дела гости могут при guestsCanCheck = true, заметка недоступна по ссылке",
                                                         "type": "string",
                                                         "example": "gift",
                                                         "enum": [
@@ -1336,6 +1422,21 @@
                                                         "type": "boolean",
                                                         "example": false
                                                     },
+                                                    "isShared": {
+                                                        "description": "Открывается ли список по общей ссылке: у списка желаний всегда true, у заметки false, у списка дел — если владелец включил доступ",
+                                                        "type": "boolean",
+                                                        "example": true
+                                                    },
+                                                    "guestsCanCheck": {
+                                                        "description": "Разрешено ли гостям отмечать дела по ссылке; у списка желаний и заметки false. Действует, только если isShared = true",
+                                                        "type": "boolean",
+                                                        "example": false
+                                                    },
+                                                    "guestNameRequired": {
+                                                        "description": "Должен ли гость указать имя, отмечая дела; у списка желаний и заметки false",
+                                                        "type": "boolean",
+                                                        "example": true
+                                                    },
                                                     "items": {
                                                         "type": "array",
                                                         "items": {
@@ -1379,6 +1480,15 @@
                                                                     "description": "Отсутствует, если включён режим сюрприза (hideSelections)",
                                                                     "type": "boolean",
                                                                     "example": false
+                                                                },
+                                                                "checkedBy": {
+                                                                    "oneOf": [
+                                                                        {
+                                                                            "$ref": "#/components/schemas/TodoItemCheckedBy"
+                                                                        }
+                                                                    ],
+                                                                    "nullable": true,
+                                                                    "description": "Только у позиций списка дел: кто отметил дело выполненным"
                                                                 }
                                                             },
                                                             "type": "object"
@@ -1456,6 +1566,21 @@
                                         "type": "boolean",
                                         "example": false
                                     },
+                                    "isShared": {
+                                        "description": "Доступ к списку дел по общей ссылке. Необязателен, по умолчанию false; передаётся только для списка дел (type = todo)",
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "guestNameRequired": {
+                                        "description": "Должен ли гость указать имя, отмечая дела по ссылке. Необязателен, по умолчанию true; передаётся только для списка дел",
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "guestsCanCheck": {
+                                        "description": "Разрешить гостям отмечать дела выполненными по ссылке (снять отметку может только владелец). Необязателен, по умолчанию false; передаётся только для списка дел и действует при isShared = true",
+                                        "type": "boolean",
+                                        "example": false
+                                    },
                                     "items": {
                                         "description": "Позиции списка, хотя бы одна. Обязательны для списков желаний и дел, у заметки запрещены",
                                         "type": "array",
@@ -1516,7 +1641,7 @@
                                                     "example": 1
                                                 },
                                                 "type": {
-                                                    "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел и заметка недоступны по общей ссылке",
+                                                    "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел открывается по общей ссылке только при isShared = true, а отмечать в нём дела гости могут при guestsCanCheck = true, заметка недоступна по ссылке",
                                                     "type": "string",
                                                     "example": "gift",
                                                     "enum": [
@@ -1563,6 +1688,21 @@
                                                     "type": "boolean",
                                                     "example": false
                                                 },
+                                                "isShared": {
+                                                    "description": "Открывается ли список по общей ссылке: у списка желаний всегда true, у заметки false, у списка дел — если владелец включил доступ",
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "guestsCanCheck": {
+                                                    "description": "Разрешено ли гостям отмечать дела по ссылке; у списка желаний и заметки false. Действует, только если isShared = true",
+                                                    "type": "boolean",
+                                                    "example": false
+                                                },
+                                                "guestNameRequired": {
+                                                    "description": "Должен ли гость указать имя, отмечая дела; у списка желаний и заметки false",
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
                                                 "items": {
                                                     "type": "array",
                                                     "items": {
@@ -1606,6 +1746,15 @@
                                                                 "description": "Отсутствует, если включён режим сюрприза (hideSelections)",
                                                                 "type": "boolean",
                                                                 "example": false
+                                                            },
+                                                            "checkedBy": {
+                                                                "oneOf": [
+                                                                    {
+                                                                        "$ref": "#/components/schemas/TodoItemCheckedBy"
+                                                                    }
+                                                                ],
+                                                                "nullable": true,
+                                                                "description": "Только у позиций списка дел: кто отметил дело выполненным"
                                                             }
                                                         },
                                                         "type": "object"
@@ -1895,6 +2044,20 @@
                         "example": "Собираем до 10 октября",
                         "nullable": true,
                         "maxLength": 200
+                    }
+                },
+                "type": "object"
+            },
+            "TodoItemCheckedBy": {
+                "description": "Кто отметил дело выполненным; есть только у позиций списка дел, у невыполненного дела null. guest = false — отметил владелец, guest = true — гость по ссылке, name — его имя или null, если гость имя не указал",
+                "properties": {
+                    "guest": {
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 50
                     }
                 },
                 "type": "object"

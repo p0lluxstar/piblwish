@@ -1,64 +1,27 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
-import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import AppBackgroundPicker from '@/components/user/AppBackgroundPicker.vue';
 import EmailChangeSection from '@/components/user/EmailChangeSection.vue';
+import PasswordChangeSection from '@/components/user/PasswordChangeSection.vue';
+import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps<{
-    isPending?: boolean;
     isDeletingAccount?: boolean;
-    passwordErrorMessage?: string | null;
-    isPasswordChanged?: boolean;
 }>();
 
 const emit = defineEmits<{
     close: [];
-    changePassword: [
-        payload: {
-            currentPassword: string;
-            newPassword: string;
-            newPasswordConfirmation: string;
-        },
-    ];
     deleteAccount: [];
 }>();
 
-type PasswordForm = {
-    currentPassword: string;
-    newPassword: string;
-    newPasswordConfirmation: string;
-};
+const auth = useAuthStore();
 
-const defaultForm = (): PasswordForm => ({
-    currentPassword: '',
-    newPassword: '',
-    newPasswordConfirmation: '',
-});
+const username = computed(() => auth.user?.username ?? '');
 
-const form = ref(defaultForm());
-
-// Кнопка «Сохранить» активна, только когда заполнены все три поля пароля
-const isPasswordFormFilled = computed(() =>
-    Object.values(form.value).every((value) => value !== ''),
-);
-
-const handleSubmit = (): void => {
-    if (!isPasswordFormFilled.value) return;
-
-    emit('changePassword', { ...form.value });
-};
-
-// После успешной смены пароля очищаем поля формы
-watch(
-    () => props.isPasswordChanged,
-    (isChanged) => {
-        if (isChanged) {
-            form.value = defaultForm();
-        }
-    },
-);
+// Первая буква имени для круглого значка профиля
+const usernameInitial = computed(() => username.value.charAt(0).toUpperCase());
 
 // Показ подтверждения удаления аккаунта вместо кнопки «Удалить аккаунт»
 const isDeleteConfirmVisible = ref(false);
@@ -92,7 +55,6 @@ onUnmounted(() => {
 });
 
 const closeModal = (): void => {
-    form.value = defaultForm();
     hideDeleteConfirm();
     enableBodyScroll();
     emit('close');
@@ -109,6 +71,17 @@ const closeModal = (): void => {
                     <button class="close-btn" @click="closeModal"></button>
                 </div>
 
+                <section v-if="username" class="profile-section">
+                    <span class="profile-avatar" aria-hidden="true">
+                        {{ usernameInitial }}
+                    </span>
+
+                    <div class="profile-info">
+                        <span class="profile-label">Имя пользователя</span>
+                        <span class="profile-username">{{ username }}</span>
+                    </div>
+                </section>
+
                 <section class="background-section">
                     <h3 class="section-title">Фон приложения</h3>
 
@@ -117,61 +90,7 @@ const closeModal = (): void => {
 
                 <EmailChangeSection />
 
-                <form class="password-form" @submit.prevent="handleSubmit">
-                    <h3 class="section-title">Смена пароля</h3>
-
-                    <div class="form-row">
-                        <input
-                            v-model="form.currentPassword"
-                            type="password"
-                            autocomplete="current-password"
-                            required
-                            placeholder="Текущий пароль"
-                        />
-
-                        <input
-                            v-model="form.newPassword"
-                            type="password"
-                            autocomplete="new-password"
-                            placeholder="Новый пароль"
-                            required
-                        />
-
-                        <input
-                            v-model="form.newPasswordConfirmation"
-                            type="password"
-                            autocomplete="new-password"
-                            placeholder="Повторите новый пароль"
-                            required
-                        />
-                    </div>
-
-                    <FormErrorMessage
-                        class="form-message"
-                        :show="!!props.passwordErrorMessage"
-                        :message="props.passwordErrorMessage ?? undefined"
-                    />
-
-                    <p
-                        v-if="props.isPasswordChanged"
-                        class="form-message success-message"
-                    >
-                        Пароль изменён
-                    </p>
-
-                    <button
-                        type="submit"
-                        :disabled="props.isPending || !isPasswordFormFilled"
-                        class="create-btn"
-                    >
-                        <LoaderButtonSpinner
-                            v-if="props.isPending"
-                            :size="18"
-                        />
-
-                        <span v-else>Сохранить</span>
-                    </button>
-                </form>
+                <PasswordChangeSection />
 
                 <div class="danger-zone">
                     <button
@@ -223,63 +142,61 @@ const closeModal = (): void => {
 
 <style scoped lang="scss">
 @use '../../../scss/ui/wishlistModal.scss';
+@use '../../../scss/ui/accountSection.scss';
 
 .modal {
     max-width: 360px;
     padding: 24px;
 }
 
-.section-title {
-    font-size: 13px;
+.profile-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 18px;
+    border-bottom: 1px dashed rgba(139, 92, 246, 0.2);
+}
+
+.profile-avatar {
+    display: flex;
+    flex-shrink: 0;
+    justify-content: center;
+    align-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #a78bfa, #ec4899);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.profile-label {
+    font-size: 12px;
+    color: var(--ink-soft, #6b5878);
+}
+
+.profile-username {
+    overflow: hidden;
+    font-size: 15px;
     font-weight: 700;
     color: var(--ink, #241533);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin: 0 0 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .background-section {
     margin-bottom: 20px;
     padding-bottom: 18px;
     border-bottom: 1px dashed rgba(139, 92, 246, 0.2);
-}
-
-.password-form {
-    .form-row {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-bottom: 14px;
-    }
-
-    input {
-        padding: 11px 14px;
-        border: 1.5px solid rgba(139, 92, 246, 0.15);
-        border-radius: 14px;
-        width: 100%;
-        font-size: 13px;
-        font-family: inherit;
-        background: #faf8ff;
-        transition: all 0.18s ease;
-
-        &:focus {
-            outline: none;
-            border-color: #8b5cf6;
-            background: #fff;
-            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
-        }
-    }
-}
-
-.form-message {
-    margin: 0 0 12px;
-    font-size: 13px;
-}
-
-.success-message {
-    color: #16a34a;
-    line-height: 1.4;
-    text-align: center;
 }
 
 .danger-zone {
@@ -331,32 +248,6 @@ const closeModal = (): void => {
 .delete-confirm-actions {
     display: flex;
     gap: 12px;
-}
-
-.cancel-btn {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: rgba(139, 92, 246, 0.08);
-    border: none;
-    color: var(--ink, #241533);
-    border-radius: 18px;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: inherit;
-    flex: 1;
-    padding: 11px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover:not(:disabled) {
-        background: rgba(139, 92, 246, 0.14);
-    }
-
-    &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
 }
 
 .delete-btn {

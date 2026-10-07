@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'type', 'title', 'content', 'color', 'hide_selections'])]
+#[Fillable(['user_id', 'type', 'title', 'content', 'color', 'hide_selections', 'is_shared', 'guests_can_check', 'guest_name_required'])]
 class Wishlist extends Model
 {
     use HasUlids;
@@ -21,6 +21,9 @@ class Wishlist extends Model
         'type' => 'gift',
         'color' => 'white',
         'hide_selections' => false,
+        'is_shared' => false,
+        'guests_can_check' => false,
+        'guest_name_required' => true,
     ];
 
     protected function casts(): array
@@ -29,6 +32,9 @@ class Wishlist extends Model
             'type' => WishlistType::class,
             'color' => WishlistColor::class,
             'hide_selections' => 'boolean',
+            'is_shared' => 'boolean',
+            'guests_can_check' => 'boolean',
+            'guest_name_required' => 'boolean',
         ];
     }
 
@@ -38,7 +44,9 @@ class Wishlist extends Model
         return $this->type === WishlistType::Gift;
     }
 
-    // Список дел: доступен только владельцу, у позиций нет ссылки, цены и приоритета
+    // Список дел: у позиций нет ссылки, цены и приоритета; по ссылке доступен,
+    // только если владелец включил is_shared, а отмечать дела гости могут
+    // лишь при guests_can_check
     public function isTodo(): bool
     {
         return $this->type === WishlistType::Todo;
@@ -48,6 +56,20 @@ class Wishlist extends Model
     public function isNote(): bool
     {
         return $this->type === WishlistType::Note;
+    }
+
+    // Открывается ли список по общей ссылке: список желаний — всегда,
+    // список дел — если владелец включил доступ, заметка — никогда
+    public function isShared(): bool
+    {
+        return $this->isGift() || ($this->isTodo() && $this->is_shared);
+    }
+
+    // Могут ли гости по ссылке отмечать дела выполненными: только в списке дел,
+    // открытом по ссылке, и только если владелец это разрешил
+    public function guestsCanCheck(): bool
+    {
+        return $this->isTodo() && $this->is_shared && $this->guests_can_check;
     }
 
     public function user(): BelongsTo

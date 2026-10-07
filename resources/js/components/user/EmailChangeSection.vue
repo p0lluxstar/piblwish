@@ -137,8 +137,8 @@ const confirm = (): void => {
     <section class="email-section">
         <h3 class="section-title">Email</h3>
 
-        <div v-if="step === 'idle'" class="email-current">
-            <span class="email-value">{{ auth.user?.email }}</span>
+        <div v-if="step === 'idle'" class="account-current">
+            <span class="account-value">{{ auth.user?.email }}</span>
 
             <button type="button" class="change-btn" @click="openForm">
                 Изменить
@@ -154,7 +154,7 @@ const confirm = (): void => {
 
         <form
             v-if="step === 'form'"
-            class="email-form"
+            class="account-form"
             @submit.prevent="sendCode"
         >
             <div class="form-row">
@@ -205,7 +205,7 @@ const confirm = (): void => {
 
         <form
             v-if="step === 'code'"
-            class="email-form"
+            class="account-form"
             @submit.prevent="confirm"
         >
             <p class="code-hint">
@@ -271,81 +271,12 @@ const confirm = (): void => {
 
 <style scoped lang="scss">
 @use '../../../scss/ui/createButton.scss';
-
-.section-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--ink, #241533);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin: 0 0 12px;
-}
+@use '../../../scss/ui/accountSection.scss';
 
 .email-section {
     margin-bottom: 20px;
     padding-bottom: 18px;
     border-bottom: 1px dashed rgba(139, 92, 246, 0.2);
-}
-
-.email-current {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.email-value {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 14px;
-    color: var(--ink, #241533);
-}
-
-.change-btn {
-    flex-shrink: 0;
-    padding: 7px 14px;
-    border: 1.5px solid rgba(139, 92, 246, 0.25);
-    border-radius: 14px;
-    background: transparent;
-    color: #8b5cf6;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover {
-        background: rgba(139, 92, 246, 0.08);
-    }
-}
-
-.email-form {
-    .form-row {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-bottom: 14px;
-    }
-
-    input {
-        padding: 11px 14px;
-        border: 1.5px solid rgba(139, 92, 246, 0.15);
-        border-radius: 14px;
-        width: 100%;
-        font-size: 13px;
-        font-family: inherit;
-        background: #faf8ff;
-        transition: all 0.18s ease;
-
-        &:focus {
-            outline: none;
-            border-color: #8b5cf6;
-            background: #fff;
-            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
-        }
-    }
 }
 
 .code-hint {
@@ -354,18 +285,6 @@ const confirm = (): void => {
     line-height: 1.5;
     color: var(--ink, #241533);
     overflow-wrap: anywhere;
-}
-
-.form-message {
-    margin: 0 0 12px;
-    font-size: 13px;
-}
-
-.success-message {
-    margin: 10px 0 0;
-    color: #16a34a;
-    line-height: 1.4;
-    text-align: center;
 }
 
 .resend-btn {
@@ -383,43 +302,6 @@ const confirm = (): void => {
     &:disabled {
         color: rgba(36, 21, 51, 0.45);
         cursor: default;
-    }
-}
-
-.form-actions {
-    display: flex;
-    gap: 12px;
-
-    .create-btn {
-        flex: 1;
-        width: auto;
-        padding: 11px;
-    }
-}
-
-.cancel-btn {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: rgba(139, 92, 246, 0.08);
-    border: none;
-    color: var(--ink, #241533);
-    border-radius: 18px;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: inherit;
-    flex: 1;
-    padding: 11px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover:not(:disabled) {
-        background: rgba(139, 92, 246, 0.14);
-    }
-
-    &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
     }
 }
 </style>

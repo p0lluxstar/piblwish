@@ -16,21 +16,29 @@ import { api } from '@/lib/api';
 import { useItemReorder } from '../../composables/useItemReorder';
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
 import { isValidItemUrl, normalizeItemUrl } from '../../lib/itemUrl';
+import { checkedByName } from '../../lib/todoCheckedBy';
 import type {
     Wishlist,
     WishlistForm,
     WishlistItem,
+    WishlistItemCheckedBy,
     WishlistUpdatePayload,
 } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import ItemPriceInput from './ItemPriceInput.vue';
 import ItemPriorityPicker from './ItemPriorityPicker.vue';
+import TodoCheckedBy from './TodoCheckedBy.vue';
 import WishlistColorPicker from './WishlistColorPicker.vue';
+import WishlistGuestCheckToggle from './WishlistGuestCheckToggle.vue';
+import WishlistGuestNameToggle from './WishlistGuestNameToggle.vue';
+import WishlistShareToggle from './WishlistShareToggle.vue';
 import WishlistSurpriseToggle from './WishlistSurpriseToggle.vue';
 
 const props = defineProps<{
     wishlist: Wishlist;
     isPending: boolean;
+    // Текст ошибки сервера после неудачной попытки сохранить список
+    errorMessage?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -48,6 +56,9 @@ const defaultForm = (): EditForm => ({
     content: '',
     color: 'white',
     hideSelections: false,
+    isShared: false,
+    guestsCanCheck: false,
+    guestNameRequired: true,
     items: [
         {
             isSelected: false,
@@ -61,6 +72,9 @@ const form = ref<EditForm>({
     content: '',
     color: 'white',
     hideSelections: false,
+    isShared: false,
+    guestsCanCheck: false,
+    guestNameRequired: true,
     items: [],
 });
 
@@ -97,6 +111,9 @@ const formSnapshot = (value: EditForm, ignoreSelection: boolean): string =>
         content: value.content.trim(),
         color: value.color,
         hideSelections: value.hideSelections,
+        isShared: value.isShared,
+        guestsCanCheck: value.guestsCanCheck,
+        guestNameRequired: value.guestNameRequired,
         items: value.items
             .filter((item) => item.label.trim())
             .map((item) => ({
@@ -127,6 +144,9 @@ watch(
             content: wishlist.content ?? '',
             color: wishlist.color,
             hideSelections: wishlist.hideSelections ?? false,
+            isShared: wishlist.isShared ?? false,
+            guestsCanCheck: wishlist.guestsCanCheck ?? false,
+            guestNameRequired: wishlist.guestNameRequired ?? true,
             // id нужен серверу, чтобы в режиме сюрприза сохранить выбор гостей
             items: wishlist.items.map((item) => ({
                 id: item.id,
@@ -162,8 +182,46 @@ const isTodo = computed(() => props.wishlist.type === 'todo');
 // Заметка: изменяются только цвет и текст
 const isNote = computed(() => props.wishlist.type === 'note');
 
+// Кто отметил дело, с учётом изменений в форме: дело, выполненное и до открытия
+// окна, сохраняет прежнего автора отметки, а отметку, поставленную в окне,
+// ставит владелец. Так сервер и сохранит её (WishlistService::syncItems)
+const formCheckedBy = (item: WishlistItem): WishlistItemCheckedBy | null => {
+    if (!item.isSelected) return null;
+
+    const saved = props.wishlist.items.find((saved) => saved.id === item.id);
+
+    return saved?.isSelected
+        ? (saved.checkedBy ?? null)
+        : { guest: false, name: null };
+};
+
+// Свои отметки подписываются «Вы», как на карточке: если гости могут отмечать
+// дела или в списке есть их отметки
+const ownCheckLabel = computed(() => {
+    const guestsCanCheck = form.value.isShared && form.value.guestsCanCheck;
+    const hasGuestChecks = props.wishlist.items.some(
+        (item) => item.checkedBy?.guest,
+    );
+
+    return guestsCanCheck || hasGuestChecks ? 'Вы' : null;
+});
+
+// Есть ли у дела имя того, кто его отметил
+const hasCheckedByCaption = (item: WishlistItem): boolean =>
+    checkedByName(formCheckedBy(item), ownCheckLabel.value) !== null;
+
+// Если хотя бы у одного дела над полем есть имя, подпись выводится у всех дел:
+// у дел без имени — «Не выполнено», и поля всех дел стоят на одном уровне
+const showCheckedByRow = computed(
+    () => isTodo.value && form.value.items.some(hasCheckedByCaption),
+);
+
 // Пустую заметку сервер не принимает, поэтому кнопка сохранения недоступна
 const isNoteEmpty = computed(() => isNote.value && !form.value.content.trim());
+
+// Название списка не заполнено: ошибка выводится под полем после попытки отправки
+// и снимается, как только название начинают вводить
+const isTitleMissing = ref(false);
 
 // Режим сюрприза был включён при открытии окна: сервер не прислал isSelected,
 // а при сохранении не примет его из формы
@@ -401,6 +459,12 @@ const handleSubmit = (): void => {
         return;
     }
 
+    // Название обязательно у списков желаний и дел: без него сервер список не примет
+    if (!form.value.title.trim()) {
+        isTitleMissing.value = true;
+        return;
+    }
+
     const items = prepareItems();
 
     if (!items) return;
@@ -409,8 +473,15 @@ const handleSubmit = (): void => {
         id: props.wishlist.id,
         title: form.value.title,
         color: form.value.color,
-        // У списка дел нет гостей и режима сюрприза
+        // У списка дел нет режима сюрприза, а доступ по ссылке меняется только у него
         hideSelections: !isTodo.value && form.value.hideSelections,
+        ...(isTodo.value
+            ? {
+                  isShared: form.value.isShared,
+                  guestsCanCheck: form.value.guestsCanCheck,
+                  guestNameRequired: form.value.guestNameRequired,
+              }
+            : {}),
         items,
     });
 };
@@ -466,12 +537,23 @@ const closeModal = (): void => {
                     <input
                         v-model="form.title"
                         type="text"
+                        :class="{ 'field--error': isTitleMissing }"
+                        :aria-invalid="isTitleMissing"
                         :placeholder="
                             isTodo
                                 ? 'Например: Дела на выходные'
                                 : 'Например: День рождения'
                         "
+                        @input="isTitleMissing = false"
                     />
+
+                    <span
+                        v-if="isTitleMissing"
+                        class="field-error"
+                        role="alert"
+                    >
+                        Укажите название списка
+                    </span>
                 </div>
 
                 <div class="form-group">
@@ -480,7 +562,24 @@ const closeModal = (): void => {
                     <WishlistColorPicker v-model="form.color" />
                 </div>
 
-                <!-- Режим сюрприза есть только у списка желаний: у остальных нет гостей -->
+                <!-- Список желаний доступен по ссылке всегда, а список дел — по выбору владельца -->
+                <div v-if="isTodo" class="form-group">
+                    <WishlistShareToggle v-model="form.isShared" />
+
+                    <!-- Отмечать дела гости могут только в списке, открытом по ссылке -->
+                    <WishlistGuestCheckToggle
+                        v-if="form.isShared"
+                        v-model="form.guestsCanCheck"
+                    />
+
+                    <!-- Имя гостя нужно, только если гости отмечают дела -->
+                    <WishlistGuestNameToggle
+                        v-if="form.isShared && form.guestsCanCheck"
+                        v-model="form.guestNameRequired"
+                    />
+                </div>
+
+                <!-- Режим сюрприза есть только у списка желаний: у остальных гости ничего не выбирают -->
                 <div v-if="!isTodo && !isNote" class="form-group">
                     <WishlistSurpriseToggle v-model="form.hideSelections" />
 
@@ -537,6 +636,8 @@ const closeModal = (): void => {
                                     'wishlist-item--todo': isTodo,
                                     'wishlist-item--done':
                                         isTodo && item.isSelected,
+                                    'wishlist-item--checked-by':
+                                        showCheckedByRow,
                                 },
                             ]"
                         >
@@ -738,6 +839,15 @@ const closeModal = (): void => {
                                     {{ itemMessages[item.id].text }}
                                 </p>
 
+                                <!-- Кто отметил дело — над полем, у правого края -->
+                                <TodoCheckedBy
+                                    v-if="showCheckedByRow"
+                                    class="item-checked-by"
+                                    :checked-by="formCheckedBy(item)"
+                                    :owner-name="ownCheckLabel"
+                                    empty-label="Не выполнено"
+                                />
+
                                 <input
                                     v-model="item.label"
                                     type="text"
@@ -843,6 +953,11 @@ const closeModal = (): void => {
                     </template>
                 </div>
 
+                <!-- Ошибка сервера, например при потере соединения -->
+                <p v-if="props.errorMessage" class="form-error" role="alert">
+                    {{ props.errorMessage }}
+                </p>
+
                 <button
                     type="submit"
                     :disabled="props.isPending || isNoteEmpty || !isDirty"
@@ -862,6 +977,13 @@ const closeModal = (): void => {
 @use '../../../scss/ui/wishlistModal.scss';
 @use '../../../scss/ui/wishlistColors.scss';
 
+// Подпись «кто отметил» над полем дела, у правого края; ближе к полю,
+// чем остальные поля позиции друг к другу
+.item-checked-by {
+    align-self: flex-end;
+    margin-bottom: -3px;
+}
+
 // Превью цвета списка; для white — прежний белый фон модалки
 .modal {
     background: var(--wishlist-bg, #fff);
@@ -878,6 +1000,13 @@ const closeModal = (): void => {
 .wishlist-item > .selection-mark {
     flex-shrink: 0;
     margin-top: calc(var(--item-label-offset) + 12px);
+}
+
+// Подпись «кто отметил» над полем дела (строка 11px × 1.3 и промежуток 6px − 3px)
+// сдвигает поле вниз на 17px: галочка, стрелки и корзина сдвигаются вместе с ним.
+// Смещение --item-label-offset задано в wishlistModal.scss, у дела оно равно 0
+.wishlist-item.wishlist-item--checked-by {
+    --item-label-offset: 17px;
 }
 
 // Вместо галочки из checkboxCard.scss — значок на градиенте, как в карточке

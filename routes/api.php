@@ -42,6 +42,12 @@ Route::prefix('v1')->group(function () {
         [SharedWishlistController::class, 'updateSharedWishlistItems']
     )->middleware('throttle:shared-write');
 
+    // Отметка дел гостем в списке дел; снять отметку может только владелец
+    Route::post(
+        '/shared-wishlists/{wishlist}/items/check',
+        [SharedWishlistController::class, 'checkTodoItems']
+    )->middleware('throttle:shared-write');
+
     // Брони гостя: POST, а не GET, чтобы токены не попадали в адрес и логи сервера
     Route::post(
         '/shared-wishlists/{wishlist}/reservations/lookup',

@@ -398,6 +398,26 @@ $item-price-height: 26px;
     }
 }
 
+// Обязательное поле не заполнено: красная рамка и текст ошибки под полем
+.form-group input.field--error {
+    border-color: #ef4444;
+}
+
+.field-error {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #ef4444;
+}
+
+// Ошибка сервера над кнопкой отправки формы
+.form-error {
+    margin: 0 0 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: center;
+    color: #ef4444;
+}
+
 .item-url-error {
     padding-left: 20px;
     font-size: 12px;

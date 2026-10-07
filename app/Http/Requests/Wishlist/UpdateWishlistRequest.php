@@ -18,12 +18,16 @@ class UpdateWishlistRequest extends FormRequest
     {
         // Тип списка после создания не меняется, поэтому поля type здесь нет.
         // Ссылку, цену, приоритет и режим сюрприза у списка дел очищает WishlistService.
-        // У заметки WishlistService изменяет только цвет и текст, у списков — всё, кроме текста
+        // У заметки WishlistService изменяет только цвет и текст, у списков — всё, кроме текста.
+        // isShared, guestsCanCheck и guestNameRequired WishlistService учитывает только у списка дел
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'content' => ['sometimes', 'required', 'string', 'max:5000'],
             'color' => ['sometimes', Rule::enum(WishlistColor::class)],
             'hideSelections' => ['sometimes', 'boolean'],
+            'isShared' => ['sometimes', 'boolean'],
+            'guestsCanCheck' => ['sometimes', 'boolean'],
+            'guestNameRequired' => ['sometimes', 'boolean'],
             'items' => ['sometimes', 'array'],
             // id существующей позиции: по нему в режиме сюрприза сохраняется выбор гостей
             'items.*.id' => ['sometimes', 'nullable', 'string'],

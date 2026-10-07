@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SharedWishlist\CancelReservationRequest;
+use App\Http\Requests\SharedWishlist\CheckSharedTodoItemsRequest;
 use App\Http\Requests\SharedWishlist\GetReservationsRequest;
 use App\Http\Requests\SharedWishlist\UpdateJointGiftRequest;
 use App\Http\Requests\SharedWishlist\UpdateSharedWishlistItemsRequest;
@@ -54,6 +55,22 @@ class SharedWishlistController extends Controller
 
         return (new SharedWishlistResource($result['wishlist']))
             ->withReservation($result['reservation']);
+    }
+
+    // Отметить дела выполненными в списке дел, где владелец разрешил это гостям
+    public function checkTodoItems(
+        CheckSharedTodoItemsRequest $request,
+        string $wishlistId
+    ): SharedWishlistResource {
+        $validated = $request->validated();
+
+        $wishlist = $this->sharedWishlistService->checkTodoItems(
+            $wishlistId,
+            $validated['item_ids'],
+            $validated['name'] ?? null
+        );
+
+        return new SharedWishlistResource($wishlist);
     }
 
     // Позиции броней гостя по токенам из его браузера или из ссылки для отмены
