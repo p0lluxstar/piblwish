@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Enums\AppBackground;
 use App\Http\Requests\User\ChangePasswordRequest;
+use App\Http\Requests\User\ConfirmEmailChangeRequest;
+use App\Http\Requests\User\RequestEmailChangeRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Resources\ApiResource;
 use App\Http\Resources\Auth\UserResource;
@@ -52,6 +54,32 @@ class UserController extends Controller
         return new ApiResource([
             'message' => 'Пароль изменён',
         ]);
+    }
+
+    // Запросить смену email: код уходит на новый адрес
+    public function requestEmailChange(
+        RequestEmailChangeRequest $request
+    ): ApiResource {
+        $this->userService->requestEmailChange(
+            $request->user(),
+            $request->validated('email')
+        );
+
+        return new ApiResource([
+            'message' => 'Код отправлен на новый email',
+        ]);
+    }
+
+    // Подтвердить новый email кодом из письма
+    public function confirmEmailChange(
+        ConfirmEmailChangeRequest $request
+    ): UserResource {
+        $user = $this->userService->confirmEmailChange(
+            $request,
+            $request->validated('code')
+        );
+
+        return new UserResource($user);
     }
 
     // Удалить аккаунт текущего пользователя

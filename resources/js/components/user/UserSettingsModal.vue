@@ -4,6 +4,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import AppBackgroundPicker from '@/components/user/AppBackgroundPicker.vue';
+import EmailChangeSection from '@/components/user/EmailChangeSection.vue';
 
 const props = defineProps<{
     isPending?: boolean;
@@ -113,6 +114,8 @@ const closeModal = (): void => {
 
                     <AppBackgroundPicker />
                 </section>
+
+                <EmailChangeSection />
 
                 <form class="password-form" @submit.prevent="handleSubmit">
                     <h3 class="section-title">Смена пароля</h3>

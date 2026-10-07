@@ -13,12 +13,14 @@ import { useAuthStore } from '@/stores/auth';
 import type { ApiErrorResponse } from '@/types/api';
 import type {
     ChangePasswordPayload,
+    ConfirmEmailChangePayload,
     ForgotPasswordPayload,
     LoginPayload,
     RegisterPayload,
+    RequestEmailChangePayload,
     ResetPasswordPayload,
 } from '@/types/auth';
-import type { AppBackground } from '@/types/user';
+import type { AppBackground, User } from '@/types/user';
 
 export const useLogin = (): any => {
     const router = useRouter();
@@ -114,6 +116,74 @@ export const useChangePassword = (): UseChangePasswordReturn => {
 
     const errorMessage = computed((): string | null =>
         getApiErrorMessage(mutation.error.value, 'Не удалось сменить пароль'),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type UseRequestEmailChangeReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    RequestEmailChangePayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Первый шаг смены email: код уходит на новый адрес
+export const useRequestEmailChange = (): UseRequestEmailChangeReturn => {
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        RequestEmailChangePayload
+    >({
+        mutationFn: (payload) => api.post('/v1/user/email', payload),
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось отправить код'),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type UseConfirmEmailChangeReturn = UseMutationReturnType<
+    AxiosResponse<{ data: User }>,
+    AxiosError<ApiErrorResponse>,
+    ConfirmEmailChangePayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Второй шаг смены email: сервер возвращает пользователя с новым адресом
+export const useConfirmEmailChange = (): UseConfirmEmailChangeReturn => {
+    const authStore = useAuthStore();
+    const queryClient = useQueryClient();
+
+    const mutation = useMutation<
+        AxiosResponse<{ data: User }>,
+        AxiosError<ApiErrorResponse>,
+        ConfirmEmailChangePayload
+    >({
+        mutationFn: (payload) => api.post('/v1/user/email/confirm', payload),
+
+        onSuccess: (response) => {
+            const user = response.data.data;
+
+            authStore.setUser(user);
+            queryClient.setQueryData(['user'], user);
+        },
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось сменить email'),
     );
 
     return {

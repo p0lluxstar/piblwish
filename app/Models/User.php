@@ -13,6 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['username', 'email', 'password', 'is_active', 'email_verified_at', 'deactivated_at', 'background'])]
 #[Hidden(['password', 'remember_token'])]
@@ -40,6 +41,12 @@ class User extends Authenticatable
     public function verificationRegistrationCodes(): HasMany
     {
         return $this->hasMany(VerificationRegistrationCode::class);
+    }
+
+    // Незавершённый запрос на смену email (не больше одного)
+    public function emailChangeRequest(): HasOne
+    {
+        return $this->hasOne(EmailChangeRequest::class);
     }
 
     public function wishlists(): HasMany

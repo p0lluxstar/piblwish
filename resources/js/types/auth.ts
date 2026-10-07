@@ -16,6 +16,15 @@ export type ChangePasswordPayload = {
     password_confirmation: string;
 };
 
+export type RequestEmailChangePayload = {
+    email: string;
+    current_password: string;
+};
+
+export type ConfirmEmailChangePayload = {
+    code: string;
+};
+
 export type ForgotPasswordPayload = {
     email: string;
 };

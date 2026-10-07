@@ -45,6 +45,10 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard'])->group(f
     Route::delete('/user', [UserController::class, 'deleteAccount']);
     Route::put('/user/password', [UserController::class, 'changePassword'])
         ->middleware('throttle:password-change');
+    Route::post('/user/email', [UserController::class, 'requestEmailChange'])
+        ->middleware('throttle:email-change-request');
+    Route::post('/user/email/confirm', [UserController::class, 'confirmEmailChange'])
+        ->middleware('throttle:email-change-confirm');
     Route::get('/wishlists', [WishlistController::class, 'getUserWishlists']);
     Route::post('/wishlists', [WishlistController::class, 'createWishlist']);
     Route::patch('/wishlists/{id}', [WishlistController::class, 'updateWishlist']);

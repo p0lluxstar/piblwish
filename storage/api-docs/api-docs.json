@@ -694,6 +694,20 @@
                                                 "email": {
                                                     "type": "string",
                                                     "example": "john@example.com"
+                                                },
+                                                "background": {
+                                                    "description": "Фон приложения",
+                                                    "type": "string",
+                                                    "example": "blossom",
+                                                    "enum": [
+                                                        "blossom",
+                                                        "ocean",
+                                                        "mint",
+                                                        "sand",
+                                                        "mist",
+                                                        "stone",
+                                                        "cobalt"
+                                                    ]
                                                 }
                                             },
                                             "type": "object"
@@ -706,6 +720,185 @@
                     },
                     "401": {
                         "description": "Не авторизован"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/v1/user": {
+            "delete": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Удалить аккаунт текущего пользователя",
+                "description": "Деактивирует аккаунт (проставляет deactivated_at), удаляет вишлисты пользователя и их позиции, завершает все его сессии. Войти в деактивированный аккаунт нельзя.",
+                "operationId": "461dc63a1194a0e23e4491704ba5cd6a",
+                "responses": {
+                    "200": {
+                        "description": "Аккаунт удалён",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "example": "Аккаунт удалён"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    },
+                    "429": {
+                        "description": "Слишком много запросов"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Изменить настройки текущего пользователя",
+                "description": "Сохраняет фон приложения, выбранный пользователем. Фон по умолчанию — blossom. Возвращает пользователя в том же виде, что GET /v1/user.",
+                "operationId": "05db2d69688dae19cebf7374eb736629",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "background"
+                                ],
+                                "properties": {
+                                    "background": {
+                                        "type": "string",
+                                        "example": "ocean",
+                                        "enum": [
+                                            "blossom",
+                                            "ocean",
+                                            "mint",
+                                            "sand",
+                                            "mist",
+                                            "stone",
+                                            "cobalt"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Настройки сохранены",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "example": "01jq3v7x8k2m4n6p8r0t2w4y6z"
+                                                },
+                                                "username": {
+                                                    "type": "string",
+                                                    "example": "john_doe"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "example": "john@example.com"
+                                                },
+                                                "background": {
+                                                    "type": "string",
+                                                    "example": "ocean"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    },
+                    "422": {
+                        "description": "Ошибка валидации: фон не передан или такого фона нет",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 422
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "example": "Недопустимый фон"
+                                                },
+                                                "errors": {
+                                                    "type": "object",
+                                                    "example": {
+                                                        "background": [
+                                                            "Недопустимый фон"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много запросов"
                     }
                 },
                 "security": [
@@ -834,17 +1027,42 @@
                 ]
             }
         },
-        "/v1/user": {
-            "delete": {
+        "/v1/user/email": {
+            "post": {
                 "tags": [
                     "User"
                 ],
-                "summary": "Удалить аккаунт текущего пользователя",
-                "description": "Деактивирует аккаунт (проставляет deactivated_at), удаляет вишлисты пользователя и их позиции, завершает все его сессии. Войти в деактивированный аккаунт нельзя.",
-                "operationId": "461dc63a1194a0e23e4491704ba5cd6a",
+                "summary": "Запросить смену email",
+                "description": "Проверяет текущий пароль и отправляет 6-значный код на новый адрес. Код действует 15 минут; новый запрос заменяет предыдущий вместе с его кодом и счётчиком попыток. Email меняется только после подтверждения через POST /v1/user/email/confirm. Лимит: 3 запроса в минуту и 10 в час.",
+                "operationId": "9415c3cedb20caab049c57a236c7e2d4",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "current_password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "description": "Новый email: не занят и отличается от текущего без учёта регистра",
+                                        "type": "string",
+                                        "example": "new@example.com"
+                                    },
+                                    "current_password": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
-                        "description": "Аккаунт удалён",
+                        "description": "Код отправлен на новый адрес",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -861,7 +1079,7 @@
                                             "properties": {
                                                 "message": {
                                                     "type": "string",
-                                                    "example": "Аккаунт удалён"
+                                                    "example": "Код отправлен на новый email"
                                                 }
                                             },
                                             "type": "object"
@@ -874,6 +1092,168 @@
                     },
                     "401": {
                         "description": "Не авторизован"
+                    },
+                    "422": {
+                        "description": "Ошибка валидации: некорректный или занятый email, совпадает с текущим, неверный текущий пароль",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 422
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "example": "Такой email уже зарегистрирован"
+                                                },
+                                                "errors": {
+                                                    "type": "object",
+                                                    "example": {
+                                                        "email": [
+                                                            "Такой email уже зарегистрирован"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много запросов"
+                    },
+                    "503": {
+                        "description": "Письмо не удалось поставить в очередь; запрос на смену не сохранён"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/v1/user/email/confirm": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Подтвердить новый email",
+                "description": "Проверяет код из письма и меняет email. После 5 неверных попыток, по истечении срока кода или если адрес заняли после запроса, запрос на смену удаляется и код нужно запросить заново. Код восстановления пароля для прежнего адреса удаляется, на прежний адрес отправляется уведомление. Сессии не завершаются. Возвращает пользователя в том же виде, что GET /v1/user. Лимит: 5 запросов в минуту и 20 в час.",
+                "operationId": "9a32d9cc98f9a0bc421d66efe375a2c6",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "code"
+                                ],
+                                "properties": {
+                                    "code": {
+                                        "description": "6 цифр",
+                                        "type": "string",
+                                        "example": "123456"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Email изменён",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "example": "01jq3v7x8k2m4n6p8r0t2w4y6z"
+                                                },
+                                                "username": {
+                                                    "type": "string",
+                                                    "example": "john_doe"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "example": "new@example.com"
+                                                },
+                                                "background": {
+                                                    "type": "string",
+                                                    "example": "blossom"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный код, код истёк или превышено число попыток",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 400
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "example": "Неверный код"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    },
+                    "404": {
+                        "description": "Запроса на смену email нет"
+                    },
+                    "409": {
+                        "description": "Новый адрес заняли после запроса кода"
+                    },
+                    "422": {
+                        "description": "Ошибка валидации: код не передан или не состоит из 6 цифр"
                     },
                     "429": {
                         "description": "Слишком много запросов"

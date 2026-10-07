@@ -85,5 +85,19 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(5)->by($byUserOrIp($request)),
             Limit::perHour(20)->by($byUserOrIp($request)),
         ]);
+
+        // Запрос кода смены email: каждый запрос проверяет текущий пароль
+        // и отправляет письмо на указанный пользователем адрес. Ошибки
+        // валидации тоже учитываются, поэтому в минуту допускается три запроса
+        RateLimiter::for('email-change-request', fn (Request $request): array => [
+            Limit::perMinute(3)->by($byUserOrIp($request)),
+            Limit::perHour(10)->by($byUserOrIp($request)),
+        ]);
+
+        // Подтверждение нового email: подбор кода
+        RateLimiter::for('email-change-confirm', fn (Request $request): array => [
+            Limit::perMinute(5)->by($byUserOrIp($request)),
+            Limit::perHour(20)->by($byUserOrIp($request)),
+        ]);
     }
 }
