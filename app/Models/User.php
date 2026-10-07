@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\AppBackground;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -13,7 +14,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['username', 'email', 'password', 'is_active', 'email_verified_at', 'deactivated_at'])]
+#[Fillable(['username', 'email', 'password', 'is_active', 'email_verified_at', 'deactivated_at', 'background'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -32,6 +33,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'deactivated_at' => 'datetime',
             'password' => 'hashed',
+            'background' => AppBackground::class,
         ];
     }
 

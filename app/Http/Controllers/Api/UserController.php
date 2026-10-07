@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Enums\AppBackground;
 use App\Http\Requests\User\ChangePasswordRequest;
+use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Resources\ApiResource;
 use App\Http\Resources\Auth\UserResource;
 use App\Services\User\UserService;
@@ -25,6 +27,17 @@ class UserController extends Controller
     public function user(Request $request): UserResource
     {
         return new UserResource($request->user());
+    }
+
+    // Изменить настройки текущего пользователя (фон приложения)
+    public function updateUser(UpdateUserRequest $request): UserResource
+    {
+        $user = $this->userService->updateSettings(
+            $request->user(),
+            AppBackground::from($request->validated('background'))
+        );
+
+        return new UserResource($user);
     }
 
     // Сменить пароль текущего пользователя

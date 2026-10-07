@@ -507,6 +507,12 @@ const FAQ: FaqItem[] = [
                 </p>
                 <ul class="list">
                     <li>
+                        <b>выбрать фон приложения</b>
+                        — он меняется сразу и сохраняется в аккаунте, поэтому
+                        одинаков на всех ваших устройствах; гости, которые
+                        открывают ваш список по ссылке, видят обычный фон;
+                    </li>
+                    <li>
                         <b>сменить пароль</b>
                         — понадобится текущий пароль;
                     </li>
@@ -546,7 +552,7 @@ const FAQ: FaqItem[] = [
 .heading {
     font-size: 26px;
     font-weight: 800;
-    color: var(--ink);
+    color: var(--app-ink, var(--ink));
     letter-spacing: -0.03em;
 }
 
@@ -558,7 +564,7 @@ const FAQ: FaqItem[] = [
     margin-top: 8px;
     font-size: 14px;
     line-height: 1.6;
-    color: var(--ink-soft);
+    color: var(--app-ink-soft, var(--ink-soft));
 }
 
 .toc {

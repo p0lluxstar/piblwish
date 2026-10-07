@@ -892,7 +892,7 @@ onMounted(getWishlist);
     font-size: 20px;
     font-weight: 700;
     line-height: 1.3;
-    color: var(--ink, #241533);
+    color: var(--app-ink, var(--ink, #241533));
     overflow-wrap: anywhere;
 }
 
@@ -933,26 +933,26 @@ onMounted(getWishlist);
 .intro-author-name {
     font-size: 24px;
     line-height: 1.2;
-    color: #8b5cf6;
+    color: var(--app-accent, #8b5cf6);
 }
 
 .intro-subtitle {
     font-size: 15px;
     font-weight: 500;
-    color: var(--ink-soft, #6b5878);
+    color: var(--app-ink-soft, var(--ink-soft, #6b5878));
 }
 
 .intro-note {
     margin: 0;
     font-size: 12px;
-    color: var(--ink-soft, #6b5878);
+    color: var(--app-ink-soft, var(--ink-soft, #6b5878));
 }
 
 .loader,
 .error,
 .empty-state {
     text-align: center;
-    color: #6b7280;
+    color: var(--app-ink-soft, #6b7280);
     font-size: 16px;
 }
 

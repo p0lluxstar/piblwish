@@ -18,6 +18,7 @@ import type {
     RegisterPayload,
     ResetPasswordPayload,
 } from '@/types/auth';
+import type { AppBackground } from '@/types/user';
 
 export const useLogin = (): any => {
     const router = useRouter();
@@ -113,6 +114,62 @@ export const useChangePassword = (): UseChangePasswordReturn => {
 
     const errorMessage = computed((): string | null =>
         getApiErrorMessage(mutation.error.value, 'Не удалось сменить пароль'),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type UseUpdateBackgroundReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    AppBackground,
+    { previous: AppBackground | undefined }
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Смена фона приложения. Фон меняется сразу, до ответа сервера;
+// при ошибке возвращается прежний
+export const useUpdateBackground = (): UseUpdateBackgroundReturn => {
+    const authStore = useAuthStore();
+
+    const setBackground = (background: AppBackground): void => {
+        if (authStore.user) {
+            authStore.setUser({ ...authStore.user, background });
+        }
+    };
+
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        AppBackground,
+        { previous: AppBackground | undefined }
+    >({
+        mutationFn: (background) => api.patch('/v1/user', { background }),
+
+        onMutate: (background) => {
+            const previous = authStore.user?.background;
+            setBackground(background);
+
+            return { previous };
+        },
+
+        onError: (_error, background, context) => {
+            // Если пользователь уже выбрал другой фон, ошибка прежнего запроса его не сбрасывает
+            if (
+                context?.previous &&
+                authStore.user?.background === background
+            ) {
+                setBackground(context.previous);
+            }
+        },
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось сменить фон'),
     );
 
     return {

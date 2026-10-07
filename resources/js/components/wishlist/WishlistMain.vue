@@ -538,7 +538,7 @@ onMounted(generateRandomPhrase);
         v-else-if="wishLists.length === 0"
         class="flex flex-col items-center justify-center min-h-[300px] text-center"
     >
-        <p class="text-gray-500 dark:text-gray-400 text-lg mb-4">
+        <p class="empty-text text-lg mb-4">
             У вас пока нет карточек
         </p>
         <button class="add-btn px-6 py-2" @click="openCreateModal">
@@ -605,12 +605,12 @@ onMounted(generateRandomPhrase);
 .heading {
     font-size: 26px;
     font-weight: 800;
-    color: var(--ink);
+    color: var(--app-ink, var(--ink));
     letter-spacing: -0.03em;
 }
 .sub {
     font-size: 13px;
-    color: var(--ink-soft);
+    color: var(--app-ink-soft, var(--ink-soft));
     margin-top: 4px;
 }
 .add-btn,
@@ -728,6 +728,11 @@ onMounted(generateRandomPhrase);
 .type-filter-icon {
     display: none;
     flex-shrink: 0;
+}
+
+// Текст лежит прямо на фоне, поэтому цвет зависит от выбранного фона приложения
+.empty-text {
+    color: var(--app-ink-soft, #6b7280);
 }
 
 .separator {

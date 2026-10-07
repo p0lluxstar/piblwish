@@ -1,15 +1,26 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+
 import Footer from '@/components/dashboard/Footer.vue';
 import Header from '@/components/dashboard/Header.vue';
 import Main from '@/components/dashboard/Main.vue';
 import ScrollToTopButton from '@/components/ui/ScrollToTopButton.vue';
+import { DEFAULT_APP_BACKGROUND } from '@/constants/appBackgrounds';
+import { useAuthStore } from '@/stores/auth';
+
+const auth = useAuthStore();
+
+// Фон, выбранный в настройках аккаунта; у гостя — фон по умолчанию
+const backgroundClass = computed(
+    (): string => `app-bg--${auth.user?.background ?? DEFAULT_APP_BACKGROUND}`,
+);
 </script>
 
 <template>
-    <div class="dashboard">
-        <div class="dashboard-glow dashboard-glow--violet"></div>
-        <div class="dashboard-glow dashboard-glow--pink"></div>
-        <div class="dashboard-glow dashboard-glow--amber"></div>
+    <div class="dashboard" :class="backgroundClass">
+        <div class="dashboard-glow dashboard-glow--first"></div>
+        <div class="dashboard-glow dashboard-glow--second"></div>
+        <div class="dashboard-glow dashboard-glow--third"></div>
 
         <Header />
         <Main />
@@ -18,13 +29,15 @@ import ScrollToTopButton from '@/components/ui/ScrollToTopButton.vue';
     </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+@use '../../scss/ui/appBackgrounds.scss';
+
 .dashboard {
     position: relative;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(160deg, #f7f4ff 0%, #fff0f6 45%, #fffaf0 100%);
+    background: var(--app-bg);
     overflow-x: hidden;
     isolation: isolate;
 }
@@ -34,32 +47,34 @@ import ScrollToTopButton from '@/components/ui/ScrollToTopButton.vue';
     z-index: -1;
     border-radius: 50%;
     filter: blur(90px);
-    opacity: 0.35;
+    opacity: var(--app-glow-opacity, 0.35);
     pointer-events: none;
+    transition: background-color 0.4s ease;
 }
 
-.dashboard-glow--violet {
+.dashboard-glow--first {
     top: -120px;
     left: -100px;
     width: 420px;
     height: 420px;
-    background: #a78bfa;
+    background: var(--app-glow-1);
 }
 
-.dashboard-glow--pink {
+.dashboard-glow--second {
     top: 20%;
     right: -140px;
     width: 380px;
     height: 380px;
-    background: #f9a8d4;
+    background: var(--app-glow-2);
 }
 
-.dashboard-glow--amber {
+.dashboard-glow--third {
     bottom: -140px;
     left: 30%;
     width: 360px;
     height: 360px;
-    background: #fde68a;
-    opacity: 0.3;
+    background: var(--app-glow-3);
+    // Нижнее пятно чуть прозрачнее двух других
+    opacity: calc(var(--app-glow-opacity, 0.35) - 0.05);
 }
 </style>

@@ -2,7 +2,9 @@
 
 namespace App\Services\User;
 
+use App\Enums\AppBackground;
 use App\Mail\PasswordChangedMail;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +13,16 @@ use Illuminate\Support\Facades\Mail;
 
 class UserService
 {
+    // Изменение настроек текущего пользователя; пока это только фон приложения
+    public function updateSettings(User $user, AppBackground $background): User
+    {
+        $user->update([
+            'background' => $background,
+        ]);
+
+        return $user;
+    }
+
     // Смена пароля текущего пользователя.
     // Текущий пароль уже проверен в ChangePasswordRequest (правило current_password).
     // Пользователь остаётся в системе, сессии на других устройствах завершаются.

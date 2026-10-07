@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
+import AppBackgroundPicker from '@/components/user/AppBackgroundPicker.vue';
 
 const props = defineProps<{
     isPending?: boolean;
@@ -106,6 +107,12 @@ const closeModal = (): void => {
 
                     <button class="close-btn" @click="closeModal"></button>
                 </div>
+
+                <section class="background-section">
+                    <h3 class="section-title">Фон приложения</h3>
+
+                    <AppBackgroundPicker />
+                </section>
 
                 <form class="password-form" @submit.prevent="handleSubmit">
                     <h3 class="section-title">Смена пароля</h3>
@@ -226,6 +233,12 @@ const closeModal = (): void => {
     text-transform: uppercase;
     letter-spacing: 0.06em;
     margin: 0 0 12px;
+}
+
+.background-section {
+    margin-bottom: 20px;
+    padding-bottom: 18px;
+    border-bottom: 1px dashed rgba(139, 92, 246, 0.2);
 }
 
 .password-form {

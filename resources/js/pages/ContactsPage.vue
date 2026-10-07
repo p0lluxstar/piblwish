@@ -41,7 +41,7 @@ const GITHUB_URL = 'https://github.com/p0lluxstar/piblwish';
 .heading {
     font-size: 26px;
     font-weight: 800;
-    color: var(--ink);
+    color: var(--app-ink, var(--ink));
     letter-spacing: -0.03em;
 }
 
@@ -53,7 +53,7 @@ const GITHUB_URL = 'https://github.com/p0lluxstar/piblwish';
     margin-top: 8px;
     font-size: 14px;
     line-height: 1.6;
-    color: var(--ink-soft);
+    color: var(--app-ink-soft, var(--ink-soft));
 }
 
 .card {

@@ -562,7 +562,7 @@ const createdAtLabel = computed(
 }
 
 // Высота позиций и текста заметки, после которой появляется полоса прокрутки
-$card-content-max-height: 180px;
+$card-content-max-height: 150px;
 
 // Тонкая полоса прокрутки в фирменных цветах, как у модалки (wishlistModal.scss).
 // В Chrome 121+ стандартные scrollbar-width и scrollbar-color отключают
