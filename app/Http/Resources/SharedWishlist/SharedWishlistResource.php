@@ -26,6 +26,8 @@ class SharedWishlistResource extends ApiResource
             // для просмотра: у его позиций isSelected означает «выполнено»
             'type' => $this->type->value,
             'title' => $this->title,
+            // Цвет карточки, как у владельца в дашборде
+            'color' => $this->color->value,
             // Может ли гость отмечать дела выполненными; у списка желаний false
             'guestsCanCheck' => $this->guestsCanCheck(),
             // Должен ли гость указать имя, отмечая дела; false, если отмечать нельзя

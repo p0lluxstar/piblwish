@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Swagger;
 
+use App\Enums\WishlistColor;
 use App\Http\Controllers\Controller;
 use OpenApi\Attributes as OA;
 
@@ -80,6 +81,13 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'id', type: 'string', format: 'ulid'),
                             new OA\Property(property: 'type', type: 'string', enum: ['gift', 'todo']),
                             new OA\Property(property: 'title', type: 'string'),
+                            new OA\Property(
+                                property: 'color',
+                                description: 'Ключ цвета фона списка',
+                                type: 'string',
+                                enum: WishlistColor::class,
+                                example: 'lavender'
+                            ),
                             new OA\Property(
                                 property: 'guestsCanCheck',
                                 description: 'Может ли гость отмечать дела выполненными (POST /items/check); у списка желаний false',

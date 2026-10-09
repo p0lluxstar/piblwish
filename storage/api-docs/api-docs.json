@@ -316,6 +316,20 @@
                                                 "title": {
                                                     "type": "string"
                                                 },
+                                                "color": {
+                                                    "description": "Ключ цвета фона списка",
+                                                    "type": "string",
+                                                    "example": "lavender",
+                                                    "enum": [
+                                                        "white",
+                                                        "lavender",
+                                                        "pink",
+                                                        "peach",
+                                                        "lemon",
+                                                        "mint",
+                                                        "sky"
+                                                    ]
+                                                },
                                                 "guestsCanCheck": {
                                                     "description": "Может ли гость отмечать дела выполненными (POST /items/check); у списка желаний false",
                                                     "type": "boolean"

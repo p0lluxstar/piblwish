@@ -1,6 +1,6 @@
 <template>
     <footer class="footer">
-        <div class="container">
+        <div class="footer-inner">
             <span class="footer-copy">© 2026 PiblWish</span>
             <div class="footer-links">
                 <router-link to="/help">Помощь</router-link>
@@ -22,7 +22,8 @@
     -webkit-backdrop-filter: blur(16px);
 }
 
-.container {
+/* Не container: у одноимённого класса Tailwind max-width по брейкпоинтам */
+.footer-inner {
     display: flex;
     width: 1200px;
     justify-content: space-between;

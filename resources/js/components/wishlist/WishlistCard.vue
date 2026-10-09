@@ -11,6 +11,7 @@ import {
     ListChecks,
     StickyNote,
     Trash2,
+    Users,
 } from '@lucide/vue';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
@@ -63,6 +64,13 @@ const ownCheckLabel = computed(() => {
 
     return guestsCanCheck || hasGuestChecks ? 'Вы' : null;
 });
+
+// Подсказка значка общего списка дел
+const sharedLabel = computed(() =>
+    props.wishlist.guestsCanCheck
+        ? 'Общий список: открыт по ссылке, гости отмечают дела'
+        : 'Общий список: открыт по ссылке для просмотра',
+);
 
 // «список» или «заметку» в подписях кнопок
 const subject = computed(() => (isNote.value ? 'заметку' : 'список'));
@@ -291,6 +299,18 @@ const createdAtLabel = computed(
                 title="Режим сюрприза: выбор гостей скрыт"
             >
                 <EyeOff :size="14" />
+            </span>
+
+            <!-- Список дел открыт по ссылке. Значок не ссылки, а людей: значок
+                 ссылки уже у кнопки копирования в углу карточки -->
+            <span
+                v-if="isTodo && wishlist.isShared"
+                class="card-shared"
+                role="img"
+                :aria-label="sharedLabel"
+                :title="sharedLabel"
+            >
+                <Users :size="14" />
             </span>
         </div>
 
@@ -579,7 +599,9 @@ const createdAtLabel = computed(
     border: 1px solid var(--surface-border);
     border-radius: var(--radius-lg);
     padding: 20px;
-    box-shadow: 0 8px 24px -14px rgba(139, 92, 246, 0.25);
+    // Тень в тон цвету списка; без цвета (white) — нейтральная серо-голубая
+    box-shadow: 0 8px 24px -14px
+        color-mix(in srgb, var(--wishlist-glow, #64748b) 25%, transparent);
     transition:
         transform 0.25s ease,
         box-shadow 0.25s ease;
@@ -587,7 +609,8 @@ const createdAtLabel = computed(
 
 .card:hover {
     transform: translateY(-6px) scale(1.015);
-    box-shadow: var(--shadow-glow-lg);
+    box-shadow: 0 22px 48px -16px
+        color-mix(in srgb, var(--wishlist-glow, #64748b) 40%, transparent);
 }
 
 .card-actions {
@@ -1011,12 +1034,18 @@ $card-content-max-height: 150px;
     }
 }
 
-.card-surprise {
+.card-surprise,
+.card-shared {
     display: grid;
     place-items: center;
     width: 24px;
     height: 24px;
     color: var(--brand-violet);
+}
+
+// В тон метке «Дела»
+.card-shared {
+    color: #059669;
 }
 
 .card-footer {

@@ -13,11 +13,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { isAxiosError } from 'axios';
 import { type Component, computed, onMounted, ref, watch } from 'vue';
 
+import { useMotivationalPhrase } from '@/composables/useMotivationalPhrase';
 import {
     useWishlistSort,
     type WishlistSortField,
 } from '@/composables/useWishlistSort';
-import { MOTIVATIONAL_PHRASES } from '@/constants/phrases';
 import { api } from '@/lib/api';
 import type { ApiErrorResponse } from '@/types/api';
 
@@ -43,19 +43,8 @@ const isEditModalOpen = ref(false);
 const selectedWishlist = ref<Wishlist | null>(null);
 const isDeleteModalOpen = ref(false);
 const wishlistToDelete = ref<Wishlist | null>(null);
-const randomPhrase = ref('');
-
-// Фраза меняется при загрузке страницы и после действий пользователя: «Обновить»,
-// создание, изменение и удаление списка. Таймер не используется, чтобы движение
-// в заголовке не отвлекало. Подряд одна и та же фраза не выпадает
-const generateRandomPhrase = (): void => {
-    const candidates = MOTIVATIONAL_PHRASES.filter(
-        (phrase) => phrase !== randomPhrase.value,
-    );
-    const pool = candidates.length > 0 ? candidates : MOTIVATIONAL_PHRASES;
-
-    randomPhrase.value = pool[Math.floor(Math.random() * pool.length)];
-};
+// Фраза показывается в шапке под названием сайта
+const { generatePhrase: generateRandomPhrase } = useMotivationalPhrase();
 
 const fetchWishlists = async (): Promise<Wishlist[]> => {
     const response = await api.get<{ data: Wishlist[] }>('/v1/wishlists');
@@ -497,21 +486,8 @@ onMounted(generateRandomPhrase);
 <template>
     <!-- Блок "Мои карточки" всегда отображается -->
     <div class="top">
-        <div>
-            <div class="heading">Мои карточки</div>
-            <div class="sub">
-                <span v-if="!isLoading">
-                    <span>Карточек {{ wishLists.length }}</span>
-                    <!-- Отступы вокруг точки заданы в CSS: пробелы между тегами Vue удаляет -->
-                    <span class="separator">·</span>
-                    <!-- Ключ пересоздаёт элемент при смене фразы, чтобы анимация срабатывала заново -->
-                    <span :key="randomPhrase" class="phrase-wrapper">
-                        <span class="phrase">{{ randomPhrase }}</span>
-                    </span>
-                </span>
-                <span v-else>Загрузка списков...</span>
-            </div>
-        </div>
+        <!-- Количество карточек показано в кнопках фильтра по типу -->
+        <div class="heading">Мои карточки</div>
         <div v-if="wishLists.length > 0 || isLoading" class="flex gap-2">
             <button
                 class="add-btn"
@@ -662,18 +638,17 @@ onMounted(generateRandomPhrase);
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    margin-bottom: 26px;
+    margin-bottom: 20px;
 }
+// Заголовок прижат к верху блока: без line-height: 1 над буквами
+// оставалось бы место от межстрочного интервала
 .heading {
+    align-self: flex-start;
     font-size: 26px;
     font-weight: 800;
+    line-height: 1;
     color: var(--app-ink, var(--ink));
     letter-spacing: -0.03em;
-}
-.sub {
-    font-size: 13px;
-    color: var(--app-ink-soft, var(--ink-soft));
-    margin-top: 4px;
 }
 .add-btn,
 .update-btn {
@@ -797,10 +772,6 @@ onMounted(generateRandomPhrase);
     color: var(--app-ink-soft, #6b7280);
 }
 
-.separator {
-    margin: 0 0.35em;
-}
-
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -840,42 +811,9 @@ onMounted(generateRandomPhrase);
     font-weight: 500;
 }
 
-.phrase-wrapper {
-    display: inline-block;
-    animation: fadeSlide 0.4s ease-out;
-
-    @media (prefers-reduced-motion: reduce) {
-        animation: none;
-    }
-}
-
-.phrase {
-    color: var(--brand-pink);
-    font-weight: 600;
-}
-
-@keyframes fadeSlide {
-    from {
-        opacity: 0;
-        transform: translateY(4px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Очень узкий экран: количество списков и фраза на отдельных строках, без точки.
-   Медиазапрос стоит в конце, иначе .phrase-wrapper { display: inline-block } выше по файлу перекрывает его */
+/* Очень узкий экран: у кнопок фильтра по типу иконка вместо подписи,
+   чтобы ряд занимал меньше места */
 @media (max-width: 399px) {
-    .separator {
-        display: none;
-    }
-    .phrase-wrapper {
-        display: block;
-    }
-
-    /* Кнопки фильтра по типу: иконка вместо подписи, чтобы ряд занимал меньше места */
     .type-filter-icon {
         display: block;
     }

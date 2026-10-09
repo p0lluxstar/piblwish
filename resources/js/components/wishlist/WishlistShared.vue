@@ -769,7 +769,8 @@ onMounted(getWishlist);
                 {{ actionError }}
             </p>
 
-            <div class="card">
+            <!-- Цвет списка, как у владельца на /dashboard -->
+            <div :class="['card', `wishlist-color--${wishlist.color}`]">
                 <!-- Свежие данные без перезагрузки страницы: например, чтобы увидеть,
                      что выбрали или отметили другие гости -->
                 <button
@@ -1206,6 +1207,7 @@ onMounted(getWishlist);
 <style scoped lang="scss">
 @use '../../../scss/ui/checkboxCard.scss';
 @use '../../../scss/ui/createButton.scss';
+@use '../../../scss/ui/wishlistColors.scss';
 
 .wishlist-view {
     max-width: 800px;
@@ -1296,7 +1298,8 @@ onMounted(getWishlist);
     display: flex;
     justify-content: center;
     flex-direction: column;
-    background: linear-gradient(145deg, #fff 60%, #fff7fd);
+    // Цвет списка; без него (white) — прежний белый с розовым отливом
+    background: var(--wishlist-bg, linear-gradient(145deg, #fff 60%, #fff7fd));
     border: 1px solid rgba(226, 195, 211, 0.5);
     border-radius: 18px;
     padding: 18px;
