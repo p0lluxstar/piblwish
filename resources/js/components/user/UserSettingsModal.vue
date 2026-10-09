@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import AppBackgroundPicker from '@/components/user/AppBackgroundPicker.vue';
 import EmailChangeSection from '@/components/user/EmailChangeSection.vue';
 import LogoutAllDevicesSection from '@/components/user/LogoutAllDevicesSection.vue';
 import PasswordChangeSection from '@/components/user/PasswordChangeSection.vue';
-import { useAuthStore } from '@/stores/auth';
+import ProfileSection from '@/components/user/ProfileSection.vue';
 
 const props = defineProps<{
     isDeletingAccount?: boolean;
@@ -16,13 +16,6 @@ const emit = defineEmits<{
     close: [];
     deleteAccount: [];
 }>();
-
-const auth = useAuthStore();
-
-const username = computed(() => auth.user?.username ?? '');
-
-// Первая буква имени для круглого значка профиля
-const usernameInitial = computed(() => username.value.charAt(0).toUpperCase());
 
 // Показ подтверждения удаления аккаунта вместо кнопки «Удалить аккаунт»
 const isDeleteConfirmVisible = ref(false);
@@ -72,16 +65,7 @@ const closeModal = (): void => {
                     <button class="close-btn" @click="closeModal"></button>
                 </div>
 
-                <section v-if="username" class="profile-section">
-                    <span class="profile-avatar" aria-hidden="true">
-                        {{ usernameInitial }}
-                    </span>
-
-                    <div class="profile-info">
-                        <span class="profile-label">Имя пользователя</span>
-                        <span class="profile-username">{{ username }}</span>
-                    </div>
-                </section>
+                <ProfileSection />
 
                 <section class="background-section">
                     <h3 class="section-title">Фон приложения</h3>
@@ -150,50 +134,6 @@ const closeModal = (): void => {
 .modal {
     max-width: 360px;
     padding: 24px;
-}
-
-.profile-section {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 20px;
-    padding-bottom: 18px;
-    border-bottom: 1px dashed rgba(139, 92, 246, 0.2);
-}
-
-.profile-avatar {
-    display: flex;
-    flex-shrink: 0;
-    justify-content: center;
-    align-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #a78bfa, #ec4899);
-    color: #fff;
-    font-size: 18px;
-    font-weight: 700;
-}
-
-.profile-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.profile-label {
-    font-size: 12px;
-    color: var(--ink-soft, #6b5878);
-}
-
-.profile-username {
-    overflow: hidden;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--ink, #241533);
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .background-section {

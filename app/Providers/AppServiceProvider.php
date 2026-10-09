@@ -80,6 +80,12 @@ class AppServiceProvider extends ServiceProvider
         // Дашборд: маршруты под auth:sanctum
         RateLimiter::for('dashboard', fn (Request $request): Limit => Limit::perMinute(60)->by($byUserOrIp($request)));
 
+        // Загрузка фотографии: каждый запрос декодирует изображение и пишет файл на диск
+        RateLimiter::for('avatar-upload', fn (Request $request): array => [
+            Limit::perMinute(10)->by($byUserOrIp($request)),
+            Limit::perHour(30)->by($byUserOrIp($request)),
+        ]);
+
         // Смена пароля: подбор текущего пароля из захваченной сессии
         RateLimiter::for('password-change', fn (Request $request): array => [
             Limit::perMinute(5)->by($byUserOrIp($request)),

@@ -10,6 +10,7 @@ import {
 import { computed, ref } from 'vue';
 
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
+import UserAvatar from '@/components/ui/UserAvatar.vue';
 import UserSettingsModal from '@/components/user/UserSettingsModal.vue';
 import { useDeleteAccount, useLogout } from '@/composables/useAuth';
 import { useAuthStore } from '@/stores/auth';
@@ -87,9 +88,11 @@ const handleDeleteAccount = (): void => {
                     <span class="user-email">{{ auth.user.email }}</span>
                 </div>
                 <div class="avatar-wrapper">
-                    <div class="avatar">
-                        {{ auth.user?.username?.charAt(0).toUpperCase() }}
-                    </div>
+                    <UserAvatar
+                        class="avatar"
+                        :username="auth.user.username"
+                        :avatar-url="auth.user.avatarUrl"
+                    />
                     <button
                         class="settings-btn"
                         type="button"
@@ -292,10 +295,7 @@ const handleDeleteAccount = (): void => {
 .avatar {
     width: 36px;
     height: 36px;
-    border-radius: 50%;
     background: var(--brand-gradient);
-    display: grid;
-    place-items: center;
     font-size: 13px;
     font-weight: 700;
     color: #fff;

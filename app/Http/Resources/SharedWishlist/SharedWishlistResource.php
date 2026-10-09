@@ -31,6 +31,8 @@ class SharedWishlistResource extends ApiResource
             // Должен ли гость указать имя, отмечая дела; false, если отмечать нельзя
             'guestNameRequired' => $this->guestsCanCheck() && $this->guest_name_required,
             'username' => $this->whenLoaded('user') ? $this->user->username : null,
+            // Фотография владельца или null — тогда показывается первая буква имени
+            'avatarUrl' => $this->relationLoaded('user') ? $this->user->avatarUrl() : null,
             // Совместный подарок бывает только у позиций списка желаний
             'items' => $this->whenLoaded('items', fn () => $this->items->map(
                 fn ($item) => (new WishlistItemResource($item))

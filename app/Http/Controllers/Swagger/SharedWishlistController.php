@@ -92,6 +92,12 @@ use OpenApi\Attributes as OA;
                             ),
                             new OA\Property(property: 'username', type: 'string', nullable: true),
                             new OA\Property(
+                                property: 'avatarUrl',
+                                description: 'Фотография владельца списка; null — показывается первая буква имени',
+                                type: 'string',
+                                nullable: true
+                            ),
+                            new OA\Property(
                                 property: 'items',
                                 type: 'array',
                                 items: new OA\Items(

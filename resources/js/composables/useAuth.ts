@@ -271,6 +271,90 @@ export const useUpdateBackground = (): UseUpdateBackgroundReturn => {
     };
 };
 
+type UseUploadAvatarReturn = UseMutationReturnType<
+    AxiosResponse<{ data: User }>,
+    AxiosError<ApiErrorResponse>,
+    Blob,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Загрузка фотографии пользователя: отправляется уже кадрированное изображение.
+// Сервер перекодирует его в WebP 256×256 и возвращает пользователя с новым avatarUrl
+export const useUploadAvatar = (): UseUploadAvatarReturn => {
+    const authStore = useAuthStore();
+
+    const mutation = useMutation<
+        AxiosResponse<{ data: User }>,
+        AxiosError<ApiErrorResponse>,
+        Blob
+    >({
+        mutationFn: (image) => {
+            const formData = new FormData();
+            formData.append('avatar', image, 'avatar.jpg');
+
+            return api.post('/v1/user/avatar', formData);
+        },
+
+        onSuccess: (response) => {
+            authStore.setUser(response.data.data);
+        },
+    });
+
+    const errorMessage = computed((): string | null => {
+        // 413 отдаёт nginx, если файл больше client_max_body_size; ответ не JSON
+        if (mutation.error.value?.response?.status === 413) {
+            return 'Файл слишком большой';
+        }
+
+        return getApiErrorMessage(
+            mutation.error.value,
+            'Не удалось загрузить фото. Попробуйте позже',
+        );
+    });
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type UseDeleteAvatarReturn = UseMutationReturnType<
+    AxiosResponse<{ data: User }>,
+    AxiosError<ApiErrorResponse>,
+    void,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Удаление фотографии пользователя: вместо неё снова показывается первая буква имени
+export const useDeleteAvatar = (): UseDeleteAvatarReturn => {
+    const authStore = useAuthStore();
+
+    const mutation = useMutation<
+        AxiosResponse<{ data: User }>,
+        AxiosError<ApiErrorResponse>,
+        void
+    >({
+        mutationFn: () => api.delete('/v1/user/avatar'),
+
+        onSuccess: (response) => {
+            authStore.setUser(response.data.data);
+        },
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось удалить фото'),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
 type UseForgotPasswordReturn = UseMutationReturnType<
     AxiosResponse,
     AxiosError<ApiErrorResponse>,

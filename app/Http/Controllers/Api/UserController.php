@@ -7,6 +7,7 @@ use App\Enums\AppBackground;
 use App\Http\Requests\User\ChangePasswordRequest;
 use App\Http\Requests\User\ConfirmEmailChangeRequest;
 use App\Http\Requests\User\RequestEmailChangeRequest;
+use App\Http\Requests\User\UpdateAvatarRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Resources\ApiResource;
 use App\Http\Resources\Auth\UserResource;
@@ -38,6 +39,25 @@ class UserController extends Controller
             $request->user(),
             AppBackground::from($request->validated('background'))
         );
+
+        return new UserResource($user);
+    }
+
+    // Загрузить фотографию пользователя; прежняя фотография удаляется
+    public function updateAvatar(UpdateAvatarRequest $request): UserResource
+    {
+        $user = $this->userService->updateAvatar(
+            $request->user(),
+            $request->file('avatar')
+        );
+
+        return new UserResource($user);
+    }
+
+    // Удалить фотографию пользователя: снова показывается первая буква имени
+    public function deleteAvatar(Request $request): UserResource
+    {
+        $user = $this->userService->deleteAvatar($request->user());
 
         return new UserResource($user);
     }

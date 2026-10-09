@@ -26,6 +26,7 @@ import type {
 
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
+import UserAvatar from '../ui/UserAvatar.vue';
 import ItemPriorityHearts from './ItemPriorityHearts.vue';
 import JointGiftFields from './JointGiftFields.vue';
 import TodoCheckedBy from './TodoCheckedBy.vue';
@@ -653,13 +654,12 @@ onMounted(getWishlist);
                      отдельными строками. Для экранного диктора заголовок читается
                      одной фразой: «Аня делится с вами списком подарков» -->
                 <div class="intro-author">
-                    <span
+                    <UserAvatar
                         v-if="wishlist.username"
                         class="intro-author-avatar"
-                        aria-hidden="true"
-                    >
-                        {{ wishlist.username.charAt(0).toUpperCase() }}
-                    </span>
+                        :username="wishlist.username"
+                        :avatar-url="wishlist.avatarUrl"
+                    />
 
                     <h1 id="shared-intro-title" class="intro-title">
                         <template v-if="wishlist.username">
@@ -1216,15 +1216,11 @@ onMounted(getWishlist);
     max-width: 100%;
 }
 
-// Кружок с первой буквой имени, как аватар в профиле
+// Аватар автора, как в профиле
 .intro-author-avatar {
-    display: grid;
-    flex-shrink: 0;
-    place-items: center;
     width: 52px;
     height: 52px;
     border: 3px solid #fff;
-    border-radius: 50%;
     background: var(--brand-gradient);
     font-size: 22px;
     font-weight: 700;

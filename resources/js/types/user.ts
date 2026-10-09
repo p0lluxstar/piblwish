@@ -13,4 +13,6 @@ export type User = {
     email: string;
     username?: string;
     background: AppBackground;
+    // Адрес фотографии; null — фотографии нет, показывается первая буква имени
+    avatarUrl: string | null;
 };

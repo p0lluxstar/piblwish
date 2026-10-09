@@ -82,6 +82,8 @@ export interface Wishlist {
     // Должен ли гость указать имя, отмечая дела; у списка желаний и заметки false
     guestNameRequired?: boolean;
     username: string | null;
+    // Фотография владельца; приходит только на общей странице
+    avatarUrl?: string | null;
     items: WishlistItem[];
     // Бронь гостя: приходит на общей странице после сохранения или отмены выбора
     reservation?: WishlistReservation;

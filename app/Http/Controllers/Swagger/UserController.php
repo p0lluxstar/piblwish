@@ -41,6 +41,13 @@ use OpenApi\Attributes as OA;
                                 enum: ['blossom', 'ocean', 'mint', 'sand', 'mist', 'stone', 'cobalt'],
                                 example: 'blossom'
                             ),
+                            new OA\Property(
+                                property: 'avatarUrl',
+                                description: 'Адрес фотографии пользователя; null — фотографии нет, показывается первая буква имени',
+                                type: 'string',
+                                nullable: true,
+                                example: 'https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp'
+                            ),
                         ],
                         type: 'object'
                     ),
@@ -99,6 +106,7 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'username', type: 'string', example: 'john_doe'),
                             new OA\Property(property: 'email', type: 'string', example: 'john@example.com'),
                             new OA\Property(property: 'background', type: 'string', example: 'ocean'),
+                            new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
                         ],
                         type: 'object'
                     ),
@@ -139,6 +147,128 @@ use OpenApi\Attributes as OA;
         new OA\Response(
             response: 429,
             description: 'Слишком много запросов'
+        ),
+    ]
+)]
+
+#[OA\Post(
+    path: '/v1/user/avatar',
+    summary: 'Загрузить фотографию пользователя',
+    description: 'Принимает изображение JPEG, PNG, WebP или GIF (у анимации берётся первый кадр) до 2 МБ и до 4096×4096 пикселей. '
+        .'Изображение перекодируется в WebP 256×256: обрезается по центру до квадрата, учитывается поворот по EXIF, метаданные удаляются. '
+        .'Файл получает новое имя, прежняя фотография удаляется. Возвращает пользователя в том же виде, что GET /v1/user. '
+        .'Лимит: 10 запросов в минуту и 30 в час.',
+    tags: ['User'],
+    security: [['bearerAuth' => []]],
+    requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\MediaType(
+            mediaType: 'multipart/form-data',
+            schema: new OA\Schema(
+                required: ['avatar'],
+                properties: [
+                    new OA\Property(property: 'avatar', type: 'string', format: 'binary'),
+                ]
+            )
+        )
+    ),
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Фотография сохранена',
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'success', type: 'boolean', example: true),
+                    new OA\Property(property: 'statusCode', type: 'integer', example: 200),
+                    new OA\Property(
+                        property: 'data',
+                        properties: [
+                            new OA\Property(property: 'id', type: 'string', example: '01jq3v7x8k2m4n6p8r0t2w4y6z'),
+                            new OA\Property(property: 'username', type: 'string', example: 'john_doe'),
+                            new OA\Property(property: 'email', type: 'string', example: 'john@example.com'),
+                            new OA\Property(property: 'background', type: 'string', example: 'blossom'),
+                            new OA\Property(
+                                property: 'avatarUrl',
+                                type: 'string',
+                                example: 'https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp'
+                            ),
+                        ],
+                        type: 'object'
+                    ),
+                ],
+                type: 'object'
+            )
+        ),
+
+        new OA\Response(
+            response: 401,
+            description: 'Не авторизован'
+        ),
+
+        new OA\Response(
+            response: 422,
+            description: 'Файл не передан, не является изображением допустимого формата, больше 2 МБ или 4096×4096 пикселей либо не может быть декодирован',
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'success', type: 'boolean', example: false),
+                    new OA\Property(property: 'statusCode', type: 'integer', example: 422),
+                    new OA\Property(
+                        property: 'data',
+                        properties: [
+                            new OA\Property(property: 'message', type: 'string', example: 'Файл должен быть не больше 2 МБ'),
+                            new OA\Property(
+                                property: 'errors',
+                                type: 'object',
+                                example: ['avatar' => ['Файл должен быть не больше 2 МБ']]
+                            ),
+                        ],
+                        type: 'object'
+                    ),
+                ],
+                type: 'object'
+            )
+        ),
+
+        new OA\Response(
+            response: 429,
+            description: 'Слишком много запросов'
+        ),
+    ]
+)]
+
+#[OA\Delete(
+    path: '/v1/user/avatar',
+    summary: 'Удалить фотографию пользователя',
+    description: 'Удаляет файл фотографии; вместо неё снова показывается первая буква имени. Если фотографии нет, запрос тоже выполняется успешно. Возвращает пользователя в том же виде, что GET /v1/user.',
+    tags: ['User'],
+    security: [['bearerAuth' => []]],
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Фотография удалена',
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'success', type: 'boolean', example: true),
+                    new OA\Property(property: 'statusCode', type: 'integer', example: 200),
+                    new OA\Property(
+                        property: 'data',
+                        properties: [
+                            new OA\Property(property: 'id', type: 'string', example: '01jq3v7x8k2m4n6p8r0t2w4y6z'),
+                            new OA\Property(property: 'username', type: 'string', example: 'john_doe'),
+                            new OA\Property(property: 'email', type: 'string', example: 'john@example.com'),
+                            new OA\Property(property: 'background', type: 'string', example: 'blossom'),
+                            new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
+                        ],
+                        type: 'object'
+                    ),
+                ],
+                type: 'object'
+            )
+        ),
+
+        new OA\Response(
+            response: 401,
+            description: 'Не авторизован'
         ),
     ]
 )]
@@ -367,6 +497,7 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'username', type: 'string', example: 'john_doe'),
                             new OA\Property(property: 'email', type: 'string', example: 'new@example.com'),
                             new OA\Property(property: 'background', type: 'string', example: 'blossom'),
+                            new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
                         ],
                         type: 'object'
                     ),

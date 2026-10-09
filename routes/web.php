@@ -45,6 +45,9 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard', RenewReme
     Route::get('/user', [UserController::class, 'user']);
     Route::patch('/user', [UserController::class, 'updateUser']);
     Route::delete('/user', [UserController::class, 'deleteAccount']);
+    Route::post('/user/avatar', [UserController::class, 'updateAvatar'])
+        ->middleware('throttle:avatar-upload');
+    Route::delete('/user/avatar', [UserController::class, 'deleteAvatar']);
     Route::put('/user/password', [UserController::class, 'changePassword'])
         ->middleware('throttle:password-change');
     Route::post('/user/email', [UserController::class, 'requestEmailChange'])

@@ -328,6 +328,11 @@
                                                     "type": "string",
                                                     "nullable": true
                                                 },
+                                                "avatarUrl": {
+                                                    "description": "Фотография владельца списка; null — показывается первая буква имени",
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
                                                 "items": {
                                                     "type": "array",
                                                     "items": {
@@ -824,6 +829,12 @@
                                                         "stone",
                                                         "cobalt"
                                                     ]
+                                                },
+                                                "avatarUrl": {
+                                                    "description": "Адрес фотографии пользователя; null — фотографии нет, показывается первая буква имени",
+                                                    "type": "string",
+                                                    "example": "https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp",
+                                                    "nullable": true
                                                 }
                                             },
                                             "type": "object"
@@ -963,6 +974,11 @@
                                                 "background": {
                                                     "type": "string",
                                                     "example": "ocean"
+                                                },
+                                                "avatarUrl": {
+                                                    "type": "string",
+                                                    "example": null,
+                                                    "nullable": true
                                                 }
                                             },
                                             "type": "object"
@@ -1015,6 +1031,194 @@
                     },
                     "429": {
                         "description": "Слишком много запросов"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/v1/user/avatar": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Загрузить фотографию пользователя",
+                "description": "Принимает изображение JPEG, PNG, WebP или GIF (у анимации берётся первый кадр) до 2 МБ и до 4096×4096 пикселей. Изображение перекодируется в WebP 256×256: обрезается по центру до квадрата, учитывается поворот по EXIF, метаданные удаляются. Файл получает новое имя, прежняя фотография удаляется. Возвращает пользователя в том же виде, что GET /v1/user. Лимит: 10 запросов в минуту и 30 в час.",
+                "operationId": "3b054db6f306e27ac545c204c2601e31",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "avatar"
+                                ],
+                                "properties": {
+                                    "avatar": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Фотография сохранена",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "example": "01jq3v7x8k2m4n6p8r0t2w4y6z"
+                                                },
+                                                "username": {
+                                                    "type": "string",
+                                                    "example": "john_doe"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "example": "john@example.com"
+                                                },
+                                                "background": {
+                                                    "type": "string",
+                                                    "example": "blossom"
+                                                },
+                                                "avatarUrl": {
+                                                    "type": "string",
+                                                    "example": "https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    },
+                    "422": {
+                        "description": "Файл не передан, не является изображением допустимого формата, больше 2 МБ или 4096×4096 пикселей либо не может быть декодирован",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 422
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "example": "Файл должен быть не больше 2 МБ"
+                                                },
+                                                "errors": {
+                                                    "type": "object",
+                                                    "example": {
+                                                        "avatar": [
+                                                            "Файл должен быть не больше 2 МБ"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Слишком много запросов"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Удалить фотографию пользователя",
+                "description": "Удаляет файл фотографии; вместо неё снова показывается первая буква имени. Если фотографии нет, запрос тоже выполняется успешно. Возвращает пользователя в том же виде, что GET /v1/user.",
+                "operationId": "8276b3204dc7674e57aa5fe5964ed893",
+                "responses": {
+                    "200": {
+                        "description": "Фотография удалена",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "example": "01jq3v7x8k2m4n6p8r0t2w4y6z"
+                                                },
+                                                "username": {
+                                                    "type": "string",
+                                                    "example": "john_doe"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "example": "john@example.com"
+                                                },
+                                                "background": {
+                                                    "type": "string",
+                                                    "example": "blossom"
+                                                },
+                                                "avatarUrl": {
+                                                    "type": "string",
+                                                    "example": null,
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован"
                     }
                 },
                 "security": [
@@ -1320,6 +1524,11 @@
                                                 "background": {
                                                     "type": "string",
                                                     "example": "blossom"
+                                                },
+                                                "avatarUrl": {
+                                                    "type": "string",
+                                                    "example": null,
+                                                    "nullable": true
                                                 }
                                             },
                                             "type": "object"

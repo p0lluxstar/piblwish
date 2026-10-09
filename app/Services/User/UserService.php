@@ -9,12 +9,15 @@ use App\Mail\PasswordChangedMail;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Intervention\Image\ImageManager;
 
 class UserService
 {
@@ -24,6 +27,14 @@ class UserService
     // Число неверных попыток ввода кода, после которого запрос удаляется
     private const EMAIL_CHANGE_MAX_ATTEMPTS = 5;
 
+    // Сторона квадратной фотографии пользователя в пикселях. Самый крупный аватар
+    // в интерфейсе — 52 px, остальное — запас для экранов высокой плотности
+    // и более крупных аватаров: оригинал не хранится, увеличить фото потом нельзя
+    private const AVATAR_SIZE = 256;
+
+    // Качество WebP (0–100)
+    private const AVATAR_QUALITY = 85;
+
     // Изменение настроек текущего пользователя; пока это только фон приложения
     public function updateSettings(User $user, AppBackground $background): User
     {
@@ -32,6 +43,88 @@ class UserService
         ]);
 
         return $user;
+    }
+
+    // Загрузка фотографии пользователя вместо буквы в кружке.
+    // Исходный файл не сохраняется: изображение всегда перекодируется в WebP.
+    // Это удаляет метаданные (EXIF с координатами съёмки) и любое содержимое,
+    // кроме пикселей. Ориентация по EXIF учитывается до перекодирования.
+    // Новый файл получает новое имя, поэтому браузер не покажет прежнее фото из кэша;
+    // прежний файл удаляется только после того, как новый путь записан в БД.
+    public function updateAvatar(User $user, UploadedFile $file): User
+    {
+        try {
+            // decodeAnimation: false — у анимированного GIF или WebP берётся первый кадр
+            $encoded = ImageManager::gd(decodeAnimation: false, strip: true)
+                ->read($file->getRealPath())
+                ->cover(self::AVATAR_SIZE, self::AVATAR_SIZE)
+                ->toWebp(quality: self::AVATAR_QUALITY);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to process avatar image', [
+                'user_id' => $user->getKey(),
+                'exception' => $e,
+            ]);
+
+            abort(422, 'Не удалось обработать изображение. Выберите другой файл');
+        }
+
+        $disk = Storage::disk('public');
+        // ULID строчными буквами, как id пользователя в имени каталога (HasUlids)
+        $path = $this->avatarDirectory($user).'/'.Str::lower((string) Str::ulid()).'.webp';
+
+        if (! $disk->put($path, (string) $encoded)) {
+            Log::error('Failed to store avatar file', [
+                'user_id' => $user->getKey(),
+                'path' => $path,
+            ]);
+
+            abort(500, 'Не удалось сохранить фотографию. Попробуйте позже');
+        }
+
+        $oldPath = $user->avatar_path;
+
+        try {
+            $user->update([
+                'avatar_path' => $path,
+            ]);
+        } catch (\Throwable $e) {
+            // Путь не записан, поэтому на новый файл ничего не ссылается
+            $disk->delete($path);
+
+            throw $e;
+        }
+
+        if ($oldPath) {
+            $disk->delete($oldPath);
+        }
+
+        return $user;
+    }
+
+    // Удаление фотографии пользователя: снова показывается первая буква имени
+    public function deleteAvatar(User $user): User
+    {
+        $oldPath = $user->avatar_path;
+
+        if (! $oldPath) {
+            return $user;
+        }
+
+        $user->update([
+            'avatar_path' => null,
+        ]);
+
+        Storage::disk('public')->delete($oldPath);
+
+        return $user;
+    }
+
+    // Каталог с фотографиями пользователя. Обычно в нём один файл, но при сбое
+    // между записью нового файла и удалением прежнего может остаться лишний,
+    // поэтому при удалении аккаунта удаляется весь каталог
+    private function avatarDirectory(User $user): string
+    {
+        return 'avatars/'.$user->getKey();
     }
 
     // Смена пароля текущего пользователя.
@@ -224,6 +317,7 @@ class UserService
 
             $user->update([
                 'deactivated_at' => now(),
+                'avatar_path' => null,
             ]);
 
             // Завершаем сессии пользователя на других устройствах:
@@ -234,6 +328,10 @@ class UserService
 
             $user->tokens()->delete();
         });
+
+        // Фотография больше нигде не показывается. Каталог удаляется после транзакции:
+        // при её откате путь в БД остался бы, а файла уже не было бы
+        Storage::disk('public')->deleteDirectory($this->avatarDirectory($user));
 
         // logout() также меняет remember_token, поэтому cookie «Запомнить меня»
         // перестают действовать на всех устройствах
