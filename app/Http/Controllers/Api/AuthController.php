@@ -48,7 +48,8 @@ class AuthController extends Controller
         LoginRequest $request
     ): UserResource {
         $user = $this->authService->login(
-            $request->validated(),
+            $request->safe()->only(['email', 'password']),
+            $request->boolean('remember'),
             $request
         );
 
@@ -92,6 +93,16 @@ class AuthController extends Controller
 
         return new ApiResource([
             'message' => 'Выход выполнен',
+        ]);
+    }
+
+    public function logoutAllDevices(
+        Request $request
+    ): ApiResource {
+        $this->authService->logoutAllDevices($request);
+
+        return new ApiResource([
+            'message' => 'Выход выполнен на всех устройствах',
         ]);
     }
 }

@@ -68,6 +68,15 @@
             box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
         }
     }
+
+    // Поле пароля с кнопкой-глазом справа (PasswordToggle)
+    .password-field {
+        position: relative;
+
+        input {
+            padding-right: 44px;
+        }
+    }
 }
 
 .form-message {

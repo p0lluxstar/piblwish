@@ -12,6 +12,7 @@ use App\Mail\PasswordChangedMail;
 use App\Mail\PasswordResetCodeMail;
 use App\Mail\VerificationCodeMail;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class AuthService
 {
@@ -85,8 +86,11 @@ class AuthService
         $user->verificationRegistrationCodes()->delete();
     }
 
+    // При $remember Laravel ставит долгоживущую cookie remember_web_*:
+    // по ней вход восстанавливается после истечения сессии (SESSION_LIFETIME)
     public function login(
         array $credentials,
+        bool $remember,
         Request $request
     ): User {
         // Деактивированные (удалённые) аккаунты не могут войти
@@ -105,16 +109,45 @@ class AuthService
             abort(403, 'Аккаунт не подтверждён. Подтвердите email.');
         }
 
-        $guard->login($user);
+        $guard->login($user, $remember);
 
         $request->session()->regenerate();
 
         return $request->user();
     }
 
+    // Выход только на текущем устройстве: cookie «Запомнить меня» этого
+    // устройства удаляется, а remember_token не меняется, поэтому вход
+    // на других устройствах сохраняется
     public function logout(Request $request): void
     {
-        Auth::guard('web')->logout();
+        Auth::guard('web')->logoutCurrentDevice();
+
+        $request->session()->invalidate();
+
+        $request->session()->regenerateToken();
+    }
+
+    // Выход на всех устройствах, включая текущее: удаляются все сессии
+    // и Sanctum-токены пользователя, а новый remember_token делает
+    // недействительными cookie «Запомнить меня»
+    public function logoutAllDevices(Request $request): void
+    {
+        $user = $request->user();
+
+        DB::transaction(function () use ($user): void {
+            DB::table('sessions')
+                ->where('user_id', $user->getKey())
+                ->delete();
+
+            $user->setRememberToken(Str::random(60));
+            $user->save();
+
+            $user->tokens()->delete();
+        });
+
+        // Удаляет cookie «Запомнить меня» текущего устройства
+        Auth::guard('web')->logoutCurrentDevice();
 
         $request->session()->invalidate();
 
@@ -195,6 +228,11 @@ class AuthService
             DB::table('sessions')
                 ->where('user_id', $user->getKey())
                 ->delete();
+
+            // Новый remember_token делает недействительными cookie «Запомнить меня»:
+            // иначе по ним вход восстановился бы без удалённых сессий
+            $user->setRememberToken(Str::random(60));
+            $user->save();
 
             $user->tokens()->delete();
         });

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 
 import BackOnMainPage from '@/components/ui/BackOnMainPage.vue';
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
@@ -19,12 +19,16 @@ const form = reactive({
     passwordConfirmation: '',
 });
 
+// Одна кнопка-глаз открывает и пароль, и подтверждение, чтобы их было удобно сверить
+const isPasswordVisible = ref(false);
+
 const registerMutation = useRegister();
 const { mutateAsync: register, isPending, isError } = registerMutation;
 
 async function submitForm(): Promise<void> {
     // Сбрасываем прошлую ошибку и статус mutation перед новой отправкой формы
     registerMutation.reset();
+    isPasswordVisible.value = false;
 
     try {
         await register({
@@ -49,23 +53,33 @@ async function submitForm(): Promise<void> {
 
     <h2>Создать аккаунт</h2>
     <form class="registration-form" @submit.prevent="submitForm">
-        <InputRegistationForms v-model="form.login" placeholder="Логин" />
+        <InputRegistationForms
+            v-model="form.login"
+            autocomplete="username"
+            placeholder="Логин"
+        />
 
         <InputRegistationForms
             v-model="form.email"
             type="email"
+            autocomplete="email"
             placeholder="Email"
         />
 
         <InputRegistationForms
             v-model="form.password"
+            v-model:revealed="isPasswordVisible"
             type="password"
+            autocomplete="new-password"
             placeholder="Пароль"
         />
 
         <InputRegistationForms
             v-model="form.passwordConfirmation"
+            v-model:revealed="isPasswordVisible"
             type="password"
+            :toggle="false"
+            autocomplete="new-password"
             placeholder="Подтверждение пароля"
         />
 

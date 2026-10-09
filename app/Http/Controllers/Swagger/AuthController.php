@@ -67,7 +67,7 @@ use OpenApi\Attributes as OA;
 )]
 
 #[OA\Post(
-    path: '/api/login',
+    path: '/v1/login',
     summary: 'Авторизация',
     tags: ['Auth'],
     requestBody: new OA\RequestBody(
@@ -84,6 +84,12 @@ use OpenApi\Attributes as OA;
                     property: 'password',
                     type: 'string',
                     example: 'password123'
+                ),
+                new OA\Property(
+                    property: 'remember',
+                    type: 'boolean',
+                    description: 'Запомнить вход: cookie remember_web_* восстанавливает его после истечения сессии',
+                    example: true
                 ),
             ]
         )
@@ -200,6 +206,24 @@ use OpenApi\Attributes as OA;
         new OA\Response(
             response: 200,
             description: 'Выход выполнен'
+        ),
+        new OA\Response(
+            response: 401,
+            description: 'Не авторизован'
+        ),
+    ]
+)]
+
+#[OA\Post(
+    path: '/v1/logout-all',
+    summary: 'Выход на всех устройствах',
+    description: 'Завершает все сессии пользователя, включая текущую, удаляет его Sanctum-токены и делает недействительными cookie «Запомнить меня» на всех устройствах.',
+    tags: ['Auth'],
+    security: [['bearerAuth' => []]],
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Выход выполнен на всех устройствах'
         ),
         new OA\Response(
             response: 401,

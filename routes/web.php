@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Middleware\RenewRememberCookie;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WishlistController;
@@ -38,8 +39,9 @@ Route::prefix('v1')->group(function () {
 });
 
 // Только для авторизованных пользователей (через Sanctum)
-Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard'])->group(function () {
+Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard', RenewRememberCookie::class])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/logout-all', [AuthController::class, 'logoutAllDevices']);
     Route::get('/user', [UserController::class, 'user']);
     Route::patch('/user', [UserController::class, 'updateUser']);
     Route::delete('/user', [UserController::class, 'deleteAccount']);

@@ -96,6 +96,29 @@ export const useDeleteAccount = (): UseMutationReturnType<
     });
 };
 
+// Выход на всех устройствах, включая текущее
+export const useLogoutAllDevices = (): UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    void,
+    unknown
+> => {
+    const router = useRouter();
+    const authStore = useAuthStore();
+    const queryClient = useQueryClient();
+
+    return useMutation<AxiosResponse, AxiosError<ApiErrorResponse>, void>({
+        mutationFn: () => api.post('/v1/logout-all'),
+
+        onSuccess: () => {
+            authStore.setUser(null);
+            // Сбрасываем кэш, чтобы данные аккаунта не остались в памяти
+            queryClient.clear();
+            router.push('/');
+        },
+    });
+};
+
 type UseChangePasswordReturn = UseMutationReturnType<
     AxiosResponse,
     AxiosError<ApiErrorResponse>,

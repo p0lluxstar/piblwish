@@ -1,6 +1,8 @@
 export type LoginPayload = {
     email: string;
     password: string;
+    // Сохранить вход после истечения сессии (cookie remember_web_*)
+    remember: boolean;
 };
 
 export type RegisterPayload = {

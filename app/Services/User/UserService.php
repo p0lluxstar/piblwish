@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class UserService
 {
@@ -52,8 +53,20 @@ class UserService
                 ->where('id', '!=', $currentSessionId)
                 ->delete();
 
+            // Новый remember_token делает недействительными cookie «Запомнить меня»
+            // на других устройствах: иначе по ним вход восстановился бы без сессии
+            $user->setRememberToken(Str::random(60));
+            $user->save();
+
             $user->tokens()->delete();
         });
+
+        // Если на этом устройстве вход был запомнен, выдаём cookie с новым токеном
+        $guard = Auth::guard('web');
+
+        if ($request->cookies->has($guard->getRecallerName())) {
+            $guard->login($user, true);
+        }
 
         // Новый идентификатор текущей сессии; старая запись удаляется,
         // чтобы перехваченный ранее cookie сессии перестал действовать
@@ -222,6 +235,8 @@ class UserService
             $user->tokens()->delete();
         });
 
+        // logout() также меняет remember_token, поэтому cookie «Запомнить меня»
+        // перестают действовать на всех устройствах
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

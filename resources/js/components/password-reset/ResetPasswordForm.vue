@@ -26,6 +26,9 @@ const form = reactive({
     passwordConfirmation: '',
 });
 
+// Одна кнопка-глаз открывает и пароль, и подтверждение, чтобы их было удобно сверить
+const isPasswordVisible = ref(false);
+
 const resetPasswordMutation = useResetPassword();
 const {
     mutateAsync: resetPassword,
@@ -71,6 +74,7 @@ onUnmounted(stopCooldown);
 
 async function submitForm(): Promise<void> {
     resetPasswordMutation.reset();
+    isPasswordVisible.value = false;
 
     try {
         await resetPassword({
@@ -121,18 +125,24 @@ async function resendCode(): Promise<void> {
     <form class="auth-form" @submit.prevent="submitForm">
         <InputRegistationForms
             v-model="form.code"
+            autocomplete="one-time-code"
             placeholder="Код из письма"
         />
 
         <InputRegistationForms
             v-model="form.password"
+            v-model:revealed="isPasswordVisible"
             type="password"
+            autocomplete="new-password"
             placeholder="Новый пароль"
         />
 
         <InputRegistationForms
             v-model="form.passwordConfirmation"
+            v-model:revealed="isPasswordVisible"
             type="password"
+            :toggle="false"
+            autocomplete="new-password"
             placeholder="Подтверждение пароля"
         />
 

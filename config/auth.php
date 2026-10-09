@@ -41,6 +41,9 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // Срок cookie «Запомнить меня» в минутах, отсчитывается от входа
+            // и не продлевается (по умолчанию в Laravel — 400 дней)
+            'remember' => (int) env('AUTH_REMEMBER_DAYS', 30) * 24 * 60,
         ],
     ],
 

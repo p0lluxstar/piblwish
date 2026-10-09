@@ -4,6 +4,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import AppBackgroundPicker from '@/components/user/AppBackgroundPicker.vue';
 import EmailChangeSection from '@/components/user/EmailChangeSection.vue';
+import LogoutAllDevicesSection from '@/components/user/LogoutAllDevicesSection.vue';
 import PasswordChangeSection from '@/components/user/PasswordChangeSection.vue';
 import { useAuthStore } from '@/stores/auth';
 
@@ -91,6 +92,8 @@ const closeModal = (): void => {
                 <EmailChangeSection />
 
                 <PasswordChangeSection />
+
+                <LogoutAllDevicesSection />
 
                 <div class="danger-zone">
                     <button

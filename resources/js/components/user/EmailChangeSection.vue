@@ -3,6 +3,7 @@ import { computed, onUnmounted, ref } from 'vue';
 
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
+import PasswordToggle from '@/components/ui/PasswordToggle.vue';
 import {
     useConfirmEmailChange,
     useRequestEmailChange,
@@ -36,6 +37,7 @@ const step = ref<'idle' | 'form' | 'code'>('idle');
 
 const newEmail = ref('');
 const currentPassword = ref('');
+const isPasswordVisible = ref(false);
 const code = ref('');
 const isChanged = ref(false);
 
@@ -85,6 +87,7 @@ const cancel = (): void => {
     resetConfirm();
     newEmail.value = '';
     currentPassword.value = '';
+    isPasswordVisible.value = false;
     code.value = '';
     step.value = 'idle';
 };
@@ -93,6 +96,8 @@ const cancel = (): void => {
 const sendCode = (): void => {
     if (!isFormFilled.value) return;
 
+    // Открытый пароль не остаётся на экране после отправки
+    isPasswordVisible.value = false;
     resetConfirm();
 
     requestEmailChange(
@@ -166,13 +171,17 @@ const confirm = (): void => {
                     required
                 />
 
-                <input
-                    v-model="currentPassword"
-                    type="password"
-                    autocomplete="current-password"
-                    placeholder="Текущий пароль"
-                    required
-                />
+                <div class="password-field">
+                    <input
+                        v-model="currentPassword"
+                        :type="isPasswordVisible ? 'text' : 'password'"
+                        autocomplete="current-password"
+                        placeholder="Текущий пароль"
+                        required
+                    />
+
+                    <PasswordToggle v-model="isPasswordVisible" :size="18" />
+                </div>
             </div>
 
             <FormErrorMessage

@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
+import PasswordToggle from '@/components/ui/PasswordToggle.vue';
 import { useChangePassword } from '@/composables/useAuth';
 
 const {
@@ -29,6 +30,15 @@ const isFormVisible = ref(false);
 const isChanged = ref(false);
 const form = ref(defaultForm());
 
+// Кнопка-глаз нового пароля открывает и поле повтора, чтобы их было удобно сверить
+const isCurrentPasswordVisible = ref(false);
+const isNewPasswordVisible = ref(false);
+
+const hidePasswords = (): void => {
+    isCurrentPasswordVisible.value = false;
+    isNewPasswordVisible.value = false;
+};
+
 // Кнопка «Сменить пароль» активна, только когда заполнены все три поля
 const isFormFilled = computed(() =>
     Object.values(form.value).every((value) => value !== ''),
@@ -42,11 +52,15 @@ const openForm = (): void => {
 const cancel = (): void => {
     reset();
     form.value = defaultForm();
+    hidePasswords();
     isFormVisible.value = false;
 };
 
 const submit = (): void => {
     if (!isFormFilled.value) return;
+
+    // Открытый пароль не остаётся на экране после отправки
+    hidePasswords();
 
     changePassword(
         {
@@ -94,25 +108,36 @@ const submit = (): void => {
             @submit.prevent="submit"
         >
             <div class="form-row">
-                <input
-                    v-model="form.currentPassword"
-                    type="password"
-                    autocomplete="current-password"
-                    placeholder="Текущий пароль"
-                    required
-                />
+                <div class="password-field">
+                    <input
+                        v-model="form.currentPassword"
+                        :type="isCurrentPasswordVisible ? 'text' : 'password'"
+                        autocomplete="current-password"
+                        placeholder="Текущий пароль"
+                        required
+                    />
 
-                <input
-                    v-model="form.newPassword"
-                    type="password"
-                    autocomplete="new-password"
-                    placeholder="Новый пароль"
-                    required
-                />
+                    <PasswordToggle
+                        v-model="isCurrentPasswordVisible"
+                        :size="18"
+                    />
+                </div>
+
+                <div class="password-field">
+                    <input
+                        v-model="form.newPassword"
+                        :type="isNewPasswordVisible ? 'text' : 'password'"
+                        autocomplete="new-password"
+                        placeholder="Новый пароль"
+                        required
+                    />
+
+                    <PasswordToggle v-model="isNewPasswordVisible" :size="18" />
+                </div>
 
                 <input
                     v-model="form.newPasswordConfirmation"
-                    type="password"
+                    :type="isNewPasswordVisible ? 'text' : 'password'"
                     autocomplete="new-password"
                     placeholder="Повторите новый пароль"
                     required
