@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'wishlist_id',
     'description',
-    'url',
+    'urls',
     'priority',
     'price',
     'is_selected',
@@ -28,6 +28,8 @@ class WishlistItem extends Model
     protected function casts(): array
     {
         return [
+            // Ссылки на товар (до трёх) или null, если их нет
+            'urls' => 'array',
             'is_selected' => 'boolean',
             'checked_by_guest' => 'boolean',
             'position' => 'integer',

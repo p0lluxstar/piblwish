@@ -305,7 +305,9 @@ const { mutate: updateWishlist, isPending: isUpdating } = useMutation({
 
     onSuccess: (updated) => {
         setCachedWishlist(updated);
-        closeEditModal();
+        // Окно остаётся открытым для следующих правок: форма заполняется
+        // сохранённым списком, и новые позиции получают id
+        selectedWishlist.value = JSON.parse(JSON.stringify(updated));
         generateRandomPhrase();
     },
 

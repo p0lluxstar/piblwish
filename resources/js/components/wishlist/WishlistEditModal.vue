@@ -6,16 +6,30 @@ import {
     Ellipsis,
     Gift,
     Link,
+    Plus,
     Trash2,
+    X,
 } from '@lucide/vue';
 import { isAxiosError } from 'axios';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import {
+    computed,
+    onMounted,
+    onUnmounted,
+    ref,
+    useTemplateRef,
+    watch,
+} from 'vue';
 
 import { api } from '@/lib/api';
 
 import { useItemReorder } from '../../composables/useItemReorder';
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
-import { isValidItemUrl, normalizeItemUrl } from '../../lib/itemUrl';
+import {
+    getItemUrlErrors,
+    MAX_ITEM_URLS,
+    normalizeItemUrls,
+} from '../../lib/itemUrl';
+import { nudgeUnsaved } from '../../lib/nudgeUnsaved';
 import { checkedByName } from '../../lib/todoCheckedBy';
 import type {
     Wishlist,
@@ -78,8 +92,8 @@ const form = ref<EditForm>({
     items: [],
 });
 
-// Индексы позиций с некорректной ссылкой; ошибка снимается, когда ссылку начинают править
-const urlErrors = ref<boolean[]>([]);
+// Ошибки полей ссылок по индексам позиций; ошибка снимается, когда ссылку начинают править
+const urlErrors = ref<boolean[][]>([]);
 
 // Выбор гостей, полученный после выключения режима сюрприза в этом окне
 const isSelectionRevealed = ref(false);
@@ -119,7 +133,7 @@ const formSnapshot = (value: EditForm, ignoreSelection: boolean): string =>
             .map((item) => ({
                 id: item.id ?? null,
                 label: item.label.trim(),
-                url: normalizeItemUrl(item.url),
+                urls: normalizeItemUrls(item.urls),
                 priority: item.priority ?? null,
                 price: item.price ?? null,
                 isSelected: ignoreSelection ? null : Boolean(item.isSelected),
@@ -138,6 +152,7 @@ watch(
         checkedAt.value = null;
         confirmingItemId.value = null;
         itemMessages.value = {};
+        urlErrors.value = [];
 
         form.value = {
             title: wishlist.title ?? '',
@@ -151,7 +166,7 @@ watch(
             items: wishlist.items.map((item) => ({
                 id: item.id,
                 label: item.label,
-                url: item.url ?? '',
+                urls: item.urls?.length ? [...item.urls] : [''],
                 priority: item.priority ?? null,
                 price: item.price ?? null,
                 isSelected: item.isSelected ?? false,
@@ -279,6 +294,15 @@ const loadSelections = async (reveal: boolean): Promise<void> => {
 const refreshSelections = (): Promise<void> =>
     loadSelections(wasSelectionHidden.value && !form.value.hideSelections);
 
+// Список сохранён, окно осталось открытым: выбор гостей и checkedAt
+// запрашиваются заново, как при открытии окна
+watch(
+    () => props.wishlist,
+    () => {
+        if (!isTodo.value && !isNote.value) void loadSelections(false);
+    },
+);
+
 // Владелец выключил режим сюрприза: выбор гостей запрашивается сразу,
 // чтобы показать его до сохранения списка
 watch(
@@ -393,7 +417,7 @@ const addItem = (): void => {
     form.value.items.push({
         isSelected: false,
         label: '',
-        url: '',
+        urls: [''],
         priority: null,
         price: null,
     });
@@ -404,8 +428,37 @@ const removeItem = (index: number): void => {
     urlErrors.value.splice(index, 1);
 };
 
-const clearUrlError = (index: number): void => {
-    urlErrors.value[index] = false;
+// Поле ссылки изменено: ошибка этого поля снимается
+const setItemUrl = (
+    index: number,
+    urlIndex: number,
+    event: { target: unknown },
+): void => {
+    if (!(event.target instanceof window.HTMLInputElement)) return;
+
+    const item = form.value.items[index];
+    const value = event.target.value;
+
+    item.urls = (item.urls ?? []).map((url, i) =>
+        i === urlIndex ? value : url,
+    );
+
+    const errors = urlErrors.value[index];
+
+    if (errors) errors[urlIndex] = false;
+};
+
+const addItemUrl = (index: number): void => {
+    const item = form.value.items[index];
+
+    item.urls = [...(item.urls ?? []), ''];
+};
+
+const removeItemUrl = (index: number, urlIndex: number): void => {
+    const item = form.value.items[index];
+
+    item.urls = (item.urls ?? []).filter((_, i) => i !== urlIndex);
+    urlErrors.value[index]?.splice(urlIndex, 1);
 };
 
 // Пустые позиции отбрасываются, ссылки нормализуются; null — в форме есть некорректная ссылка
@@ -421,13 +474,12 @@ const prepareItems = (): WishlistItem[] | null => {
             }));
     }
 
-    urlErrors.value = form.value.items.map((item) => {
-        const url = normalizeItemUrl(item.url);
+    // Ссылки пустых позиций не проверяются: такие позиции не отправляются
+    urlErrors.value = form.value.items.map((item) =>
+        item.label.trim() ? getItemUrlErrors(item.urls) : [],
+    );
 
-        return Boolean(item.label.trim() && url && !isValidItemUrl(url));
-    });
-
-    if (urlErrors.value.some(Boolean)) return null;
+    if (urlErrors.value.some((errors) => errors.some(Boolean))) return null;
 
     // Отметки в списке желаний ставят гости: сервер не принимает их из формы
     return form.value.items
@@ -435,14 +487,15 @@ const prepareItems = (): WishlistItem[] | null => {
         .map((item) => ({
             id: item.id,
             label: item.label,
-            url: normalizeItemUrl(item.url),
+            urls: normalizeItemUrls(item.urls),
             priority: item.priority,
             price: item.price,
         }));
 };
 
 // Запрос выполняет WishlistMain (мутация updateWishlist): там же состояние
-// загрузки для кнопки и закрытие модалки после успешного сохранения
+// загрузки для кнопки. После сохранения окно не закрывается, а получает
+// сохранённый список в props.wishlist
 const handleSubmit = (): void => {
     // Сохранять нечего: форма совпадает с сохранённым списком
     if (!isDirty.value) return;
@@ -512,12 +565,41 @@ const closeModal = (): void => {
     enableBodyScroll();
     emit('close');
 };
+
+// Окно закрывается кликом по фону, только если в форме нет несохранённых
+// правок (иначе — только крестиком), а нажатие и отпускание кнопки были
+// на фоне: выделение текста в поле, законченное за пределами окна, не считается
+const isOverlayPressed = ref(false);
+
+const modalEl = useTemplateRef<HTMLElement>('modal');
+const saveButtonEl = useTemplateRef<HTMLButtonElement>('saveButton');
+
+const closeOnOverlayClick = (event: MouseEvent): void => {
+    const isOverlayClick =
+        isOverlayPressed.value && event.target === event.currentTarget;
+
+    isOverlayPressed.value = false;
+
+    if (!isOverlayClick) return;
+
+    if (isDirty.value) {
+        nudgeUnsaved(modalEl.value, saveButtonEl.value);
+
+        return;
+    }
+
+    closeModal();
+};
 </script>
 
 <template>
-    <div class="modal-overlay">
+    <div
+        class="modal-overlay"
+        @mousedown.self="isOverlayPressed = true"
+        @click="closeOnOverlayClick"
+    >
         <!-- Фон модалки окрашивается в выбранный цвет: превью цвета списка -->
-        <div :class="['modal', `wishlist-color--${form.color}`]">
+        <div ref="modal" :class="['modal', `wishlist-color--${form.color}`]">
             <div class="modal-header">
                 <h2>
                     {{
@@ -861,7 +943,11 @@ const closeModal = (): void => {
                                 <!-- Ссылка и цена соединены с полем описания линиями-ветвями:
                                  они относятся к этой позиции -->
                                 <div v-if="!isTodo" class="item-branches">
-                                    <div class="item-url-row">
+                                    <div
+                                        v-for="(url, urlIndex) in item.urls"
+                                        :key="urlIndex"
+                                        class="item-url-row"
+                                    >
                                         <Link
                                             :size="13"
                                             class="item-url-icon"
@@ -870,7 +956,7 @@ const closeModal = (): void => {
 
                                         <!-- type="text", а не "url": иначе браузер не пропустит адрес без https:// -->
                                         <input
-                                            v-model="item.url"
+                                            :value="url"
                                             type="text"
                                             inputmode="url"
                                             autocomplete="off"
@@ -878,19 +964,71 @@ const closeModal = (): void => {
                                                 'item-url-input',
                                                 {
                                                     'item-url-input--error':
-                                                        urlErrors[index],
+                                                        urlErrors[index]?.[
+                                                            urlIndex
+                                                        ],
                                                 },
                                             ]"
-                                            placeholder="Ссылка на товар (необязательно)"
-                                            :aria-invalid="
-                                                urlErrors[index] || undefined
+                                            :placeholder="
+                                                urlIndex === 0
+                                                    ? 'Ссылка на товар (необязательно)'
+                                                    : 'Ещё одна ссылка'
                                             "
-                                            @input="clearUrlError(index)"
+                                            :aria-invalid="
+                                                urlErrors[index]?.[urlIndex] ||
+                                                undefined
+                                            "
+                                            @input="
+                                                setItemUrl(
+                                                    index,
+                                                    urlIndex,
+                                                    $event,
+                                                )
+                                            "
                                         />
+
+                                        <!-- Ссылок у позиции до MAX_ITEM_URLS. Справа от поля одно место под кнопку:
+                                             «+», пока ссылка одна, и «×», когда их несколько; тогда «+» у последнего
+                                             поля выносится правее «×», и ширина полей не меняется -->
+                                        <button
+                                            v-if="(item.urls?.length ?? 0) > 1"
+                                            class="item-url-btn"
+                                            type="button"
+                                            aria-label="Убрать ссылку"
+                                            title="Убрать ссылку"
+                                            @click="
+                                                removeItemUrl(index, urlIndex)
+                                            "
+                                        >
+                                            <X :size="14" />
+                                        </button>
+
+                                        <button
+                                            v-if="
+                                                urlIndex ===
+                                                    (item.urls?.length ?? 0) -
+                                                        1 &&
+                                                urlIndex < MAX_ITEM_URLS - 1
+                                            "
+                                            :class="[
+                                                'item-url-btn',
+                                                {
+                                                    'item-url-btn--outside':
+                                                        (item.urls?.length ??
+                                                            0) > 1,
+                                                },
+                                            ]"
+                                            type="button"
+                                            aria-label="Добавить ещё одну ссылку"
+                                            title="Добавить ещё одну ссылку"
+                                            @click="addItemUrl(index)"
+                                        >
+                                            <Plus :size="14" />
+                                        </button>
                                     </div>
 
                                     <span
-                                        v-if="urlErrors[index]"
+                                        v-if="urlErrors[index]?.some(Boolean)"
                                         class="item-url-error"
                                     >
                                         Некорректная ссылка
@@ -959,6 +1097,7 @@ const closeModal = (): void => {
                 </p>
 
                 <button
+                    ref="saveButton"
                     type="submit"
                     :disabled="props.isPending || isNoteEmpty || !isDirty"
                     class="create-btn"

@@ -99,7 +99,7 @@ use OpenApi\Attributes as OA;
                                         new OA\Property(property: 'id', type: 'string', format: 'ulid'),
                                         new OA\Property(property: 'isSelected', type: 'boolean'),
                                         new OA\Property(property: 'label', type: 'string'),
-                                        new OA\Property(property: 'url', type: 'string', nullable: true),
+                                        new OA\Property(property: 'urls', type: 'array', items: new OA\Items(type: 'string')),
                                         new OA\Property(property: 'priority', type: 'integer', nullable: true),
                                         new OA\Property(property: 'price', type: 'integer', nullable: true),
                                         new OA\Property(

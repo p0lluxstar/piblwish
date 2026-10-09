@@ -56,11 +56,18 @@ class CreateWishlistRequest extends FormRequest
                 'max:1000',
             ],
 
-            // Ссылка на товар необязательна; только http(s), чтобы на общей странице
-            // нельзя было подставить javascript: и другие опасные схемы.
-            // У позиций списка дел нет ссылки, приоритета и стоимости
-            'items.*.url' => [
+            // Ссылки на товар необязательны, не больше трёх; только http(s), чтобы
+            // на общей странице нельзя было подставить javascript: и другие опасные схемы.
+            // У позиций списка дел нет ссылок, приоритета и стоимости
+            'items.*.urls' => [
                 'prohibited_if:type,todo',
+                'nullable',
+                'array',
+                'max:3',
+            ],
+
+            // Пустые элементы WishlistService отбрасывает
+            'items.*.urls.*' => [
                 'nullable',
                 'string',
                 'max:2048',
@@ -111,9 +118,12 @@ class CreateWishlistRequest extends FormRequest
 
             'items.*.label.required' => 'Описание элемента обязательно',
 
-            'items.*.url.prohibited_if' => 'У дела не может быть ссылки',
-            'items.*.url.url' => 'Некорректная ссылка на товар',
-            'items.*.url.max' => 'Ссылка на товар слишком длинная',
+            'items.*.urls.prohibited_if' => 'У дела не может быть ссылки',
+            'items.*.urls.array' => 'Некорректный список ссылок на товар',
+            'items.*.urls.max' => 'Можно указать не больше трёх ссылок на товар',
+            'items.*.urls.*.string' => 'Некорректная ссылка на товар',
+            'items.*.urls.*.url' => 'Некорректная ссылка на товар',
+            'items.*.urls.*.max' => 'Ссылка на товар слишком длинная',
 
             'items.*.priority.prohibited_if' => 'У дела не может быть приоритета',
             'items.*.priority.enum' => 'Недопустимый приоритет позиции',

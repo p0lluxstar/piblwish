@@ -349,10 +349,47 @@ $item-price-height: 26px;
         pointer-events: none;
     }
 
+    align-items: center;
+    gap: 4px;
+
     input {
         flex: 1;
         min-width: 0;
     }
+}
+
+// Кнопки «+» и «×» справа от поля ссылки
+.item-url-btn {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #b3b3b3;
+    cursor: pointer;
+    transition: all 0.18s ease;
+
+    &:hover {
+        color: var(--brand-violet);
+        background: rgba(139, 92, 246, 0.1);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--brand-violet);
+        outline-offset: -2px;
+    }
+}
+
+// «+» правее «×» последнего поля: за правым краем строки, на месте колонки
+// боковых кнопок позиции, которые стоят выше, у поля описания
+.item-url-btn--outside {
+    position: absolute;
+    top: 50%;
+    right: -30px;
+    transform: translateY(-50%);
 }
 
 // Уголок (└) от вертикали к полю цены, им линия-ветвь заканчивается

@@ -121,13 +121,12 @@ use OpenApi\Attributes as OA;
                                             ),
 
                                             new OA\Property(
-                                                property: 'url',
-                                                description: 'Ссылка на товар (http или https), необязательна',
-                                                type: 'string',
-                                                format: 'uri',
-                                                maxLength: 2048,
-                                                nullable: true,
-                                                example: 'https://example.com/books/master-i-margarita'
+                                                property: 'urls',
+                                                description: 'Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет',
+                                                type: 'array',
+                                                maxItems: 3,
+                                                items: new OA\Items(type: 'string', format: 'uri', maxLength: 2048),
+                                                example: ['https://example.com/books/master-i-margarita']
                                             ),
 
                                             new OA\Property(
@@ -194,7 +193,7 @@ use OpenApi\Attributes as OA;
             properties: [
                 new OA\Property(
                     property: 'type',
-                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать url, priority и price. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний',
+                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать urls, priority и price. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний',
                     type: 'string',
                     enum: WishlistType::class,
                     example: 'gift'
@@ -264,13 +263,12 @@ use OpenApi\Attributes as OA;
                             ),
 
                             new OA\Property(
-                                property: 'url',
-                                description: 'Ссылка на товар (http или https), необязательна',
-                                type: 'string',
-                                format: 'uri',
-                                maxLength: 2048,
-                                nullable: true,
-                                example: 'https://example.com/books/master-i-margarita'
+                                property: 'urls',
+                                description: 'Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет',
+                                type: 'array',
+                                maxItems: 3,
+                                items: new OA\Items(type: 'string', format: 'uri', maxLength: 2048),
+                                example: ['https://example.com/books/master-i-margarita']
                             ),
 
                             new OA\Property(
@@ -402,13 +400,12 @@ use OpenApi\Attributes as OA;
                                         ),
 
                                         new OA\Property(
-                                            property: 'url',
-                                            description: 'Ссылка на товар (http или https), необязательна',
-                                            type: 'string',
-                                            format: 'uri',
-                                            maxLength: 2048,
-                                            nullable: true,
-                                            example: 'https://example.com/books/master-i-margarita'
+                                            property: 'urls',
+                                            description: 'Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет',
+                                            type: 'array',
+                                            maxItems: 3,
+                                            items: new OA\Items(type: 'string', format: 'uri', maxLength: 2048),
+                                            example: ['https://example.com/books/master-i-margarita']
                                         ),
 
                                         new OA\Property(

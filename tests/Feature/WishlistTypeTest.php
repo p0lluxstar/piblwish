@@ -101,7 +101,7 @@ class WishlistTypeTest extends TestCase
                 'hideSelections' => true,
                 'items' => [[
                     'label' => 'Купить продукты',
-                    'url' => 'https://example.com',
+                    'urls' => ['https://example.com'],
                     'priority' => 2,
                     'price' => 500,
                 ]],
@@ -109,7 +109,7 @@ class WishlistTypeTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors([
                 'hideSelections',
-                'items.0.url',
+                'items.0.urls',
                 'items.0.priority',
                 'items.0.price',
             ], 'data.errors');
@@ -128,7 +128,7 @@ class WishlistTypeTest extends TestCase
                 'hideSelections' => false,
                 'items' => [[
                     'label' => 'Купить продукты',
-                    'url' => null,
+                    'urls' => null,
                     'priority' => null,
                     'price' => null,
                 ]],
@@ -166,7 +166,7 @@ class WishlistTypeTest extends TestCase
                 'items' => [[
                     'id' => $item->id,
                     'label' => 'Купить продукты',
-                    'url' => 'https://example.com',
+                    'urls' => ['https://example.com'],
                     'priority' => 3,
                     'price' => 500,
                 ]],
@@ -174,7 +174,7 @@ class WishlistTypeTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.type', 'todo')
             ->assertJsonPath('data.hideSelections', false)
-            ->assertJsonPath('data.items.0.url', null)
+            ->assertJsonPath('data.items.0.urls', [])
             ->assertJsonPath('data.items.0.priority', null)
             ->assertJsonPath('data.items.0.price', null);
 

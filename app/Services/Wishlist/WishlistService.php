@@ -284,7 +284,7 @@ class WishlistService
         }
     }
 
-    // Поля позиции из запроса в атрибуты модели. У дел нет ссылки, приоритета
+    // Поля позиции из запроса в атрибуты модели. У дел нет ссылок, приоритета
     // и стоимости: они не сохраняются, даже если переданы в запросе на изменение
     private function itemAttributes(Wishlist $wishlist, array $item, int $position): array
     {
@@ -292,11 +292,19 @@ class WishlistService
 
         return [
             'description' => $item['label'],
-            'url' => $isTodo ? null : ($item['url'] ?? null),
+            'urls' => $isTodo ? null : $this->itemUrls($item['urls'] ?? null),
             'priority' => $isTodo ? null : ($item['priority'] ?? null),
             'price' => $isTodo ? null : ($item['price'] ?? null),
             'position' => $position,
         ];
+    }
+
+    // Ссылки позиции без пустых элементов; null, если не осталось ни одной
+    private function itemUrls(?array $urls): ?array
+    {
+        $urls = array_values(array_filter($urls ?? [], fn ($url) => $url !== null && $url !== ''));
+
+        return $urls === [] ? null : $urls;
     }
 
     // Поля списка из запроса в атрибуты модели; непереданные поля не попадают в результат

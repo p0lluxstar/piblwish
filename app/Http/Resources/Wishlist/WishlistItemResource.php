@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources\Wishlist;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class WishlistItemResource extends JsonResource
@@ -45,8 +44,8 @@ class WishlistItemResource extends JsonResource
             'id' => $this->id,
             'isSelected' => $this->when(! $this->hideSelection, $this->is_selected),
             'label' => $this->description,
-            // Ссылка на товар или null
-            'url' => $this->url,
+            // Ссылки на товар (до трёх); пустой массив, если их нет
+            'urls' => $this->urls ?? [],
             // Приоритет 1–3 или null; в отличие от isSelected, виден и в режиме сюрприза
             'priority' => $this->priority?->value,
             // Стоимость в целых рублях или null; как и приоритет, видна в режиме сюрприза

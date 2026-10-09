@@ -342,9 +342,11 @@
                                                             "label": {
                                                                 "type": "string"
                                                             },
-                                                            "url": {
-                                                                "type": "string",
-                                                                "nullable": true
+                                                            "urls": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string"
+                                                                }
                                                             },
                                                             "priority": {
                                                                 "type": "integer",
@@ -1477,13 +1479,18 @@
                                                                     "type": "string",
                                                                     "example": "Книга «Мастер и Маргарита»"
                                                                 },
-                                                                "url": {
-                                                                    "description": "Ссылка на товар (http или https), необязательна",
-                                                                    "type": "string",
-                                                                    "format": "uri",
-                                                                    "example": "https://example.com/books/master-i-margarita",
-                                                                    "nullable": true,
-                                                                    "maxLength": 2048
+                                                                "urls": {
+                                                                    "description": "Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет",
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "string",
+                                                                        "format": "uri",
+                                                                        "maxLength": 2048
+                                                                    },
+                                                                    "example": [
+                                                                        "https://example.com/books/master-i-margarita"
+                                                                    ],
+                                                                    "maxItems": 3
                                                                 },
                                                                 "priority": {
                                                                     "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан",
@@ -1555,7 +1562,7 @@
                             "schema": {
                                 "properties": {
                                     "type": {
-                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать url, priority и price. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний",
+                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать urls, priority и price. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний",
                                         "type": "string",
                                         "example": "gift",
                                         "enum": [
@@ -1618,13 +1625,18 @@
                                                     "type": "string",
                                                     "example": "Книга «Мастер и Маргарита»"
                                                 },
-                                                "url": {
-                                                    "description": "Ссылка на товар (http или https), необязательна",
-                                                    "type": "string",
-                                                    "format": "uri",
-                                                    "example": "https://example.com/books/master-i-margarita",
-                                                    "nullable": true,
-                                                    "maxLength": 2048
+                                                "urls": {
+                                                    "description": "Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет",
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "format": "uri",
+                                                        "maxLength": 2048
+                                                    },
+                                                    "example": [
+                                                        "https://example.com/books/master-i-margarita"
+                                                    ],
+                                                    "maxItems": 3
                                                 },
                                                 "priority": {
                                                     "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан",
@@ -1743,13 +1755,18 @@
                                                                 "type": "string",
                                                                 "example": "Свеча с ароматом ванили"
                                                             },
-                                                            "url": {
-                                                                "description": "Ссылка на товар (http или https), необязательна",
-                                                                "type": "string",
-                                                                "format": "uri",
-                                                                "example": "https://example.com/books/master-i-margarita",
-                                                                "nullable": true,
-                                                                "maxLength": 2048
+                                                            "urls": {
+                                                                "description": "Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет",
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string",
+                                                                    "format": "uri",
+                                                                    "maxLength": 2048
+                                                                },
+                                                                "example": [
+                                                                    "https://example.com/books/master-i-margarita"
+                                                                ],
+                                                                "maxItems": 3
                                                             },
                                                             "priority": {
                                                                 "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан",

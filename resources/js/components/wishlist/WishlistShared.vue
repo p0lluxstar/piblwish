@@ -16,7 +16,7 @@ import { useGuestReservations } from '@/composables/useGuestReservations';
 import { api } from '@/lib/api';
 import { copyToClipboard } from '@/lib/clipboard';
 import { formatPrice } from '@/lib/itemPrice';
-import { getItemUrlHost } from '@/lib/itemUrl';
+import { getItemUrlShortHost } from '@/lib/itemUrl';
 import type {
     JointGiftDraft,
     Wishlist,
@@ -897,11 +897,14 @@ onMounted(getWishlist);
                             />
                         </span>
 
-                        <!-- Приоритет, цена и ссылка — узкой колонкой справа от названия,
-                         каждое на своей строке: в одну строку они сильно сужали название -->
+                        <!-- Приоритет, цена и ссылки — узкой колонкой справа от названия,
+                         каждое на своей строке (ссылки — общей строкой): в одну строку
+                         они сильно сужали название -->
                         <div
                             v-if="
-                                item.priority || item.price != null || item.url
+                                item.priority ||
+                                item.price != null ||
+                                item.urls?.length
                             "
                             class="item-meta"
                         >
@@ -922,22 +925,26 @@ onMounted(getWishlist);
                                 {{ formatPrice(item.price) }}
                             </span>
 
-                            <a
-                                v-if="item.url"
-                                :href="item.url"
-                                target="_blank"
-                                rel="noopener noreferrer nofollow"
-                                :class="[
-                                    'item-link',
-                                    { 'item-link--muted': item.isSelected },
-                                ]"
-                                :title="item.url"
-                            >
-                                <ExternalLink :size="12" />
-                                <span class="item-link-host">
-                                    {{ getItemUrlHost(item.url) }}
-                                </span>
-                            </a>
+                            <!-- Все ссылки позиции в одну строку -->
+                            <div v-if="item.urls?.length" class="item-links">
+                                <a
+                                    v-for="(url, urlIndex) in item.urls"
+                                    :key="urlIndex"
+                                    :href="url"
+                                    target="_blank"
+                                    rel="noopener noreferrer nofollow"
+                                    :class="[
+                                        'item-link',
+                                        { 'item-link--muted': item.isSelected },
+                                    ]"
+                                    :title="url"
+                                >
+                                    <ExternalLink :size="12" />
+                                    <span class="item-link-host">
+                                        {{ getItemUrlShortHost(url) }}
+                                    </span>
+                                </a>
+                            </div>
                         </div>
 
                         <button
@@ -1481,12 +1488,27 @@ onMounted(getWishlist);
     white-space: nowrap;
 }
 
+// Ссылки позиции в одну строку. Домен уже укорочен до 7 символов
+// (getItemUrlShortHost); если ссылки всё равно не помещаются в колонку,
+// они сужаются и домен дополнительно обрезается многоточием
+.item-links {
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+    min-width: 0;
+}
+
 .item-link {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    flex-shrink: 0;
+    min-width: 0;
     padding: 3px 8px;
+
+    // Иконка не сжимается, когда ссылке не хватает места
+    svg {
+        flex-shrink: 0;
+    }
     border-radius: 8px;
     background: rgba(139, 92, 246, 0.08);
     font-size: 11px;

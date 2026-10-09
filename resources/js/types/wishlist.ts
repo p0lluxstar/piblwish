@@ -3,8 +3,9 @@ export interface WishlistItem {
     // Нет в ответе владельцу, если у списка включён режим сюрприза
     isSelected?: boolean;
     label: string;
-    // Ссылка на товар (http или https); null, если не указана
-    url?: string | null;
+    // Ссылки на товар (http или https), не больше трёх; пустой массив, если их нет.
+    // В форме пустая строка — поле ссылки, которое ещё не заполнено
+    urls?: string[];
     // Приоритет позиции; null, если не указан
     priority?: WishlistItemPriority | null;
     // Стоимость в целых рублях (0–10 000 000); null, если не указана

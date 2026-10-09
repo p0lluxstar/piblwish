@@ -25,7 +25,7 @@ const swap = <T>(list: T[], a: number, b: number): void => {
 // Перестановка позиций в модалках создания и редактирования списка кнопками «вверх» и «вниз»
 export const useItemReorder = <T extends object>(
     items: () => T[],
-    urlErrors: Ref<boolean[]>,
+    urlErrors: Ref<boolean[][]>,
 ): {
     itemKey: (item: object) => string;
     moveItem: (index: number, delta: -1 | 1, event: MouseEvent) => void;
@@ -58,10 +58,9 @@ export const useItemReorder = <T extends object>(
                 return;
             }
 
-            const sibling =
-                button.parentElement?.querySelector<typeof button>(
-                    'button:not(:disabled)',
-                );
+            const sibling = button.parentElement?.querySelector<typeof button>(
+                'button:not(:disabled)',
+            );
 
             sibling?.focus();
         });

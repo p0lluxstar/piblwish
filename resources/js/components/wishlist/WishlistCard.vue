@@ -420,10 +420,12 @@ const createdAtLabel = computed(
                     />
                 </span>
 
-                <!-- Приоритет, цена и ссылка — узкой колонкой справа от названия,
+                <!-- Приоритет, цена и ссылки — узкой колонкой справа от названия,
                  каждое на своей строке: в одну строку они сильно сужали название -->
                 <div
-                    v-if="item.priority || item.price != null || item.url"
+                    v-if="
+                        item.priority || item.price != null || item.urls?.length
+                    "
                     class="item-meta"
                 >
                     <ItemPriorityHearts
@@ -437,17 +439,21 @@ const createdAtLabel = computed(
                         {{ formatPrice(item.price) }}
                     </span>
 
-                    <a
-                        v-if="item.url"
-                        :href="item.url"
-                        target="_blank"
-                        rel="noopener noreferrer nofollow"
-                        class="item-link"
-                        :title="getItemUrlHost(item.url)"
-                        :aria-label="`Ссылка на товар: ${getItemUrlHost(item.url)}`"
-                    >
-                        <ExternalLink :size="13" />
-                    </a>
+                    <!-- Ссылки значками в одну строку: их до трёх -->
+                    <span v-if="item.urls?.length" class="item-links">
+                        <a
+                            v-for="(url, urlIndex) in item.urls"
+                            :key="urlIndex"
+                            :href="url"
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                            class="item-link"
+                            :title="getItemUrlHost(url)"
+                            :aria-label="`Ссылка на товар: ${getItemUrlHost(url)}`"
+                        >
+                            <ExternalLink :size="13" />
+                        </a>
+                    </span>
                 </div>
             </div>
         </div>
@@ -669,9 +675,13 @@ $card-content-max-height: 150px;
     }
 
     // Значок ссылки — вровень с правым краем сердец и цены, а не с краем своей кнопки
+    .item-links {
+        display: flex;
+        margin-right: -4px;
+    }
+
     .item-link {
         height: 19px;
-        margin-right: -4px;
     }
 }
 

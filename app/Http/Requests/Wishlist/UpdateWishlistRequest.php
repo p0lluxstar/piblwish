@@ -17,7 +17,7 @@ class UpdateWishlistRequest extends FormRequest
     public function rules(): array
     {
         // Тип списка после создания не меняется, поэтому поля type здесь нет.
-        // Ссылку, цену, приоритет и режим сюрприза у списка дел очищает WishlistService.
+        // Ссылки, цену, приоритет и режим сюрприза у списка дел очищает WishlistService.
         // У заметки WishlistService изменяет только цвет и текст, у списков — всё, кроме текста.
         // isShared, guestsCanCheck и guestNameRequired WishlistService учитывает только у списка дел
         return [
@@ -33,8 +33,9 @@ class UpdateWishlistRequest extends FormRequest
             'items.*.id' => ['sometimes', 'nullable', 'string'],
             'items.*.label' => ['required_with:items', 'string', 'max:1000'],
             'items.*.isSelected' => ['sometimes', 'boolean'],
-            // Только http(s): см. CreateWishlistRequest
-            'items.*.url' => ['nullable', 'string', 'max:2048', 'url:http,https'],
+            // Не больше трёх ссылок, только http(s): см. CreateWishlistRequest
+            'items.*.urls' => ['nullable', 'array', 'max:3'],
+            'items.*.urls.*' => ['nullable', 'string', 'max:2048', 'url:http,https'],
             'items.*.priority' => ['nullable', Rule::enum(WishlistItemPriority::class)],
             // Стоимость в целых рублях: см. CreateWishlistRequest
             'items.*.price' => ['nullable', 'integer', 'min:0', 'max:10000000'],
@@ -49,8 +50,11 @@ class UpdateWishlistRequest extends FormRequest
             'color.enum' => 'Недопустимый цвет списка',
             'items.required' => 'Добавьте хотя бы один элемент',
             'items.*.label.required_with' => 'Описание элемента обязательно',
-            'items.*.url.url' => 'Некорректная ссылка на товар',
-            'items.*.url.max' => 'Ссылка на товар слишком длинная',
+            'items.*.urls.array' => 'Некорректный список ссылок на товар',
+            'items.*.urls.max' => 'Можно указать не больше трёх ссылок на товар',
+            'items.*.urls.*.string' => 'Некорректная ссылка на товар',
+            'items.*.urls.*.url' => 'Некорректная ссылка на товар',
+            'items.*.urls.*.max' => 'Ссылка на товар слишком длинная',
             'items.*.priority.enum' => 'Недопустимый приоритет позиции',
             'items.*.price.integer' => 'Стоимость должна быть целым числом рублей',
             'items.*.price.min' => 'Стоимость не может быть отрицательной',
