@@ -26,5 +26,6 @@ Homestead.yaml
 Thumbs.db
 
 /docs
+/scripts
 /_docker/db/data
 _docker/**/logs/

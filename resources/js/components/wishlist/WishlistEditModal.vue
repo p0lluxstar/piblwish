@@ -927,6 +927,10 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                                     class="item-checked-by"
                                     :checked-by="formCheckedBy(item)"
                                     :owner-name="ownCheckLabel"
+                                    :is-own="
+                                        ownCheckLabel !== null &&
+                                        formCheckedBy(item)?.guest === false
+                                    "
                                     empty-label="Не выполнено"
                                 />
 

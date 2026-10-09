@@ -12,9 +12,22 @@ const props = defineProps<{
     // Текст вместо имени, если подписывать нечего (например, «Не выполнено»):
     // выводится без значка; не задан — подпись не выводится вовсе
     emptyLabel?: string;
+    // Дело отметил тот, кто смотрит список (гость на общей странице или владелец
+    // на своей карточке): вместо имени «Вы», выделенное цветом
+    isOwn?: boolean;
 }>();
 
-const name = computed(() => checkedByName(props.checkedBy, props.ownerName));
+const name = computed(() =>
+    props.isOwn ? 'Вы' : checkedByName(props.checkedBy, props.ownerName),
+);
+
+const fullLabel = computed(() => {
+    if (!props.isOwn) return `Отметил(а): ${name.value}`;
+
+    const guestName = props.checkedBy?.name;
+
+    return guestName ? `Отметили вы (как ${guestName})` : 'Отметили вы';
+});
 </script>
 
 <template>
@@ -23,8 +36,9 @@ const name = computed(() => checkedByName(props.checkedBy, props.ownerName));
     <span
         v-if="name"
         class="todo-checked-by"
-        :title="`Отметил(а): ${name}`"
-        :aria-label="`Отметил(а): ${name}`"
+        :class="{ 'todo-checked-by--own': isOwn }"
+        :title="fullLabel"
+        :aria-label="fullLabel"
     >
         <UserRound :size="11" class="todo-checked-by-icon" aria-hidden="true" />
         <span aria-hidden="true">{{ name }}</span>
@@ -49,6 +63,13 @@ const name = computed(() => checkedByName(props.checkedBy, props.ownerName));
     text-align: right;
     color: #94a3b8;
     overflow-wrap: anywhere;
+}
+
+// Свои отметки гостя выделяются, чтобы их было видно среди чужих
+.todo-checked-by--own {
+    font-style: normal;
+    font-weight: 600;
+    color: #059669;
 }
 
 // Значок выровнен по первой строке имени

@@ -9,14 +9,16 @@ import {
     X,
 } from '@lucide/vue';
 import { isAxiosError } from 'axios';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useGuestReservations } from '@/composables/useGuestReservations';
+import { useGuestTodoChecks } from '@/composables/useGuestTodoChecks';
 import { api } from '@/lib/api';
 import { copyToClipboard } from '@/lib/clipboard';
 import { formatPrice } from '@/lib/itemPrice';
 import { getItemUrlShortHost } from '@/lib/itemUrl';
+import { getSharedWishlistPath, getSharedWishlistUrl } from '@/lib/sharedLink';
 import type {
     JointGiftDraft,
     Wishlist,
@@ -188,11 +190,9 @@ const tokenFromLink = (): string | null => {
     return typeof value === 'string' ? value : null;
 };
 
-const buildReservationLink = (token: string): string => {
-    const appUrl = import.meta.env.VITE_API_URL || window.location.origin;
-
-    return `${appUrl}/shared-wishlists/${wishlistId}?reservation=${token}`;
-};
+// Брони бывают только у списка желаний
+const buildReservationLink = (token: string): string =>
+    `${getSharedWishlistUrl(wishlistId, 'gift')}?reservation=${token}`;
 
 const getWishlist = async (): Promise<void> => {
     if (!wishlistId) {
@@ -219,8 +219,16 @@ const getWishlist = async (): Promise<void> => {
             await loadReservations(linkToken);
         }
 
-        if (linkToken) {
-            void router.replace({ query: {} });
+        // Адрес приводится к типу списка: список дел, открытый по адресу
+        // списка желаний (в том числе по прежней ссылке), и наоборот
+        const path = getSharedWishlistPath(wishlistId, wishlist.value.type);
+
+        if (linkToken || route.path !== path) {
+            void router.replace({
+                path,
+                query: linkToken ? {} : route.query,
+                hash: route.hash,
+            });
         }
     } catch (fetchError) {
         console.error('Ошибка загрузки списка:', fetchError);
@@ -397,6 +405,14 @@ const isGuestNameRequired = computed(() =>
     Boolean(wishlist.value?.guestNameRequired),
 );
 
+// Дела, которые гость отметил из этого браузера, подписываются «Вы»
+const guestTodoChecks = useGuestTodoChecks(wishlistId);
+
+// Свежие данные списка: забываются дела, с которых владелец снял отметку
+watch(wishlist, (value) => {
+    if (value?.type === 'todo') guestTodoChecks.prune(value.items);
+});
+
 // Отметить выбранные дела выполненными. Уже выполненные дела сервер не меняет,
 // поэтому гость, отметивший дело одновременно с другим, ошибки не увидит
 const checkTodoItems = async (): Promise<void> => {
@@ -411,6 +427,11 @@ const checkTodoItems = async (): Promise<void> => {
             { item_ids: selectedItems.value, name: guestName.value || null },
         );
 
+        guestTodoChecks.remember(
+            response.data.data.items,
+            selectedItems.value,
+            guestName.value || null,
+        );
         wishlist.value = response.data.data;
         selectedItems.value = [];
     } catch (checkError) {
@@ -889,11 +910,13 @@ onMounted(getWishlist);
                             >
                                 {{ item.label }}
                             </span>
-                            <!-- Отметки владельца подписываются его именем -->
+                            <!-- Отметки владельца подписываются его именем,
+                                 отметки из этого браузера — словом «Вы» -->
                             <TodoCheckedBy
                                 v-if="isTodo"
                                 :checked-by="item.checkedBy"
                                 :owner-name="wishlist.username ?? 'Владелец'"
+                                :is-own="guestTodoChecks.isOwnCheck(item)"
                             />
                         </span>
 

@@ -12,12 +12,13 @@ import {
     StickyNote,
     Trash2,
 } from '@lucide/vue';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
 import { copyToClipboard } from '../../lib/clipboard';
 import { formatPrice } from '../../lib/itemPrice';
 import { getItemUrlHost } from '../../lib/itemUrl';
+import { getSharedWishlistUrl } from '../../lib/sharedLink';
 import type { Wishlist, WishlistItem } from '../../types/wishlist';
 import ItemPriorityHearts from './ItemPriorityHearts.vue';
 import TodoCheckedBy from './TodoCheckedBy.vue';
@@ -78,9 +79,47 @@ const deleteCard = (): void => {
     emit('delete', props.wishlist);
 };
 
-// Отметить дело выполненным или снять отметку без режима редактирования
+// Дело, отметку гостя с которого владелец собирается снять: под ним показано подтверждение
+const uncheckConfirmItemId = ref<string | null>(null);
+const cardItemsRef = ref<HTMLElement | null>(null);
+
+const isUncheckConfirmShown = (item: WishlistItem): boolean =>
+    item.id !== undefined &&
+    item.id === uncheckConfirmItemId.value &&
+    Boolean(item.isSelected && item.checkedBy?.guest);
+
+// Отметить дело выполненным или снять отметку без режима редактирования.
+// Снятие отметки гостя стирает, кто отметил дело, и вернуть это нельзя,
+// поэтому сначала спрашивается подтверждение
 const toggleItem = (item: WishlistItem): void => {
+    if (item.isSelected && item.checkedBy?.guest && item.id) {
+        uncheckConfirmItemId.value =
+            uncheckConfirmItemId.value === item.id ? null : item.id;
+
+        // У последних дел подтверждение может оказаться ниже видимой части
+        // прокручиваемого списка
+        void nextTick(() => {
+            cardItemsRef.value
+                ?.querySelector('.uncheck-confirm')
+                ?.scrollIntoView({ block: 'nearest' });
+        });
+
+        return;
+    }
+
+    uncheckConfirmItemId.value = null;
     emit('toggleItem', props.wishlist, item);
+};
+
+const confirmUncheck = (item: WishlistItem): void => {
+    uncheckConfirmItemId.value = null;
+    emit('toggleItem', props.wishlist, item);
+};
+
+const uncheckConfirmText = (item: WishlistItem): string => {
+    const name = item.checkedBy?.name;
+
+    return name ? `Снять отметку гостя «${name}»?` : 'Снять отметку гостя?';
 };
 
 // Через сколько миллисекунд после последнего ввода сохраняется текст заметки
@@ -167,10 +206,9 @@ const copyLink = async (): Promise<void> => {
         return;
     }
 
-    const appUrl = import.meta.env.VITE_API_URL || window.location.origin;
-    const fullUrl = `${appUrl}/shared-wishlists/${id}`;
-
-    const isCopied = await copyToClipboard(fullUrl);
+    const isCopied = await copyToClipboard(
+        getSharedWishlistUrl(id, props.wishlist.type),
+    );
 
     showCopyFeedback(isCopied ? 'copied' : 'error');
 };
@@ -343,7 +381,7 @@ const createdAtLabel = computed(
 
         <!-- Длинный список прокручивается внутри карточки, как текст заметки,
              а не растягивает весь ряд -->
-        <div v-if="!isNote" class="card-items">
+        <div v-if="!isNote" ref="cardItemsRef" class="card-items">
             <div
                 v-for="(item, itemIndex) in wishlist.items"
                 :key="itemIndex"
@@ -352,6 +390,7 @@ const createdAtLabel = computed(
                     {
                         'item--reserved': !isTodo && item.isSelected,
                         'item--done': isTodo && item.isSelected,
+                        'item--confirming': isUncheckConfirmShown(item),
                     },
                 ]"
             >
@@ -417,6 +456,10 @@ const createdAtLabel = computed(
                         v-if="isTodo"
                         :checked-by="item.checkedBy"
                         :owner-name="ownCheckLabel"
+                        :is-own="
+                            ownCheckLabel !== null &&
+                            item.checkedBy?.guest === false
+                        "
                     />
                 </span>
 
@@ -453,6 +496,34 @@ const createdAtLabel = computed(
                         >
                             <ExternalLink :size="13" />
                         </a>
+                    </span>
+                </div>
+
+                <!-- Подтверждение снятия отметки гостя: отдельной строкой под делом -->
+                <div
+                    v-if="isUncheckConfirmShown(item)"
+                    class="uncheck-confirm"
+                    role="alertdialog"
+                    :aria-label="uncheckConfirmText(item)"
+                >
+                    <span class="uncheck-confirm-text">
+                        {{ uncheckConfirmText(item) }}
+                    </span>
+                    <span class="uncheck-confirm-actions">
+                        <button
+                            type="button"
+                            class="uncheck-confirm-btn"
+                            @click="uncheckConfirmItemId = null"
+                        >
+                            Отмена
+                        </button>
+                        <button
+                            type="button"
+                            class="uncheck-confirm-btn uncheck-confirm-btn--danger"
+                            @click="confirmUncheck(item)"
+                        >
+                            Снять
+                        </button>
                     </span>
                 </div>
             </div>
@@ -798,6 +869,64 @@ $card-content-max-height: 150px;
         &:hover {
             border-color: #10b981;
         }
+    }
+}
+
+// Подтверждение снятия отметки гостя переносится на отдельную строку под делом
+.item.item--confirming {
+    flex-wrap: wrap;
+}
+
+.uncheck-confirm {
+    display: flex;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 10px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.07);
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--ink);
+}
+
+.uncheck-confirm-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.uncheck-confirm-actions {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.uncheck-confirm-btn {
+    padding: 3px 10px;
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-radius: 7px;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover {
+        border-color: rgba(139, 92, 246, 0.5);
+    }
+}
+
+.uncheck-confirm-btn--danger {
+    border-color: transparent;
+    background: #ef4444;
+    color: #fff;
+
+    &:hover {
+        border-color: transparent;
+        background: #dc2626;
     }
 }
 
