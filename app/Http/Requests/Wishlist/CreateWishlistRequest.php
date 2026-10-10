@@ -5,6 +5,7 @@ namespace App\Http\Requests\Wishlist;
 use App\Enums\WishlistColor;
 use App\Enums\WishlistItemPriority;
 use App\Enums\WishlistType;
+use App\Rules\AllowedFundUrl;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -15,8 +16,15 @@ class CreateWishlistRequest extends FormRequest
         return true;
     }
 
+    // Целевая сумма сбора может быть больше стоимости подарка: сбор бывает на жильё
+    public const MAX_PRICE = 10_000_000;
+
+    public const MAX_FUND_PRICE = 100_000_000;
+
     public function rules(): array
     {
+        $isFund = $this->isFund();
+
         return [
             // Необязателен: без него создаётся список желаний (gift).
             // Тип задаётся только при создании и потом не меняется
@@ -31,11 +39,11 @@ class CreateWishlistRequest extends FormRequest
             // Необязателен: без него список получает white
             'color' => ['sometimes', Rule::enum(WishlistColor::class)],
 
-            // Режим сюрприза; по умолчанию выключен. У списка дел и заметки нет гостей,
-            // поэтому включить режим сюрприза для них нельзя
-            'hideSelections' => ['sometimes', 'boolean', 'declined_if:type,todo,note'],
+            // Режим сюрприза; по умолчанию выключен. У списка дел, заметки и сбора гости
+            // ничего не выбирают, поэтому включить режим сюрприза для них нельзя
+            'hideSelections' => ['sometimes', 'boolean', 'declined_if:type,todo,note,fund'],
 
-            // Доступ по ссылке: у списка желаний по умолчанию включён, у списка дел
+            // Доступ по ссылке: у списка желаний и сбора по умолчанию включён, у списка дел
             // (только просмотр) — выключен. Заметка по ссылке недоступна никогда
             'isShared' => ['sometimes', 'boolean', 'prohibited_if:type,note'],
 
@@ -69,44 +77,44 @@ class CreateWishlistRequest extends FormRequest
 
             // Ссылки на товар необязательны, не больше трёх; только http(s), чтобы
             // на общей странице нельзя было подставить javascript: и другие опасные схемы.
-            // У позиций списка дел нет ссылок, приоритета и стоимости
-            'items.*.urls' => [
-                'prohibited_if:type,todo',
-                'nullable',
-                'array',
-                'max:3',
-            ],
+            // У позиций списка дел нет ссылок, приоритета и стоимости.
+            // У цели сбора ссылка одна и обязательна: см. AllowedFundUrl
+            'items.*.urls' => $isFund
+                ? ['required', 'array', 'size:1']
+                : ['prohibited_if:type,todo', 'nullable', 'array', 'max:3'],
 
             // Пустые элементы WishlistService отбрасывает
-            'items.*.urls.*' => [
-                'nullable',
-                'string',
-                'max:2048',
-                'url:http,https',
-            ],
+            'items.*.urls.*' => $isFund
+                ? ['bail', 'required', 'string', 'max:2048', new AllowedFundUrl]
+                : ['nullable', 'string', 'max:2048', 'url:http,https'],
 
-            // Приоритет позиции (1–3) необязателен
+            // Приоритет позиции (1–3) необязателен; у дел и целей сбора его нет
             'items.*.priority' => [
-                'prohibited_if:type,todo',
+                'prohibited_if:type,todo,fund',
                 'nullable',
                 Rule::enum(WishlistItemPriority::class),
             ],
 
-            // Стоимость в целых рублях необязательна; верхняя граница отсекает
-            // случайно введённые лишние цифры
+            // Стоимость (у сбора — целевая сумма) в целых рублях необязательна;
+            // верхняя граница отсекает случайно введённые лишние цифры
             'items.*.price' => [
                 'prohibited_if:type,todo',
                 'nullable',
                 'integer',
                 'min:0',
-                'max:10000000',
+                'max:'.($isFund ? self::MAX_FUND_PRICE : self::MAX_PRICE),
             ],
         ];
     }
 
+    private function isFund(): bool
+    {
+        return $this->input('type') === WishlistType::Fund->value;
+    }
+
     public function messages(): array
     {
-        return [
+        return ($this->isFund() ? self::fundItemMessages() : []) + [
             'type.enum' => 'Недопустимый тип списка',
 
             'title.required_unless' => 'Название обязательно',
@@ -141,13 +149,31 @@ class CreateWishlistRequest extends FormRequest
             'items.*.urls.*.url' => 'Некорректная ссылка на товар',
             'items.*.urls.*.max' => 'Ссылка на товар слишком длинная',
 
-            'items.*.priority.prohibited_if' => 'У дела не может быть приоритета',
+            'items.*.priority.prohibited_if' => 'У этой позиции не может быть приоритета',
             'items.*.priority.enum' => 'Недопустимый приоритет позиции',
 
             'items.*.price.prohibited_if' => 'У дела не может быть стоимости',
             'items.*.price.integer' => 'Стоимость должна быть целым числом рублей',
             'items.*.price.min' => 'Стоимость не может быть отрицательной',
             'items.*.price.max' => 'Стоимость не может превышать 10 000 000 ₽',
+        ];
+    }
+
+    // Сообщения для позиций сбора: ссылка в них ведёт на сбор, а price — целевая сумма.
+    // Используются и в UpdateWishlistRequest
+    public static function fundItemMessages(): array
+    {
+        return [
+            'items.*.urls.required' => 'Укажите ссылку на сбор',
+            'items.*.urls.required_with' => 'Укажите ссылку на сбор',
+            'items.*.urls.array' => 'Некорректная ссылка на сбор',
+            'items.*.urls.size' => 'У цели сбора может быть только одна ссылка',
+            'items.*.urls.*.required' => 'Укажите ссылку на сбор',
+            'items.*.urls.*.string' => 'Некорректная ссылка на сбор',
+            'items.*.urls.*.max' => 'Ссылка на сбор слишком длинная',
+            'items.*.price.integer' => 'Целевая сумма должна быть целым числом рублей',
+            'items.*.price.min' => 'Целевая сумма не может быть отрицательной',
+            'items.*.price.max' => 'Целевая сумма не может превышать 100 000 000 ₽',
         ];
     }
 }

@@ -6,7 +6,7 @@ import {
     type UseQueryReturnType,
 } from '@tanstack/vue-query';
 import type { AxiosError } from 'axios';
-import { computed, type ComputedRef } from 'vue';
+import { computed, type ComputedRef, type Ref } from 'vue';
 
 import { api } from '@/lib/api';
 import type { ApiErrorResponse } from '@/types/api';
@@ -183,4 +183,63 @@ export const useWishlistArchive = (): {
     };
 
     return { moveWishlist };
+};
+
+type DeleteArchivedResponse = {
+    data: { deletedCount: number };
+};
+
+// Удаление всех карточек архива. Передаются id карточек, которые владелец видел
+// в архиве: карточку, перенесённую в архив позже, сервер не удалит. Удалённые
+// карточки убираются из кэша архива без его перезагрузки
+export const useDeleteArchivedWishlists = (): {
+    deleteArchived: (ids: string[], callbacks?: MoveCallbacks) => void;
+    isPending: Ref<boolean>;
+} => {
+    const queryClient = useQueryClient();
+
+    const { mutate, isPending } = useMutation<
+        number,
+        AxiosError<ApiErrorResponse>,
+        string[]
+    >({
+        // Та же очередь, что и у переноса: восстановление, начатое раньше,
+        // доходит до сервера до удаления
+        scope: { id: 'wishlist-archive' },
+
+        mutationFn: async (ids) => {
+            const response = await api.delete<DeleteArchivedResponse>(
+                '/v1/wishlists/archived',
+                { data: { ids } },
+            );
+
+            return response.data.data.deletedCount;
+        },
+
+        onSuccess: (deletedCount, ids) => {
+            const deleted = new Set(ids);
+
+            queryClient.setQueryData<Wishlist[]>(
+                ARCHIVED_WISHLISTS_KEY,
+                (old) => old?.filter((wishlist) => !deleted.has(wishlist.id)),
+            );
+
+            queryClient.setQueryData<number>(ARCHIVED_COUNT_KEY, (old) =>
+                Math.max((old ?? 0) - deletedCount, 0),
+            );
+        },
+
+        onError: (error) => {
+            console.error('Ошибка удаления архива', error);
+        },
+    });
+
+    const deleteArchived = (
+        ids: string[],
+        callbacks: MoveCallbacks = {},
+    ): void => {
+        mutate(ids, callbacks);
+    };
+
+    return { deleteArchived, isPending };
 };

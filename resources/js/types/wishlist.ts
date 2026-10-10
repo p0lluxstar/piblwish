@@ -8,7 +8,8 @@ export interface WishlistItem {
     urls?: string[];
     // Приоритет позиции; null, если не указан
     priority?: WishlistItemPriority | null;
-    // Стоимость в целых рублях (0–10 000 000); null, если не указана
+    // Стоимость в целых рублях (0–10 000 000), у цели сбора — целевая сумма
+    // (0–100 000 000); null, если не указана
     price?: number | null;
     // Совместный подарок; приходит только на общей странице, владельцу не отдаётся
     jointGift?: WishlistJointGift | null;
@@ -46,8 +47,10 @@ export type WishlistItemPriority = 1 | 2 | 3;
 
 // Тип списка, совпадает с App\Enums\WishlistType на бэкенде:
 // gift — список желаний, todo — список дел (isSelected позиции означает «выполнено»),
-// note — заметка: вместо названия и позиций только текст content
-export type WishlistType = 'gift' | 'todo' | 'note';
+// note — заметка: вместо названия и позиций только текст content,
+// fund — сбор: позиции — цели с одной ссылкой на сбор (constants/fundHosts.ts)
+// и целевой суммой в price
+export type WishlistType = 'gift' | 'todo' | 'note' | 'fund';
 
 // Ключ цвета фона списка, совпадает с App\Enums\WishlistColor на бэкенде
 export type WishlistColor =
@@ -61,8 +64,8 @@ export type WishlistColor =
 
 export interface Wishlist {
     id: string;
-    // Тип списка. На общей странице бывает gift или todo: список дел открывается
-    // по ссылке только для просмотра, если владелец включил доступ
+    // Тип списка. На общей странице бывает gift, todo или fund: список дел и сбор
+    // открываются по ссылке только для просмотра, если владелец включил доступ
     type?: WishlistType;
     // У заметки названия нет: null
     title: string | null;
@@ -81,7 +84,7 @@ export interface Wishlist {
     guestsCanCheck?: boolean;
     // Должен ли гость указать имя, отмечая дела; у списка желаний и заметки false
     guestNameRequired?: boolean;
-    // Срок списка дел или дата события списка желаний (Y-m-d); null — дата
+    // Срок списка дел или сбора, дата события списка желаний (Y-m-d); null — дата
     // не указана, у заметки всегда null
     dueDate?: string | null;
     // Время переноса в архив (ISO 8601); null — список не в архиве.

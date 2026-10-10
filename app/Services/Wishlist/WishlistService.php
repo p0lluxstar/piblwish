@@ -121,11 +121,13 @@ class WishlistService
             }
 
             // Выбор гостей в списке дел не скрывается: отметка гостя означает «выполнено»,
-            // поэтому режим сюрприза для него не включается. Отметки гостей настраиваются
-            // только у списка дел, доступ по ссылке — у списков желаний и дел
-            if ($wishlist->isTodo()) {
+            // поэтому режим сюрприза для него не включается. В сборе гости ничего
+            // не выбирают. Отметки гостей настраиваются только у списка дел
+            if ($wishlist->isTodo() || $wishlist->isFund()) {
                 unset($attributes['hide_selections']);
-            } else {
+            }
+
+            if (! $wishlist->isTodo()) {
                 unset($attributes['guests_can_check'], $attributes['guest_name_required']);
             }
 
@@ -322,7 +324,8 @@ class WishlistService
     }
 
     // Поля позиции из запроса в атрибуты модели. У дел нет ссылок, приоритета
-    // и стоимости: они не сохраняются, даже если переданы в запросе на изменение
+    // и стоимости, у целей сбора — приоритета: они не сохраняются, даже если
+    // переданы в запросе на изменение. price у цели сбора — целевая сумма
     private function itemAttributes(Wishlist $wishlist, array $item, int $position): array
     {
         $isTodo = $wishlist->isTodo();
@@ -330,7 +333,7 @@ class WishlistService
         return [
             'description' => $item['label'],
             'urls' => $isTodo ? null : $this->itemUrls($item['urls'] ?? null),
-            'priority' => $isTodo ? null : ($item['priority'] ?? null),
+            'priority' => $isTodo || $wishlist->isFund() ? null : ($item['priority'] ?? null),
             'price' => $isTodo ? null : ($item['price'] ?? null),
             'position' => $position,
         ];
@@ -380,6 +383,21 @@ class WishlistService
             $wishlist = $this->findUserWishlist($user, $id);
             $wishlist->delete();
         });
+    }
+
+    /**
+     * Удалить списки из архива пользователя.
+     *
+     * Удаляются только переданные списки, которые принадлежат пользователю
+     * и всё ещё находятся в архиве: список, перенесённый в архив или
+     * восстановленный уже после подтверждения, не затрагивается.
+     * Возвращает число удалённых списков.
+     */
+    public function deleteArchivedWishlists(User $user, array $ids): int
+    {
+        return DB::transaction(
+            fn () => $user->wishlists()->archived()->whereIn('id', $ids)->delete()
+        );
     }
 
     // Список пользователя; чужой или несуществующий — 404

@@ -23,7 +23,9 @@ import {
 import { api } from '@/lib/api';
 
 import { useItemReorder } from '../../composables/useItemReorder';
+import { FUND_PLATFORMS_TEXT } from '../../constants/fundHosts';
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
+import { getFundPlatformOfInput, getFundUrlError } from '../../lib/fundUrl';
 import {
     getItemUrlErrors,
     MAX_ITEM_URLS,
@@ -202,6 +204,12 @@ const isTodo = computed(() => props.wishlist.type === 'todo');
 // Заметка: изменяются только цвет и текст
 const isNote = computed(() => props.wishlist.type === 'note');
 
+// Сбор: у каждой цели одна обязательная ссылка на сбор и целевая сумма
+const isFund = computed(() => props.wishlist.type === 'fund');
+
+// Список желаний: только у него гости выбирают позиции и есть режим сюрприза
+const isGift = computed(() => (props.wishlist.type ?? 'gift') === 'gift');
+
 // Кто отметил дело, с учётом изменений в форме: дело, выполненное и до открытия
 // окна, сохраняет прежнего автора отметки, а отметку, поставленную в окне,
 // ставит владелец. Так сервер и сохранит её (WishlistService::syncItems)
@@ -304,7 +312,7 @@ const refreshSelections = (): Promise<void> =>
 watch(
     () => props.wishlist,
     () => {
-        if (!isTodo.value && !isNote.value) void loadSelections(false);
+        if (isGift.value) void loadSelections(false);
     },
 );
 
@@ -323,9 +331,11 @@ watch(
     },
 );
 
-// Чекбоксы выбора показываются, только если владелец видит выбор гостей
+// Чекбоксы выбора показываются, только если владелец видит выбор гостей.
+// Выбор гостей есть только у списка желаний
 const showSelection = computed(
     () =>
+        isGift.value &&
         !form.value.hideSelections &&
         (!wasSelectionHidden.value || isSelectionRevealed.value),
 );
@@ -479,6 +489,24 @@ const prepareItems = (): WishlistItem[] | null => {
             }));
     }
 
+    // У цели сбора одна обязательная ссылка на разрешённую платформу и нет приоритета
+    if (isFund.value) {
+        urlErrors.value = form.value.items.map((item) =>
+            item.label.trim() ? [getFundUrlError(item.urls?.[0]) !== null] : [],
+        );
+
+        if (urlErrors.value.some((errors) => errors.some(Boolean))) return null;
+
+        return form.value.items
+            .filter((item) => item.label.trim())
+            .map((item) => ({
+                id: item.id,
+                label: item.label,
+                urls: normalizeItemUrls(item.urls),
+                price: item.price,
+            }));
+    }
+
     // Ссылки пустых позиций не проверяются: такие позиции не отправляются
     urlErrors.value = form.value.items.map((item) =>
         item.label.trim() ? getItemUrlErrors(item.urls) : [],
@@ -531,8 +559,8 @@ const handleSubmit = (): void => {
         id: props.wishlist.id,
         title: form.value.title,
         color: form.value.color,
-        // У списка дел нет режима сюрприза, а отметки гостей настраиваются только у него
-        hideSelections: !isTodo.value && form.value.hideSelections,
+        // Режим сюрприза есть только у списка желаний, а отметки гостей — только у списка дел
+        hideSelections: isGift.value && form.value.hideSelections,
         isShared: form.value.isShared,
         // Пустая строка — владелец убрал дату
         dueDate: form.value.dueDate || null,
@@ -559,7 +587,7 @@ onMounted(() => {
     disableBodyScroll();
 
     // Выбор гостей есть только у списка желаний
-    if (!isTodo.value && !isNote.value) void loadSelections(false);
+    if (isGift.value) void loadSelections(false);
 });
 
 onUnmounted(() => {
@@ -612,7 +640,9 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                     {{
                         isNote
                             ? 'Редактировать заметку'
-                            : 'Редактировать список'
+                            : isFund
+                              ? 'Редактировать сбор'
+                              : 'Редактировать список'
                     }}
                 </h2>
 
@@ -631,7 +661,9 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                         :placeholder="
                             isTodo
                                 ? 'Например: Дела на выходные'
-                                : 'Например: День рождения'
+                                : isFund
+                                  ? 'Например: Мои цели'
+                                  : 'Например: День рождения'
                         "
                         @input="isTitleMissing = false"
                     />
@@ -660,7 +692,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                 </div>
 
                 <!-- Режим сюрприза есть только у списка желаний: у остальных гости ничего не выбирают -->
-                <div v-if="!isTodo && !isNote" class="form-group">
+                <div v-if="isGift" class="form-group">
                     <WishlistSurpriseToggle v-model="form.hideSelections" />
 
                     <!-- Ошибка показывается и в режиме сюрприза: без выбора
@@ -684,7 +716,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                     <!-- Закрытие доступа не снимает выбор гостей: после повторного
                          открытия брони и совместные подарки остаются на месте -->
                     <p
-                        v-if="!isTodo && wishlist.isShared && !form.isShared"
+                        v-if="isGift && wishlist.isShared && !form.isShared"
                         class="selection-status"
                     >
                         Ссылка перестанет открываться, в том числе у гостей,
@@ -723,7 +755,15 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                 </div>
 
                 <div v-else class="form-group">
-                    <label>{{ isTodo ? 'Дела' : 'Список желаний' }}</label>
+                    <label>
+                        {{
+                            isTodo
+                                ? 'Дела'
+                                : isFund
+                                  ? 'Цели сбора'
+                                  : 'Список желаний'
+                        }}
+                    </label>
 
                     <!-- Пока загружается выбор гостей, позиции не показываются:
                          отметки и действия с выбором ещё не соответствуют серверу.
@@ -744,7 +784,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                             :class="[
                                 'wishlist-item',
                                 {
-                                    'wishlist-item--todo': isTodo,
+                                    'wishlist-item--todo': isTodo || isFund,
                                     'wishlist-item--done':
                                         isTodo && item.isSelected,
                                     'wishlist-item--checked-by':
@@ -796,7 +836,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                             <div class="wishlist-item-fields">
                                 <!-- Приоритет над полем описания у левого края,
                                  снятие выбора гостя — у правого -->
-                                <div v-if="!isTodo" class="item-meta-row">
+                                <div v-if="isGift" class="item-meta-row">
                                     <ItemPriorityPicker
                                         v-model="item.priority"
                                         :muted="
@@ -969,13 +1009,84 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                                     :placeholder="
                                         isTodo
                                             ? 'Например: Купить продукты'
-                                            : 'Например: Книга'
+                                            : isFund
+                                              ? 'Например: На машину'
+                                              : 'Например: Книга'
                                     "
                                 />
 
+                                <!-- Цель сбора: одна обязательная ссылка на сбор и целевая сумма.
+                                     Платформа определяется по ссылке и показывается под полем -->
+                                <div v-if="isFund" class="item-branches">
+                                    <div class="item-url-row">
+                                        <Link
+                                            :size="13"
+                                            class="item-url-icon"
+                                            aria-hidden="true"
+                                        />
+
+                                        <input
+                                            :value="item.urls?.[0] ?? ''"
+                                            type="text"
+                                            inputmode="url"
+                                            autocomplete="off"
+                                            :class="[
+                                                'item-url-input',
+                                                {
+                                                    'item-url-input--error':
+                                                        urlErrors[index]?.[0],
+                                                },
+                                            ]"
+                                            placeholder="Ссылка на сбор"
+                                            :aria-invalid="
+                                                urlErrors[index]?.[0] ||
+                                                undefined
+                                            "
+                                            @input="
+                                                setItemUrl(index, 0, $event)
+                                            "
+                                        />
+                                    </div>
+
+                                    <span
+                                        v-if="urlErrors[index]?.[0]"
+                                        class="item-url-error"
+                                    >
+                                        {{ getFundUrlError(item.urls?.[0]) }}
+                                    </span>
+
+                                    <span
+                                        v-else-if="
+                                            getFundPlatformOfInput(
+                                                item.urls?.[0],
+                                            )
+                                        "
+                                        class="item-url-hint item-url-hint--ok"
+                                    >
+                                        <Check :size="12" aria-hidden="true" />
+                                        {{
+                                            getFundPlatformOfInput(
+                                                item.urls?.[0],
+                                            )
+                                        }}
+                                    </span>
+
+                                    <span v-else class="item-url-hint">
+                                        Поддерживаются:
+                                        {{ FUND_PLATFORMS_TEXT }}
+                                    </span>
+
+                                    <div class="item-price-row">
+                                        <ItemPriceInput
+                                            v-model="item.price"
+                                            target
+                                        />
+                                    </div>
+                                </div>
+
                                 <!-- Ссылка и цена соединены с полем описания линиями-ветвями:
                                  они относятся к этой позиции -->
-                                <div v-if="!isTodo" class="item-branches">
+                                <div v-else-if="!isTodo" class="item-branches">
                                     <div
                                         v-for="(url, urlIndex) in item.urls"
                                         :key="urlIndex"
@@ -1118,7 +1229,9 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                             {{
                                 isTodo
                                     ? '+ Добавить дело'
-                                    : '+ Добавить желание'
+                                    : isFund
+                                      ? '+ Добавить цель'
+                                      : '+ Добавить желание'
                             }}
                         </button>
                     </template>

@@ -4,6 +4,9 @@ namespace App\Http\Requests\Wishlist;
 
 use App\Enums\WishlistColor;
 use App\Enums\WishlistItemPriority;
+use App\Enums\WishlistType;
+use App\Models\Wishlist;
+use App\Rules\AllowedFundUrl;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +24,11 @@ class UpdateWishlistRequest extends FormRequest
         // У заметки WishlistService изменяет только цвет и текст, у списков — всё, кроме текста.
         // isShared WishlistService не учитывает у заметки, а guestsCanCheck
         // и guestNameRequired учитывает только у списка дел.
-        // dueDate у заметки WishlistService не сохраняет; null убирает дату
+        // dueDate у заметки WishlistService не сохраняет; null убирает дату.
+        // Приоритет и режим сюрприза у сбора WishlistService очищает, а ссылки
+        // и целевую сумму проверяют правила ниже по типу изменяемого списка
+        $isFund = $this->isFund();
+
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'content' => ['sometimes', 'required', 'string', 'max:5000'],
@@ -37,18 +44,52 @@ class UpdateWishlistRequest extends FormRequest
             'items.*.id' => ['sometimes', 'nullable', 'string'],
             'items.*.label' => ['required_with:items', 'string', 'max:1000'],
             'items.*.isSelected' => ['sometimes', 'boolean'],
-            // Не больше трёх ссылок, только http(s): см. CreateWishlistRequest
-            'items.*.urls' => ['nullable', 'array', 'max:3'],
-            'items.*.urls.*' => ['nullable', 'string', 'max:2048', 'url:http,https'],
+            // Не больше трёх ссылок, только http(s); у цели сбора — одна ссылка
+            // на разрешённую платформу: см. CreateWishlistRequest
+            'items.*.urls' => $isFund
+                ? ['required_with:items', 'array', 'size:1']
+                : ['nullable', 'array', 'max:3'],
+            'items.*.urls.*' => $isFund
+                ? ['bail', 'required', 'string', 'max:2048', new AllowedFundUrl]
+                : ['nullable', 'string', 'max:2048', 'url:http,https'],
             'items.*.priority' => ['nullable', Rule::enum(WishlistItemPriority::class)],
             // Стоимость в целых рублях: см. CreateWishlistRequest
-            'items.*.price' => ['nullable', 'integer', 'min:0', 'max:10000000'],
+            'items.*.price' => [
+                'nullable',
+                'integer',
+                'min:0',
+                'max:'.($isFund ? CreateWishlistRequest::MAX_FUND_PRICE : CreateWishlistRequest::MAX_PRICE),
+            ],
         ];
+    }
+
+    // Тип изменяемого списка нужен для правил ссылок и целевой суммы сбора.
+    // Чужой или несуществующий список правила не уточняет: на него ответит 404 сервис
+    private function isFund(): bool
+    {
+        return $this->wishlistType() === WishlistType::Fund;
+    }
+
+    private ?WishlistType $wishlistType = null;
+
+    private bool $wishlistTypeLoaded = false;
+
+    private function wishlistType(): ?WishlistType
+    {
+        if (! $this->wishlistTypeLoaded) {
+            $this->wishlistType = Wishlist::query()
+                ->where('user_id', $this->user()?->id)
+                ->whereKey($this->route('id'))
+                ->value('type');
+            $this->wishlistTypeLoaded = true;
+        }
+
+        return $this->wishlistType;
     }
 
     public function messages(): array
     {
-        return [
+        return ($this->isFund() ? CreateWishlistRequest::fundItemMessages() : []) + [
             'content.required' => 'Текст заметки обязателен',
             'content.max' => 'Текст заметки не может быть длиннее 5000 символов',
             'color.enum' => 'Недопустимый цвет списка',

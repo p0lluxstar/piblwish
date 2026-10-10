@@ -10,11 +10,11 @@ export interface SavedWishlist {
     savedAt: string;
     username: string | null;
     avatarUrl: string | null;
-    // У чужих списков бывают только список желаний и список дел
-    type: 'gift' | 'todo' | null;
+    // У чужих списков бывают список желаний, список дел и сбор
+    type: 'gift' | 'todo' | 'fund' | null;
     title: string | null;
     color: WishlistColor | null;
-    // Срок списка дел или дата события списка желаний (Y-m-d)
+    // Срок списка дел или сбора, дата события списка желаний (Y-m-d)
     dueDate: string | null;
     itemsCount: number | null;
     // Выбранные гостями подарки или выполненные дела

@@ -2,6 +2,7 @@
 import {
     Archive,
     ArchiveRestore,
+    BadgeRussianRuble,
     Calendar,
     Check,
     CopyPlus,
@@ -14,6 +15,7 @@ import {
     ListChecks,
     PartyPopper,
     StickyNote,
+    Target,
     Trash2,
     Users,
 } from '@lucide/vue';
@@ -26,6 +28,7 @@ import {
     formatDueDate,
     getDueDateStatus,
 } from '../../lib/dueDate';
+import { getFundPlatform } from '../../lib/fundUrl';
 import { formatPrice } from '../../lib/itemPrice';
 import { getItemUrlHost } from '../../lib/itemUrl';
 import { getSharedWishlistUrl } from '../../lib/sharedLink';
@@ -74,8 +77,11 @@ const isTodo = computed(() => props.wishlist.type === 'todo');
 // Заметка: вместо названия и позиций текст, нет ссылки для гостей и прогресса
 const isNote = computed(() => props.wishlist.type === 'note');
 
+// Сбор: у целей ссылка на сбор и целевая сумма, гости ничего не отмечают
+const isFund = computed(() => props.wishlist.type === 'fund');
+
 // Список желаний: позиции выбирают гости по ссылке
-const isGift = computed(() => !isTodo.value && !isNote.value);
+const isGift = computed(() => !isTodo.value && !isNote.value && !isFund.value);
 
 // Список в архиве: только просмотр, восстановление, дубликат и удаление
 const isArchived = computed(() => Boolean(props.wishlist.archivedAt));
@@ -295,20 +301,47 @@ const progressLabel = computed(
     () => `${selectedCount.value} из ${props.wishlist.items.length}`,
 );
 
-// «12 сентября 2026 г.»: на карточке дата выводится со значком календаря
-const createdAtDate = computed(() => {
-    if (!props.wishlist.createdAt) return '';
+// Первые три буквы месяца. Intl с month: 'short' даёт «сент.» и «мая»
+// с точкой и разной длиной, поэтому сокращения заданы явно
+const SHORT_MONTHS = [
+    'янв',
+    'фев',
+    'мар',
+    'апр',
+    'май',
+    'июн',
+    'июл',
+    'авг',
+    'сен',
+    'окт',
+    'ноя',
+    'дек',
+];
 
-    return new Date(props.wishlist.createdAt).toLocaleDateString('ru-RU', {
+// «12 сен 2026»: дата на карточке, рядом со значком
+const formatShortDate = (value: string): string => {
+    const date = new Date(value);
+
+    return `${date.getDate()} ${SHORT_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+};
+
+// «12 сентября 2026 г.»: дата в подсказке и для экранных дикторов
+const formatFullDate = (value: string): string =>
+    new Date(value).toLocaleDateString('ru-RU', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
     });
-});
 
-// «Создан 12 сентября 2026 г.»: подсказка и подпись для экранных дикторов
-const createdAtLabel = computed(
-    () => `${isNote.value ? 'Создана' : 'Создан'} ${createdAtDate.value}`,
+const createdAtDate = computed(() =>
+    props.wishlist.createdAt ? formatShortDate(props.wishlist.createdAt) : '',
+);
+
+// «Создан 12 сентября 2026 г.»
+const createdAtLabel = computed(() =>
+    props.wishlist.createdAt
+        ? `${isNote.value ? 'Создана' : 'Создан'} ${formatFullDate(props.wishlist.createdAt)}`
+        : '',
 );
 
 // Сколько осталось до срока списка дел или до события списка желаний.
@@ -325,16 +358,17 @@ const dueStatus = computed(() => {
     return getDueDateStatus(type ?? 'gift', dueDate, isCompleted);
 });
 
-// «10 октября 2026 г.»: когда список перенесён в архив
-const archivedAtDate = computed(() => {
-    if (!props.wishlist.archivedAt) return '';
+// «10 окт 2026»: когда список перенесён в архив
+const archivedAtDate = computed(() =>
+    props.wishlist.archivedAt ? formatShortDate(props.wishlist.archivedAt) : '',
+);
 
-    return new Date(props.wishlist.archivedAt).toLocaleDateString('ru-RU', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    });
-});
+// «В архиве с 10 октября 2026 г.»
+const archivedAtLabel = computed(() =>
+    props.wishlist.archivedAt
+        ? `В архиве с ${formatFullDate(props.wishlist.archivedAt)}`
+        : '',
+);
 
 // «Сделать до 31 декабря 2026 г.»: подсказка и подпись для экранных дикторов
 const dueDateLabel = computed(() =>
@@ -363,6 +397,11 @@ const dueDateLabel = computed(() =>
         <div class="card-watermark" aria-hidden="true">
             <StickyNote v-if="isNote" :size="100" :stroke-width="1.5" />
             <ListChecks v-else-if="isTodo" :size="100" :stroke-width="1.5" />
+            <BadgeRussianRuble
+                v-else-if="isFund"
+                :size="100"
+                :stroke-width="1.5"
+            />
             <Gift v-else :size="100" :stroke-width="1.5" />
         </div>
 
@@ -376,6 +415,10 @@ const dueDateLabel = computed(() =>
                 <span v-if="isNote" class="card-type card-type--note">
                     <StickyNote :size="12" />
                     Заметка
+                </span>
+                <span v-else-if="isFund" class="card-type card-type--fund">
+                    <BadgeRussianRuble :size="12" />
+                    Сбор
                 </span>
                 <span
                     v-else
@@ -412,11 +455,13 @@ const dueDateLabel = computed(() =>
                     <Users :size="14" />
                 </span>
 
-                <!-- Список желаний скрыт от гостей. У списка желаний значок ставится
-                 у закрытого, а не у открытого: по умолчанию он открыт по ссылке.
+                <!-- Список желаний или сбор скрыт от гостей. Значок ставится
+                 у закрытого, а не у открытого: по умолчанию они открыты по ссылке.
                  Значок — ссылка кнопки копирования, перечёркнутая линией в CSS -->
                 <span
-                    v-if="isGift && !wishlist.isShared && !isArchived"
+                    v-if="
+                        (isGift || isFund) && !wishlist.isShared && !isArchived
+                    "
                     class="card-hidden"
                     role="img"
                     aria-label="Скрыт от гостей: ссылка не открывается"
@@ -547,7 +592,7 @@ const dueDateLabel = computed(() =>
                 :class="[
                     'item',
                     {
-                        'item--reserved': !isTodo && item.isSelected,
+                        'item--reserved': isGift && item.isSelected,
                         'item--done': isTodo && item.isSelected,
                         'item--confirming': isUncheckConfirmShown(item),
                     },
@@ -575,6 +620,11 @@ const dueDateLabel = computed(() =>
                 >
                     <Check v-if="item.isSelected" :size="12" />
                 </button>
+
+                <!-- Цель сбора: гости её не отмечают, поэтому вместо чекбокса значок цели -->
+                <span v-else-if="isFund" class="item-bullet" aria-hidden="true">
+                    <Target :size="11" />
+                </span>
 
                 <!-- Позицию выбрал гость: вместо чекбокса значок подарка -->
                 <span
@@ -637,12 +687,17 @@ const dueDateLabel = computed(() =>
                         :muted="item.isSelected"
                     />
 
-                    <!-- Стоимость 0 ₽ тоже выводится: null — не указана -->
-                    <span v-if="item.price != null" class="item-price">
+                    <!-- Стоимость 0 ₽ тоже выводится: null — не указана.
+                         У цели сбора это целевая сумма -->
+                    <span
+                        v-if="item.price != null"
+                        class="item-price"
+                        :title="isFund ? 'Целевая сумма' : undefined"
+                    >
                         {{ formatPrice(item.price) }}
                     </span>
 
-                    <!-- Ссылки значками в одну строку: их до трёх -->
+                    <!-- Ссылки значками в одну строку: их до трёх, у цели сбора одна -->
                     <span v-if="item.urls?.length" class="item-links">
                         <a
                             v-for="(url, urlIndex) in item.urls"
@@ -651,8 +706,16 @@ const dueDateLabel = computed(() =>
                             target="_blank"
                             rel="noopener noreferrer nofollow"
                             class="item-link"
-                            :title="getItemUrlHost(url)"
-                            :aria-label="`Ссылка на товар: ${getItemUrlHost(url)}`"
+                            :title="
+                                isFund
+                                    ? `Сбор: ${getFundPlatform(url) ?? getItemUrlHost(url)}`
+                                    : getItemUrlHost(url)
+                            "
+                            :aria-label="
+                                isFund
+                                    ? `Ссылка на сбор: ${getFundPlatform(url) ?? getItemUrlHost(url)}`
+                                    : `Ссылка на товар: ${getItemUrlHost(url)}`
+                            "
                         >
                             <ExternalLink :size="13" />
                         </a>
@@ -691,8 +754,10 @@ const dueDateLabel = computed(() =>
 
         <!-- Прижат к низу карточки, даже если в ней мало позиций -->
         <div class="card-footer">
+            <!-- У сбора прогресса нет: переводы идут на сторонней платформе,
+                 и сервис не знает, сколько собрано -->
             <div
-                v-if="!isNote && !wishlist.hideSelections"
+                v-if="!isNote && !isFund && !wishlist.hideSelections"
                 class="card-progress-container"
             >
                 <div class="card-progress-info">
@@ -717,13 +782,11 @@ const dueDateLabel = computed(() =>
                     :datetime="wishlist.createdAt"
                     :title="createdAtLabel"
                 >
-                    <!-- Значок рисуется цветом текста (currentColor); слово «Создан»
-                         видно только экранным дикторам -->
+                    <!-- Значок рисуется цветом текста (currentColor). Экранный диктор
+                         читает полную дату из подписи, а не сокращение месяца -->
                     <Calendar :size="12" aria-hidden="true" />
-                    <span class="sr-only">
-                        {{ isNote ? 'Создана' : 'Создан' }}
-                    </span>
-                    {{ createdAtDate }}
+                    <span class="sr-only">{{ createdAtLabel }}</span>
+                    <span aria-hidden="true">{{ createdAtDate }}</span>
                 </time>
 
                 <!-- Счётчик до даты списка; сама дата — в подсказке -->
@@ -733,7 +796,11 @@ const dueDateLabel = computed(() =>
                     :datetime="wishlist.dueDate ?? undefined"
                     :title="dueDateLabel"
                 >
-                    <Hourglass v-if="isTodo" :size="12" aria-hidden="true" />
+                    <Hourglass
+                        v-if="isTodo || isFund"
+                        :size="12"
+                        aria-hidden="true"
+                    />
                     <PartyPopper v-else :size="12" aria-hidden="true" />
                     <span class="sr-only">{{ dueDateLabel }}.</span>
                     {{ dueStatus.text }}
@@ -743,11 +810,11 @@ const dueDateLabel = computed(() =>
                     v-if="archivedAtDate"
                     class="card-archived-at"
                     :datetime="wishlist.archivedAt ?? undefined"
-                    :title="`В архиве с ${archivedAtDate}`"
+                    :title="archivedAtLabel"
                 >
                     <Archive :size="12" aria-hidden="true" />
-                    <span class="sr-only">В архиве с</span>
-                    {{ archivedAtDate }}
+                    <span class="sr-only">{{ archivedAtLabel }}</span>
+                    <span aria-hidden="true">{{ archivedAtDate }}</span>
                 </time>
             </div>
         </div>
@@ -1215,6 +1282,11 @@ $card-content-max-height: 150px;
 .card-type--note {
     background: rgba(245, 158, 11, 0.16);
     color: #b45309;
+}
+
+.card-type--fund {
+    background: rgba(236, 72, 153, 0.13);
+    color: #be185d;
 }
 
 // Поле без рамки и фона выглядит как обычный текст карточки. Высота растёт

@@ -5,6 +5,7 @@ import {
     ExternalLink,
     Gift,
     RefreshCw,
+    Target,
     Users,
     X,
 } from '@lucide/vue';
@@ -15,11 +16,13 @@ import { useRoute, useRouter } from 'vue-router';
 import SaveWishlistButton from '@/components/saved/SaveWishlistButton.vue';
 import { useGuestReservations } from '@/composables/useGuestReservations';
 import { useGuestTodoChecks } from '@/composables/useGuestTodoChecks';
+import { FUND_PLATFORMS_TEXT } from '@/constants/fundHosts';
 import { api } from '@/lib/api';
 import { copyToClipboard } from '@/lib/clipboard';
 import { dueDateTitle, formatDueDate, getDueDateStatus } from '@/lib/dueDate';
+import { getFundPlatform } from '@/lib/fundUrl';
 import { formatPrice } from '@/lib/itemPrice';
-import { getItemUrlShortHost } from '@/lib/itemUrl';
+import { getItemUrlHost, getItemUrlShortHost } from '@/lib/itemUrl';
 import { getSharedWishlistPath, getSharedWishlistUrl } from '@/lib/sharedLink';
 import type {
     JointGiftDraft,
@@ -48,6 +51,17 @@ const isSaving = ref(false);
 // Список дел, открытый владельцем по ссылке: гость видит, какие дела выполнены,
 // а отмечает их, только если владелец разрешил. Броней у такого списка нет
 const isTodo = computed(() => wishlist.value?.type === 'todo');
+
+// Сбор: гость переходит по ссылке цели на платформу сбора и переводит деньги там.
+// Выбора, броней и совместных подарков у сбора нет
+const isFund = computed(() => wishlist.value?.type === 'fund');
+
+// Список желаний: только у него гости выбирают позиции и есть брони
+const isGift = computed(() => !isTodo.value && !isFund.value);
+
+// Подпись к ссылке цели: «Т-Банк» или домен, если платформа не распознана
+const fundPlatformLabel = (url: string): string =>
+    getFundPlatform(url) ?? getItemUrlHost(url);
 
 // Гость может отметить невыполненные дела; снять отметку может только владелец
 const canCheckTodo = computed(
@@ -216,8 +230,9 @@ const getWishlist = async (): Promise<void> => {
         // чтобы не остаться в истории и не уйти дальше при пересылке адреса страницы
         const linkToken = tokenFromLink();
 
-        // У списка дел броней нет: сервер отвечает на их запрос 404
-        if (!isTodo.value) {
+        // Брони есть только у списка желаний: на их запрос для списка дел
+        // и сбора сервер отвечает 404
+        if (isGift.value) {
             await loadReservations(linkToken);
         }
 
@@ -266,7 +281,7 @@ const refreshWishlist = async (): Promise<void> => {
         wishlist.value = response.data.data;
 
         // Владелец мог снять выбор гостя: брони тоже загружаются заново
-        if (!isTodo.value) {
+        if (isGift.value) {
             await loadReservations();
         }
 
@@ -591,9 +606,10 @@ const dueDateLine = computed(() => {
 
     if (!status && type !== 'todo') return '';
 
+    // «Сделать до 31 декабря», «Сбор до 31 декабря», «Дата события: 31 декабря»
     const title = dueDateTitle(type);
     const date = formatDueDate(dueDate);
-    const line = type === 'todo' ? `${title} ${date}` : `${title}: ${date}`;
+    const line = type === 'gift' ? `${title}: ${date}` : `${title} ${date}`;
 
     if (!status) return line;
 
@@ -627,13 +643,14 @@ const hasPrices = computed(() =>
 );
 
 // Варианты показываются, только если владелец указал приоритет или стоимость
-// хотя бы у одной позиции; без них переключатель не выводится вовсе
+// хотя бы у одной позиции; без них переключатель не выводится вовсе.
+// Цели сбора выводятся в порядке владельца: сортировка по сумме им не нужна
 const itemOrderOptions = computed(() => [
     { value: 'owner' as const, label: 'По порядку' },
     ...(hasPriorities.value
         ? [{ value: 'priority' as const, label: 'По приоритету' }]
         : []),
-    ...(hasPrices.value
+    ...(hasPrices.value && !isFund.value
         ? [
               { value: 'price-asc' as const, label: 'Сначала дешевле' },
               { value: 'price-desc' as const, label: 'Сначала дороже' },
@@ -726,13 +743,23 @@ onMounted(getWishlist);
                             <span class="intro-subtitle">
                                 делится с вами
                                 {{
-                                    isTodo ? 'списком дел' : 'списком подарков'
+                                    isTodo
+                                        ? 'списком дел'
+                                        : isFund
+                                          ? 'сбором'
+                                          : 'списком подарков'
                                 }}
                             </span>
                         </template>
                         <template v-else>
                             С вами поделились
-                            {{ isTodo ? 'списком дел' : 'списком подарков' }}
+                            {{
+                                isTodo
+                                    ? 'списком дел'
+                                    : isFund
+                                      ? 'сбором'
+                                      : 'списком подарков'
+                            }}
                         </template>
                     </h1>
                 </div>
@@ -741,7 +768,7 @@ onMounted(getWishlist);
                     {{ allSelected ? 'Все дела выполнены' : todoProgressLabel }}
                 </p>
 
-                <p v-else-if="allSelected" class="intro-note">
+                <p v-else-if="isGift && allSelected" class="intro-note">
                     Все подарки из этого списка уже выбраны
                 </p>
 
@@ -875,7 +902,43 @@ onMounted(getWishlist);
                     v-for="(item, itemIndex) in sortedItems"
                     :key="item.id ?? itemIndex"
                 >
+                    <!-- Цель сбора: название, целевая сумма и переход на платформу сбора.
+                         Перевод выполняется там, поэтому выбирать здесь нечего -->
+                    <div v-if="isFund" class="item item--fund">
+                        <span class="fund-icon" aria-hidden="true">
+                            <Target :size="12" />
+                        </span>
+
+                        <span class="fund-text">
+                            <span class="item-label">{{ item.label }}</span>
+
+                            <!-- Целевая сумма 0 ₽ тоже выводится: null — не указана -->
+                            <span v-if="item.price != null" class="fund-target">
+                                Цель: {{ formatPrice(item.price) }}
+                            </span>
+                        </span>
+
+                        <a
+                            v-if="item.urls?.[0]"
+                            :href="item.urls[0]"
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                            class="fund-link"
+                            :title="item.urls[0]"
+                            :aria-label="`Перейти к сбору «${item.label}» на сайте ${fundPlatformLabel(item.urls[0])}`"
+                        >
+                            <span class="fund-link-title">
+                                Перейти к сбору
+                                <ExternalLink :size="12" aria-hidden="true" />
+                            </span>
+                            <span class="fund-link-platform">
+                                {{ fundPlatformLabel(item.urls[0]) }}
+                            </span>
+                        </a>
+                    </div>
+
                     <div
+                        v-else
                         :class="[
                             'item',
                             {
@@ -1206,8 +1269,15 @@ onMounted(getWishlist);
                 <!-- Как «Сохранить» в модальных окнах: неактивна, пока не отмечен ни один подарок.
                      Если все подарки уже выбраны, бронировать нечего и кнопки нет.
                      В списке дел кнопка есть, только если владелец разрешил гостям отмечать дела -->
+                <!-- Сервис не принимает деньги: перевод выполняется на сайте платформы -->
+                <p v-if="isFund" class="fund-note">
+                    Перевод выполняется на сайте платформы сбора ({{
+                        FUND_PLATFORMS_TEXT
+                    }}). Наш сервис денег не получает и не хранит реквизиты.
+                </p>
+
                 <button
-                    v-if="(!isTodo || canCheckTodo) && !allSelected"
+                    v-if="(isGift || canCheckTodo) && !allSelected"
                     type="button"
                     class="create-btn reserve-btn"
                     :disabled="isBusy || !hasChanges"
@@ -1704,6 +1774,97 @@ onMounted(getWishlist);
 .item.item--done .item-label {
     color: #94a3b8;
     text-decoration: line-through;
+}
+
+/* Цель сбора: строка не выбирается, поэтому без курсора-руки и выделения.
+   Отступы больше, чем у подарка: справа крупная кнопка перехода */
+.item.item--fund {
+    padding: 9px 0;
+    cursor: default;
+    user-select: text;
+}
+
+.item.item--fund:first-of-type {
+    padding-top: 0;
+}
+
+.fund-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 19px;
+    height: 19px;
+    border-radius: 7px;
+    background: rgba(236, 72, 153, 0.12);
+    color: #db2777;
+}
+
+.fund-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.fund-target {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft, #6b5878);
+}
+
+// Кнопка перехода к сбору: название платформы под текстом, чтобы гость видел,
+// на какой сайт он уходит
+.fund-link {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 1px;
+    max-width: 45%;
+    padding: 6px 12px;
+    border-radius: 10px;
+    background: var(--brand-gradient);
+    color: #fff;
+    text-decoration: none;
+    transition: all 0.18s ease;
+
+    &:hover {
+        box-shadow: 0 6px 16px -8px rgba(236, 72, 153, 0.7);
+        transform: translateY(-1px);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--brand-violet);
+        outline-offset: 2px;
+    }
+}
+
+.fund-link-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.fund-link-platform {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 10px;
+    font-weight: 500;
+    opacity: 0.9;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fund-note {
+    margin: 14px 0 0;
+    font-size: 11px;
+    line-height: 1.4;
+    text-align: center;
+    color: var(--ink-soft, #6b5878);
 }
 
 /* Отмеченный чекбокс: вместо символа «✓» из checkboxCard.scss — иконка Check,

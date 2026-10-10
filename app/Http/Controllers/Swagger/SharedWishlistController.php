@@ -79,7 +79,7 @@ use OpenApi\Attributes as OA;
                         property: 'data',
                         properties: [
                             new OA\Property(property: 'id', type: 'string', format: 'ulid'),
-                            new OA\Property(property: 'type', type: 'string', enum: ['gift', 'todo']),
+                            new OA\Property(property: 'type', description: 'Список дел и сбор открываются только для просмотра: выбор, брони и совместный подарок для них отвечают 404', type: 'string', enum: ['gift', 'todo', 'fund']),
                             new OA\Property(property: 'title', type: 'string'),
                             new OA\Property(
                                 property: 'color',

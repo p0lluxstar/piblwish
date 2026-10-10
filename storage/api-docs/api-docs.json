@@ -470,10 +470,12 @@
                                                     "format": "ulid"
                                                 },
                                                 "type": {
+                                                    "description": "Список дел и сбор открываются только для просмотра: выбор, брони и совместный подарок для них отвечают 404",
                                                     "type": "string",
                                                     "enum": [
                                                         "gift",
-                                                        "todo"
+                                                        "todo",
+                                                        "fund"
                                                     ]
                                                 },
                                                 "title": {
@@ -1016,6 +1018,11 @@
                                                         "cobalt"
                                                     ]
                                                 },
+                                                "showFriendsEvents": {
+                                                    "description": "Показывать в дашборде строку «Скоро у друзей» с ближайшими датами чужих списков",
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
                                                 "avatarUrl": {
                                                     "description": "Адрес фотографии пользователя; null — фотографии нет, показывается первая буква имени",
                                                     "type": "string",
@@ -1103,18 +1110,21 @@
                     "User"
                 ],
                 "summary": "Изменить настройки текущего пользователя",
-                "description": "Сохраняет фон приложения, выбранный пользователем. Фон по умолчанию — blossom. Возвращает пользователя в том же виде, что GET /v1/user.",
+                "description": "Сохраняет фон приложения и показ строки «Скоро у друзей» в дашборде. Можно передать одну или обе настройки, непереданная не меняется; запрос без них отклоняется (422). Фон по умолчанию — blossom, строка по умолчанию показывается. Возвращает пользователя в том же виде, что GET /v1/user.",
                 "operationId": "05db2d69688dae19cebf7374eb736629",
                 "requestBody": {
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "background"
-                                ],
                                 "properties": {
+                                    "showFriendsEvents": {
+                                        "description": "Показывать в дашборде строку «Скоро у друзей»",
+                                        "type": "boolean",
+                                        "example": false
+                                    },
                                     "background": {
+                                        "description": "Обязателен, если не передан showFriendsEvents",
                                         "type": "string",
                                         "example": "ocean",
                                         "enum": [
@@ -1166,6 +1176,10 @@
                                                     "type": "string",
                                                     "example": "ocean"
                                                 },
+                                                "showFriendsEvents": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
                                                 "avatarUrl": {
                                                     "type": "string",
                                                     "example": null,
@@ -1189,7 +1203,7 @@
                         "description": "Не авторизован"
                     },
                     "422": {
-                        "description": "Ошибка валидации: фон не передан или такого фона нет",
+                        "description": "Ошибка валидации: не передана ни одна настройка, такого фона нет или showFriendsEvents не логическое значение",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1295,6 +1309,10 @@
                                                 "background": {
                                                     "type": "string",
                                                     "example": "blossom"
+                                                },
+                                                "showFriendsEvents": {
+                                                    "type": "boolean",
+                                                    "example": true
                                                 },
                                                 "avatarUrl": {
                                                     "type": "string",
@@ -1403,6 +1421,10 @@
                                                 "background": {
                                                     "type": "string",
                                                     "example": "blossom"
+                                                },
+                                                "showFriendsEvents": {
+                                                    "type": "boolean",
+                                                    "example": true
                                                 },
                                                 "avatarUrl": {
                                                     "type": "string",
@@ -1731,6 +1753,10 @@
                                                     "type": "string",
                                                     "example": "blossom"
                                                 },
+                                                "showFriendsEvents": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
                                                 "avatarUrl": {
                                                     "type": "string",
                                                     "example": null,
@@ -1838,13 +1864,14 @@
                                                         "example": 1
                                                     },
                                                     "type": {
-                                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка. Список желаний и список дел открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке",
+                                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Список желаний, список дел и сбор открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке",
                                                         "type": "string",
                                                         "example": "gift",
                                                         "enum": [
                                                             "gift",
                                                             "todo",
-                                                            "note"
+                                                            "note",
+                                                            "fund"
                                                         ]
                                                     },
                                                     "title": {
@@ -1886,7 +1913,7 @@
                                                         "example": false
                                                     },
                                                     "isShared": {
-                                                        "description": "Открывается ли список по общей ссылке: у списка желаний и списка дел — если доступ включён, у заметки всегда false",
+                                                        "description": "Открывается ли список по общей ссылке: у списка желаний, списка дел и сбора — если доступ включён, у заметки всегда false",
                                                         "type": "boolean",
                                                         "example": true
                                                     },
@@ -1901,7 +1928,7 @@
                                                         "example": true
                                                     },
                                                     "dueDate": {
-                                                        "description": "Срок списка дел или дата события списка желаний (Y-m-d); null — дата не указана, у заметки всегда null",
+                                                        "description": "Срок списка дел или сбора, дата события списка желаний (Y-m-d); null — дата не указана, у заметки всегда null",
                                                         "type": "string",
                                                         "format": "date",
                                                         "example": "2026-12-31",
@@ -1927,7 +1954,7 @@
                                                                     "example": "Книга «Мастер и Маргарита»"
                                                                 },
                                                                 "urls": {
-                                                                    "description": "Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет",
+                                                                    "description": "Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет. У цели сбора — ровно одна ссылка на сбор",
                                                                     "type": "array",
                                                                     "items": {
                                                                         "type": "string",
@@ -1951,7 +1978,7 @@
                                                                     ]
                                                                 },
                                                                 "price": {
-                                                                    "description": "Стоимость в целых рублях (0–10 000 000); null — не указана",
+                                                                    "description": "Стоимость в целых рублях (0–10 000 000), у цели сбора — целевая сумма (0–100 000 000); null — не указана",
                                                                     "type": "integer",
                                                                     "example": 1500,
                                                                     "nullable": true,
@@ -2019,13 +2046,14 @@
                             "schema": {
                                 "properties": {
                                     "type": {
-                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать urls, priority и price. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний",
+                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать urls, priority и price. У позиций сбора (целей) обязательна ровно одна ссылка https на разрешённую платформу (Т-Банк, ЮMoney, CloudTips), price — целевая сумма до 100 000 000, priority запрещён. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний",
                                         "type": "string",
                                         "example": "gift",
                                         "enum": [
                                             "gift",
                                             "todo",
-                                            "note"
+                                            "note",
+                                            "fund"
                                         ]
                                     },
                                     "title": {
@@ -2054,12 +2082,12 @@
                                         ]
                                     },
                                     "hideSelections": {
-                                        "description": "Режим сюрприза: скрывать от владельца, какие позиции выбрали гости. Необязателен, по умолчанию true для списка желаний и false для списка дел и заметки",
+                                        "description": "Режим сюрприза: скрывать от владельца, какие позиции выбрали гости. Необязателен, по умолчанию true для списка желаний и false для списка дел, заметки и сбора",
                                         "type": "boolean",
                                         "example": false
                                     },
                                     "isShared": {
-                                        "description": "Доступ к списку по общей ссылке. Необязателен, по умолчанию true для списка желаний и false для списка дел; для заметки (type = note) не передаётся",
+                                        "description": "Доступ к списку по общей ссылке. Необязателен, по умолчанию true для списка желаний и сбора и false для списка дел; для заметки (type = note) не передаётся",
                                         "type": "boolean",
                                         "example": false
                                     },
@@ -2069,7 +2097,7 @@
                                         "example": true
                                     },
                                     "dueDate": {
-                                        "description": "Срок списка дел или дата события списка желаний (Y-m-d). Необязательна; у заметки запрещена",
+                                        "description": "Срок списка дел или сбора, дата события списка желаний (Y-m-d). Необязательна; у заметки запрещена",
                                         "type": "string",
                                         "format": "date",
                                         "example": "2026-12-31",
@@ -2090,7 +2118,7 @@
                                                     "example": "Книга «Мастер и Маргарита»"
                                                 },
                                                 "urls": {
-                                                    "description": "Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет",
+                                                    "description": "Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет. У цели сбора — ровно одна ссылка на сбор",
                                                     "type": "array",
                                                     "items": {
                                                         "type": "string",
@@ -2114,11 +2142,11 @@
                                                     ]
                                                 },
                                                 "price": {
-                                                    "description": "Стоимость в целых рублях (0–10 000 000), необязательна; null — не указана",
+                                                    "description": "Стоимость в целых рублях (0–10 000 000), у цели сбора — целевая сумма (0–100 000 000), необязательна; null — не указана",
                                                     "type": "integer",
                                                     "example": 1500,
                                                     "nullable": true,
-                                                    "maximum": 10000000,
+                                                    "maximum": 100000000,
                                                     "minimum": 0
                                                 }
                                             },
@@ -2145,13 +2173,14 @@
                                                     "example": 1
                                                 },
                                                 "type": {
-                                                    "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка. Список желаний и список дел открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке",
+                                                    "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Список желаний, список дел и сбор открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке",
                                                     "type": "string",
                                                     "example": "gift",
                                                     "enum": [
                                                         "gift",
                                                         "todo",
-                                                        "note"
+                                                        "note",
+                                                        "fund"
                                                     ]
                                                 },
                                                 "title": {
@@ -2193,7 +2222,7 @@
                                                     "example": false
                                                 },
                                                 "isShared": {
-                                                    "description": "Открывается ли список по общей ссылке: у списка желаний и списка дел — если доступ включён, у заметки всегда false",
+                                                    "description": "Открывается ли список по общей ссылке: у списка желаний, списка дел и сбора — если доступ включён, у заметки всегда false",
                                                     "type": "boolean",
                                                     "example": true
                                                 },
@@ -2208,7 +2237,7 @@
                                                     "example": true
                                                 },
                                                 "dueDate": {
-                                                    "description": "Срок списка дел или дата события списка желаний (Y-m-d); null — дата не указана",
+                                                    "description": "Срок списка дел или сбора, дата события списка желаний (Y-m-d); null — дата не указана",
                                                     "type": "string",
                                                     "format": "date",
                                                     "example": "2026-12-31",
@@ -2227,7 +2256,7 @@
                                                                 "example": "Свеча с ароматом ванили"
                                                             },
                                                             "urls": {
-                                                                "description": "Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет",
+                                                                "description": "Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет. У цели сбора — ровно одна ссылка на сбор",
                                                                 "type": "array",
                                                                 "items": {
                                                                     "type": "string",
@@ -2251,7 +2280,7 @@
                                                                 ]
                                                             },
                                                             "price": {
-                                                                "description": "Стоимость в целых рублях (0–10 000 000); null — не указана",
+                                                                "description": "Стоимость в целых рублях (0–10 000 000), у цели сбора — целевая сумма (0–100 000 000); null — не указана",
                                                                 "type": "integer",
                                                                 "example": 1500,
                                                                 "nullable": true,
@@ -2592,6 +2621,83 @@
                     }
                 ]
             }
+        },
+        "/v1/wishlists/archived": {
+            "delete": {
+                "tags": [
+                    "Wishlists"
+                ],
+                "summary": "Удалить списки из архива",
+                "description": "Удаляет переданные списки пользователя, которые находятся в архиве. Списки не в архиве, чужие и несуществующие пропускаются: так список, восстановленный или перенесённый в архив после подтверждения, не удаляется. Вместе со списками удаляются позиции, брони, совместные подарки и закладки других пользователей",
+                "operationId": "7a5c91b67ee9252e99461ae89a48f4da",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "ids"
+                                ],
+                                "properties": {
+                                    "ids": {
+                                        "description": "ID списков, которые владелец видел в архиве",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "example": [
+                                            "01J0000000000000000000000A"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Число удалённых списков",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "deletedCount": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Не передан непустой массив ids"
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -2633,7 +2739,8 @@
                         "nullable": true,
                         "enum": [
                             "gift",
-                            "todo"
+                            "todo",
+                            "fund"
                         ]
                     },
                     "title": {
@@ -2656,7 +2763,7 @@
                         ]
                     },
                     "dueDate": {
-                        "description": "Срок списка дел или дата события списка желаний (Y-m-d)",
+                        "description": "Срок списка дел или сбора, дата события списка желаний (Y-m-d)",
                         "type": "string",
                         "format": "date",
                         "example": "2026-12-31",

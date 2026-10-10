@@ -271,6 +271,61 @@ export const useUpdateBackground = (): UseUpdateBackgroundReturn => {
     };
 };
 
+type UseUpdateShowFriendsEventsReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    boolean,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Показ строки «Скоро у друзей» в дашборде. Переключатель меняется сразу,
+// до ответа сервера; при ошибке возвращается прежнее значение
+export const useUpdateShowFriendsEvents =
+    (): UseUpdateShowFriendsEventsReturn => {
+        const authStore = useAuthStore();
+
+        const setValue = (showFriendsEvents: boolean): void => {
+            if (authStore.user) {
+                authStore.setUser({ ...authStore.user, showFriendsEvents });
+            }
+        };
+
+        const mutation = useMutation<
+            AxiosResponse,
+            AxiosError<ApiErrorResponse>,
+            boolean
+        >({
+            mutationFn: (showFriendsEvents) =>
+                api.patch('/v1/user', { showFriendsEvents }),
+
+            onMutate: (showFriendsEvents) => {
+                setValue(showFriendsEvents);
+            },
+
+            // Значение после ошибки противоположно отправленному. Если пользователь
+            // уже переключил ещё раз, состояние и так совпадает с этим значением
+            onError: (_error, showFriendsEvents) => {
+                if (authStore.user?.showFriendsEvents === showFriendsEvents) {
+                    setValue(!showFriendsEvents);
+                }
+            },
+        });
+
+        const errorMessage = computed((): string | null =>
+            getApiErrorMessage(
+                mutation.error.value,
+                'Не удалось сохранить настройку',
+            ),
+        );
+
+        return {
+            ...mutation,
+            errorMessage,
+        };
+    };
+
 type UseUploadAvatarReturn = UseMutationReturnType<
     AxiosResponse<{ data: User }>,
     AxiosError<ApiErrorResponse>,

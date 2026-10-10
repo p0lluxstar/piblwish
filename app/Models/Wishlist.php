@@ -30,9 +30,9 @@ class Wishlist extends Model
 
     protected static function booted(): void
     {
-        // Список желаний по умолчанию открыт по ссылке, список дел и заметка — нет
+        // Список желаний и сбор по умолчанию открыты по ссылке, список дел и заметка — нет
         static::creating(function (Wishlist $wishlist) {
-            $wishlist->is_shared ??= $wishlist->isGift();
+            $wishlist->is_shared ??= $wishlist->isGift() || $wishlist->isFund();
         });
     }
 
@@ -68,6 +68,12 @@ class Wishlist extends Model
     public function isNote(): bool
     {
         return $this->type === WishlistType::Note;
+    }
+
+    // Сбор: позиции — цели со ссылкой на стороннюю платформу, гости по ним только переходят
+    public function isFund(): bool
+    {
+        return $this->type === WishlistType::Fund;
     }
 
     // Находится ли список в архиве: владелец видит его только для просмотра,

@@ -71,4 +71,53 @@ class UserBackgroundTest extends TestCase
         $this->patchJson('/v1/user', ['background' => 'ocean'])
             ->assertUnauthorized();
     }
+
+    public function test_friends_events_are_shown_by_default(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->getJson('/v1/user')
+            ->assertOk()
+            ->assertJsonPath('data.showFriendsEvents', true);
+    }
+
+    public function test_friends_events_setting_is_changed_without_background(): void
+    {
+        $user = User::factory()->create(['background' => AppBackground::Ocean]);
+
+        $this->actingAs($user)
+            ->patchJson('/v1/user', ['showFriendsEvents' => false])
+            ->assertOk()
+            ->assertJsonPath('data.showFriendsEvents', false)
+            ->assertJsonPath('data.background', 'ocean');
+
+        $fresh = $user->fresh();
+        $this->assertFalse($fresh->show_friends_events);
+        $this->assertSame(AppBackground::Ocean, $fresh->background);
+    }
+
+    public function test_background_change_keeps_friends_events_setting(): void
+    {
+        $user = User::factory()->create(['show_friends_events' => false]);
+
+        $this->actingAs($user)
+            ->patchJson('/v1/user', ['background' => 'mint'])
+            ->assertOk()
+            ->assertJsonPath('data.showFriendsEvents', false);
+
+        $this->assertFalse($user->fresh()->show_friends_events);
+    }
+
+    public function test_invalid_friends_events_value_is_rejected(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->patchJson('/v1/user', ['showFriendsEvents' => 'maybe'])
+            ->assertUnprocessable()
+            ->assertJsonPath('data.errors.showFriendsEvents.0', 'Недопустимое значение настройки');
+
+        $this->assertTrue($user->fresh()->show_friends_events);
+    }
 }

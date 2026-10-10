@@ -46,7 +46,7 @@ use OpenApi\Attributes as OA;
 
                                 new OA\Property(
                                     property: 'type',
-                                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Список желаний и список дел открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке',
+                                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Список желаний, список дел и сбор открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке',
                                     type: 'string',
                                     enum: WishlistType::class,
                                     example: 'gift'
@@ -94,7 +94,7 @@ use OpenApi\Attributes as OA;
 
                                 new OA\Property(
                                     property: 'isShared',
-                                    description: 'Открывается ли список по общей ссылке: у списка желаний и списка дел — если доступ включён, у заметки всегда false',
+                                    description: 'Открывается ли список по общей ссылке: у списка желаний, списка дел и сбора — если доступ включён, у заметки всегда false',
                                     type: 'boolean',
                                     example: true
                                 ),
@@ -115,7 +115,7 @@ use OpenApi\Attributes as OA;
 
                                 new OA\Property(
                                     property: 'dueDate',
-                                    description: 'Срок списка дел или дата события списка желаний (Y-m-d); null — дата не указана, у заметки всегда null',
+                                    description: 'Срок списка дел или сбора, дата события списка желаний (Y-m-d); null — дата не указана, у заметки всегда null',
                                     type: 'string',
                                     format: 'date',
                                     nullable: true,
@@ -150,7 +150,7 @@ use OpenApi\Attributes as OA;
 
                                             new OA\Property(
                                                 property: 'urls',
-                                                description: 'Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет',
+                                                description: 'Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет. У цели сбора — ровно одна ссылка на сбор',
                                                 type: 'array',
                                                 maxItems: 3,
                                                 items: new OA\Items(type: 'string', format: 'uri', maxLength: 2048),
@@ -168,7 +168,7 @@ use OpenApi\Attributes as OA;
 
                                             new OA\Property(
                                                 property: 'price',
-                                                description: 'Стоимость в целых рублях (0–10 000 000); null — не указана',
+                                                description: 'Стоимость в целых рублях (0–10 000 000), у цели сбора — целевая сумма (0–100 000 000); null — не указана',
                                                 type: 'integer',
                                                 maximum: 10000000,
                                                 minimum: 0,
@@ -234,7 +234,7 @@ use OpenApi\Attributes as OA;
             properties: [
                 new OA\Property(
                     property: 'type',
-                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать urls, priority и price. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний',
+                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать urls, priority и price. У позиций сбора (целей) обязательна ровно одна ссылка https на разрешённую платформу (Т-Банк, ЮMoney, CloudTips), price — целевая сумма до 100 000 000, priority запрещён. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний',
                     type: 'string',
                     enum: WishlistType::class,
                     example: 'gift'
@@ -265,14 +265,14 @@ use OpenApi\Attributes as OA;
 
                 new OA\Property(
                     property: 'hideSelections',
-                    description: 'Режим сюрприза: скрывать от владельца, какие позиции выбрали гости. Необязателен, по умолчанию true для списка желаний и false для списка дел и заметки',
+                    description: 'Режим сюрприза: скрывать от владельца, какие позиции выбрали гости. Необязателен, по умолчанию true для списка желаний и false для списка дел, заметки и сбора',
                     type: 'boolean',
                     example: false
                 ),
 
                 new OA\Property(
                     property: 'isShared',
-                    description: 'Доступ к списку по общей ссылке. Необязателен, по умолчанию true для списка желаний и false для списка дел; для заметки (type = note) не передаётся',
+                    description: 'Доступ к списку по общей ссылке. Необязателен, по умолчанию true для списка желаний и сбора и false для списка дел; для заметки (type = note) не передаётся',
                     type: 'boolean',
                     example: false
                 ),
@@ -286,7 +286,7 @@ use OpenApi\Attributes as OA;
 
                 new OA\Property(
                     property: 'dueDate',
-                    description: 'Срок списка дел или дата события списка желаний (Y-m-d). Необязательна; у заметки запрещена',
+                    description: 'Срок списка дел или сбора, дата события списка желаний (Y-m-d). Необязательна; у заметки запрещена',
                     type: 'string',
                     format: 'date',
                     nullable: true,
@@ -314,7 +314,7 @@ use OpenApi\Attributes as OA;
 
                             new OA\Property(
                                 property: 'urls',
-                                description: 'Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет',
+                                description: 'Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет. У цели сбора — ровно одна ссылка на сбор',
                                 type: 'array',
                                 maxItems: 3,
                                 items: new OA\Items(type: 'string', format: 'uri', maxLength: 2048),
@@ -332,9 +332,9 @@ use OpenApi\Attributes as OA;
 
                             new OA\Property(
                                 property: 'price',
-                                description: 'Стоимость в целых рублях (0–10 000 000), необязательна; null — не указана',
+                                description: 'Стоимость в целых рублях (0–10 000 000), у цели сбора — целевая сумма (0–100 000 000), необязательна; null — не указана',
                                 type: 'integer',
-                                maximum: 10000000,
+                                maximum: 100000000,
                                 minimum: 0,
                                 nullable: true,
                                 example: 1500
@@ -365,7 +365,7 @@ use OpenApi\Attributes as OA;
 
                             new OA\Property(
                                 property: 'type',
-                                description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Список желаний и список дел открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке',
+                                description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Список желаний, список дел и сбор открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке',
                                 type: 'string',
                                 enum: WishlistType::class,
                                 example: 'gift'
@@ -413,7 +413,7 @@ use OpenApi\Attributes as OA;
 
                             new OA\Property(
                                 property: 'isShared',
-                                description: 'Открывается ли список по общей ссылке: у списка желаний и списка дел — если доступ включён, у заметки всегда false',
+                                description: 'Открывается ли список по общей ссылке: у списка желаний, списка дел и сбора — если доступ включён, у заметки всегда false',
                                 type: 'boolean',
                                 example: true
                             ),
@@ -434,7 +434,7 @@ use OpenApi\Attributes as OA;
 
                             new OA\Property(
                                 property: 'dueDate',
-                                description: 'Срок списка дел или дата события списка желаний (Y-m-d); null — дата не указана',
+                                description: 'Срок списка дел или сбора, дата события списка желаний (Y-m-d); null — дата не указана',
                                 type: 'string',
                                 format: 'date',
                                 nullable: true,
@@ -460,7 +460,7 @@ use OpenApi\Attributes as OA;
 
                                         new OA\Property(
                                             property: 'urls',
-                                            description: 'Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет',
+                                            description: 'Ссылки на товар (http или https), не больше трёх; пустой массив — ссылок нет. У цели сбора — ровно одна ссылка на сбор',
                                             type: 'array',
                                             maxItems: 3,
                                             items: new OA\Items(type: 'string', format: 'uri', maxLength: 2048),
@@ -478,7 +478,7 @@ use OpenApi\Attributes as OA;
 
                                         new OA\Property(
                                             property: 'price',
-                                            description: 'Стоимость в целых рублях (0–10 000 000); null — не указана',
+                                            description: 'Стоимость в целых рублях (0–10 000 000), у цели сбора — целевая сумма (0–100 000 000); null — не указана',
                                             type: 'integer',
                                             maximum: 10000000,
                                             minimum: 0,
@@ -733,6 +733,58 @@ use OpenApi\Attributes as OA;
         new OA\Response(
             response: 404,
             description: 'Список не найден'
+        ),
+
+        new OA\Response(
+            response: 401,
+            description: 'Не авторизован'
+        ),
+    ]
+)]
+
+#[OA\Delete(
+    path: '/v1/wishlists/archived',
+    summary: 'Удалить списки из архива',
+    description: 'Удаляет переданные списки пользователя, которые находятся в архиве. Списки не в архиве, чужие и несуществующие пропускаются: так список, восстановленный или перенесённый в архив после подтверждения, не удаляется. Вместе со списками удаляются позиции, брони, совместные подарки и закладки других пользователей',
+    tags: ['Wishlists'],
+    security: [['bearerAuth' => []]],
+    requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['ids'],
+            properties: [
+                new OA\Property(
+                    property: 'ids',
+                    description: 'ID списков, которые владелец видел в архиве',
+                    type: 'array',
+                    items: new OA\Items(type: 'string'),
+                    example: ['01J0000000000000000000000A']
+                ),
+            ]
+        )
+    ),
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Число удалённых списков',
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'success', type: 'boolean', example: true),
+                    new OA\Property(property: 'statusCode', type: 'integer', example: 200),
+                    new OA\Property(
+                        property: 'data',
+                        properties: [
+                            new OA\Property(property: 'deletedCount', type: 'integer', example: 3),
+                        ],
+                        type: 'object'
+                    ),
+                ]
+            )
+        ),
+
+        new OA\Response(
+            response: 422,
+            description: 'Не передан непустой массив ids'
         ),
 
         new OA\Response(

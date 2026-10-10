@@ -1,17 +1,27 @@
 <script setup lang="ts">
-import { Tag } from '@lucide/vue';
+import { Tag, Target } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
-import { formatPriceDigits, parsePriceInput } from '../../lib/itemPrice';
+import {
+    formatPriceDigits,
+    MAX_FUND_TARGET,
+    MAX_ITEM_PRICE,
+    parsePriceInput,
+} from '../../lib/itemPrice';
 
 // Стоимость позиции в модалках, в целых рублях. Пустое поле — null (стоимость не указана).
 // Пока поле в фокусе, в нём только цифры; после ухода из поля разряды разделяются пробелами
 const model = defineModel<number | null | undefined>();
 
-defineProps<{
-    // Подарок уже выбран гостем: поле серое, как приоритет и карточка
-    muted?: boolean;
-}>();
+const props = withDefaults(
+    defineProps<{
+        // Подарок уже выбран гостем: поле серое, как приоритет и карточка
+        muted?: boolean;
+        // Целевая сумма сбора: другая подпись и больший предел (MAX_FUND_TARGET)
+        target?: boolean;
+    }>(),
+    { muted: false, target: false },
+);
 
 const focused = ref(false);
 
@@ -25,7 +35,10 @@ const handleInput = (event: { target: unknown }): void => {
     if (!(event.target instanceof window.HTMLInputElement)) return;
 
     const input = event.target;
-    const value = parsePriceInput(input.value);
+    const value = parsePriceInput(
+        input.value,
+        props.target ? MAX_FUND_TARGET : MAX_ITEM_PRICE,
+    );
     const normalized = value === null ? '' : String(value);
 
     model.value = value;
@@ -39,17 +52,30 @@ const handleInput = (event: { target: unknown }): void => {
 </script>
 
 <template>
-    <div :class="['price-input', { 'price-input--muted': muted }]">
+    <div
+        :class="[
+            'price-input',
+            { 'price-input--muted': muted, 'price-input--target': target },
+        ]"
+    >
         <!-- Значок перед полем, как у поля ссылки -->
-        <Tag :size="13" class="price-input-icon" aria-hidden="true" />
+        <Target
+            v-if="target"
+            :size="13"
+            class="price-input-icon"
+            aria-hidden="true"
+        />
+        <Tag v-else :size="13" class="price-input-icon" aria-hidden="true" />
 
         <input
             :value="text"
             type="text"
             inputmode="numeric"
             autocomplete="off"
-            placeholder="Цена"
-            aria-label="Стоимость в рублях"
+            :placeholder="target ? 'Цель' : 'Цена'"
+            :aria-label="
+                target ? 'Целевая сумма в рублях' : 'Стоимость в рублях'
+            "
             class="price-input-field"
             @input="handleInput"
             @focus="focused = true"
@@ -65,6 +91,11 @@ const handleInput = (event: { target: unknown }): void => {
     position: relative;
     flex-shrink: 0;
     width: 116px;
+}
+
+// Девятизначная целевая сумма («100 000 000») не помещается в обычную ширину
+.price-input--target {
+    width: 136px;
 }
 
 // Как значок поля ссылки (.item-url-icon в wishlistModal.scss)

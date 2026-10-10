@@ -35,12 +35,17 @@ class UserService
     // Качество WebP (0–100)
     private const AVATAR_QUALITY = 85;
 
-    // Изменение настроек текущего пользователя; пока это только фон приложения
-    public function updateSettings(User $user, AppBackground $background): User
-    {
-        $user->update([
+    // Изменение настроек текущего пользователя: фон приложения и показ строки
+    // «Скоро у друзей» в дашборде; null означает, что настройка не меняется
+    public function updateSettings(
+        User $user,
+        ?AppBackground $background,
+        ?bool $showFriendsEvents = null
+    ): User {
+        $user->update(array_filter([
             'background' => $background,
-        ]);
+            'show_friends_events' => $showFriendsEvents,
+        ], fn ($value) => $value !== null));
 
         return $user;
     }

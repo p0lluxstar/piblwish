@@ -42,6 +42,12 @@ use OpenApi\Attributes as OA;
                                 example: 'blossom'
                             ),
                             new OA\Property(
+                                property: 'showFriendsEvents',
+                                description: 'Показывать в дашборде строку «Скоро у друзей» с ближайшими датами чужих списков',
+                                type: 'boolean',
+                                example: true
+                            ),
+                            new OA\Property(
                                 property: 'avatarUrl',
                                 description: 'Адрес фотографии пользователя; null — фотографии нет, показывается первая буква имени',
                                 type: 'string',
@@ -67,16 +73,22 @@ use OpenApi\Attributes as OA;
 #[OA\Patch(
     path: '/v1/user',
     summary: 'Изменить настройки текущего пользователя',
-    description: 'Сохраняет фон приложения, выбранный пользователем. Фон по умолчанию — blossom. Возвращает пользователя в том же виде, что GET /v1/user.',
+    description: 'Сохраняет фон приложения и показ строки «Скоро у друзей» в дашборде. Можно передать одну или обе настройки, непереданная не меняется; запрос без них отклоняется (422). Фон по умолчанию — blossom, строка по умолчанию показывается. Возвращает пользователя в том же виде, что GET /v1/user.',
     tags: ['User'],
     security: [['bearerAuth' => []]],
     requestBody: new OA\RequestBody(
         required: true,
         content: new OA\JsonContent(
-            required: ['background'],
             properties: [
                 new OA\Property(
+                    property: 'showFriendsEvents',
+                    description: 'Показывать в дашборде строку «Скоро у друзей»',
+                    type: 'boolean',
+                    example: false
+                ),
+                new OA\Property(
                     property: 'background',
+                    description: 'Обязателен, если не передан showFriendsEvents',
                     type: 'string',
                     enum: ['blossom', 'ocean', 'mint', 'sand', 'mist', 'stone', 'cobalt'],
                     example: 'ocean'
@@ -107,6 +119,7 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'username', type: 'string', example: 'john_doe'),
                             new OA\Property(property: 'email', type: 'string', example: 'john@example.com'),
                             new OA\Property(property: 'background', type: 'string', example: 'ocean'),
+                            new OA\Property(property: 'showFriendsEvents', type: 'boolean', example: true),
                             new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
                             new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
@@ -124,7 +137,7 @@ use OpenApi\Attributes as OA;
 
         new OA\Response(
             response: 422,
-            description: 'Ошибка валидации: фон не передан или такого фона нет',
+            description: 'Ошибка валидации: не передана ни одна настройка, такого фона нет или showFriendsEvents не логическое значение',
             content: new OA\JsonContent(
                 properties: [
                     new OA\Property(property: 'success', type: 'boolean', example: false),
@@ -189,6 +202,7 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'username', type: 'string', example: 'john_doe'),
                             new OA\Property(property: 'email', type: 'string', example: 'john@example.com'),
                             new OA\Property(property: 'background', type: 'string', example: 'blossom'),
+                            new OA\Property(property: 'showFriendsEvents', type: 'boolean', example: true),
                             new OA\Property(
                                 property: 'avatarUrl',
                                 type: 'string',
@@ -260,6 +274,7 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'username', type: 'string', example: 'john_doe'),
                             new OA\Property(property: 'email', type: 'string', example: 'john@example.com'),
                             new OA\Property(property: 'background', type: 'string', example: 'blossom'),
+                            new OA\Property(property: 'showFriendsEvents', type: 'boolean', example: true),
                             new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
                             new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
@@ -501,6 +516,7 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'username', type: 'string', example: 'john_doe'),
                             new OA\Property(property: 'email', type: 'string', example: 'new@example.com'),
                             new OA\Property(property: 'background', type: 'string', example: 'blossom'),
+                            new OA\Property(property: 'showFriendsEvents', type: 'boolean', example: true),
                             new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
                             new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],

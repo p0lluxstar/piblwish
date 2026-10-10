@@ -466,6 +466,22 @@ $item-price-height: 26px;
     color: #ef4444;
 }
 
+// Подсказка под ссылкой цели сбора: какие платформы поддерживаются
+// или какая платформа распознана (--ok)
+.item-url-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding-left: 20px;
+    font-size: 12px;
+    color: #8b7a99;
+}
+
+.item-url-hint--ok {
+    color: #16a34a;
+    font-weight: 600;
+}
+
 .remove-btn {
     border: none;
     background: transparent;

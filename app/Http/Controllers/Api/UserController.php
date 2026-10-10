@@ -32,12 +32,17 @@ class UserController extends Controller
         return new UserResource($request->user());
     }
 
-    // Изменить настройки текущего пользователя (фон приложения)
+    // Изменить настройки текущего пользователя: фон приложения
+    // и показ строки «Скоро у друзей»; непереданная настройка не меняется
     public function updateUser(UpdateUserRequest $request): UserResource
     {
+        $background = $request->validated('background');
+        $showFriendsEvents = $request->validated('showFriendsEvents');
+
         $user = $this->userService->updateSettings(
             $request->user(),
-            AppBackground::from($request->validated('background'))
+            $background === null ? null : AppBackground::from($background),
+            $showFriendsEvents === null ? null : (bool) $showFriendsEvents
         );
 
         return new UserResource($user);

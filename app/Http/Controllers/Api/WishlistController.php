@@ -9,6 +9,7 @@ use App\Http\Resources\Wishlist\WishlistResource;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Wishlist\ClearItemSelectionRequest;
 use App\Http\Requests\Wishlist\CreateWishlistRequest;
+use App\Http\Requests\Wishlist\DeleteArchivedWishlistsRequest;
 use App\Services\Wishlist\WishlistService;
 use Illuminate\Support\Facades\Log;
 use App\Http\Requests\Wishlist\UpdateWishlistItemRequest;
@@ -150,6 +151,22 @@ class WishlistController extends Controller
         );
         return response()->json([
             'message' => 'Wishlist deleted successfully',
+        ]);
+    }
+
+    // Удалить списки из архива: только переданные и всё ещё архивные
+    public function deleteArchivedWishlists(
+        DeleteArchivedWishlistsRequest $request
+    ): \Illuminate\Http\JsonResponse {
+        $deletedCount = $this->wishlistService->deleteArchivedWishlists(
+            $request->user(),
+            $request->validated()['ids']
+        );
+
+        return response()->json([
+            'success' => true,
+            'statusCode' => 200,
+            'data' => ['deletedCount' => $deletedCount],
         ]);
     }
 }

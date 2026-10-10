@@ -4,6 +4,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import AppBackgroundPicker from '@/components/user/AppBackgroundPicker.vue';
 import EmailChangeSection from '@/components/user/EmailChangeSection.vue';
+import FriendsEventsToggle from '@/components/user/FriendsEventsToggle.vue';
 import LogoutAllDevicesSection from '@/components/user/LogoutAllDevicesSection.vue';
 import PasswordChangeSection from '@/components/user/PasswordChangeSection.vue';
 import ProfileSection from '@/components/user/ProfileSection.vue';
@@ -71,6 +72,12 @@ const closeModal = (): void => {
                     <h3 class="section-title">Фон приложения</h3>
 
                     <AppBackgroundPicker />
+                </section>
+
+                <section class="background-section">
+                    <h3 class="section-title">Дашборд</h3>
+
+                    <FriendsEventsToggle />
                 </section>
 
                 <EmailChangeSection />

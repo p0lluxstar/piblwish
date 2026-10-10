@@ -13,11 +13,17 @@ const props = defineProps<{
     type: WishlistType;
 }>();
 
-const hint = computed(() =>
-    props.type === 'gift'
-        ? 'Любой, у кого есть ссылка, увидит список и сможет выбрать подарок'
-        : 'Любой, у кого есть ссылка, увидит список',
-);
+const hint = computed(() => {
+    if (props.type === 'gift') {
+        return 'Любой, у кого есть ссылка, увидит список и сможет выбрать подарок';
+    }
+
+    if (props.type === 'fund') {
+        return 'Любой, у кого есть ссылка, увидит цели и сможет перейти к сбору';
+    }
+
+    return 'Любой, у кого есть ссылка, увидит список';
+});
 </script>
 
 <template>

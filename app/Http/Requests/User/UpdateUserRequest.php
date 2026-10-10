@@ -16,15 +16,18 @@ class UpdateUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'background' => ['required', Rule::enum(AppBackground::class)],
+            // Запрос меняет одну или обе настройки; пустой запрос отклоняется
+            'background' => ['required_without:showFriendsEvents', Rule::enum(AppBackground::class)],
+            'showFriendsEvents' => ['sometimes', 'boolean'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'background.required' => 'Выберите фон',
+            'background.required_without' => 'Выберите фон',
             'background.enum' => 'Недопустимый фон',
+            'showFriendsEvents.boolean' => 'Недопустимое значение настройки',
         ];
     }
 }

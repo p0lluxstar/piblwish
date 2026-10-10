@@ -4,12 +4,14 @@ import {
     ArrowDown,
     ArrowLeft,
     ArrowUp,
+    BadgeRussianRuble,
     Gift,
     LayoutList,
     ListChecks,
     Plus,
     RefreshCcw,
     StickyNote,
+    Trash2,
 } from '@lucide/vue';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { isAxiosError } from 'axios';
@@ -19,6 +21,7 @@ import { useRouter } from 'vue-router';
 import { useMotivationalPhrase } from '@/composables/useMotivationalPhrase';
 import {
     useArchivedCount,
+    useDeleteArchivedWishlists,
     useUserWishlists,
     useWishlistArchive,
 } from '@/composables/useWishlistArchive';
@@ -39,6 +42,7 @@ import type {
 } from '../../types/wishlist';
 import ActionToast from '../ui/ActionToast.vue';
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
+import WishlistArchiveClearModal from './WishlistArchiveClearModal.vue';
 import WishlistCard from './WishlistCard.vue';
 import WishlistCardPreview from './WishlistCardPreview.vue';
 import WishlistCreateModal from './WishlistCreateModal.vue';
@@ -95,7 +99,12 @@ const readTypeFilter = (): WishlistTypeFilter => {
     try {
         const value = window.localStorage.getItem(TYPE_FILTER_STORAGE_KEY);
 
-        if (value === 'gift' || value === 'todo' || value === 'note') {
+        if (
+            value === 'gift' ||
+            value === 'todo' ||
+            value === 'fund' ||
+            value === 'note'
+        ) {
             return value;
         }
     } catch {
@@ -119,7 +128,13 @@ watch(typeFilter, (value) => {
 const typeOf = (wishlist: Wishlist): WishlistType => wishlist.type ?? 'gift';
 
 const typeCounts = computed(() => {
-    const counts = { all: wishLists.value.length, gift: 0, todo: 0, note: 0 };
+    const counts = {
+        all: wishLists.value.length,
+        gift: 0,
+        todo: 0,
+        fund: 0,
+        note: 0,
+    };
 
     for (const wishlist of wishLists.value) {
         counts[typeOf(wishlist)] += 1;
@@ -137,6 +152,7 @@ const TYPE_FILTER_OPTIONS: {
     { value: 'all', label: 'Все', icon: LayoutList },
     { value: 'gift', label: 'Желания', icon: Gift },
     { value: 'todo', label: 'Дела', icon: ListChecks },
+    { value: 'fund', label: 'Сборы', icon: BadgeRussianRuble },
     { value: 'note', label: 'Заметки', icon: StickyNote },
 ];
 
@@ -575,22 +591,35 @@ const { moveWishlist } = useWishlistArchive();
 // а уведомление позволяет отменить действие
 const moveWithUndo = (wishlist: Wishlist, archive: boolean): void => {
     const isNote = wishlist.type === 'note';
+    const isFund = wishlist.type === 'fund';
+
+    // «заметку», «сбор», «список» после глагола
+    const subject = isNote ? 'заметку' : isFund ? 'сбор' : 'список';
 
     moveWishlist(wishlist, archive, {
         onError: () => {
             showToast({
                 message: archive
-                    ? `Не удалось перенести ${isNote ? 'заметку' : 'список'} в архив`
-                    : `Не удалось восстановить ${isNote ? 'заметку' : 'список'}`,
+                    ? `Не удалось перенести ${subject} в архив`
+                    : `Не удалось восстановить ${subject}`,
                 tone: 'error',
             });
         },
     });
 
+    const moved = isNote
+        ? 'Заметка перемещена'
+        : isFund
+          ? 'Сбор перемещён'
+          : 'Список перемещён';
+    const restored = isNote
+        ? 'Заметка восстановлена'
+        : isFund
+          ? 'Сбор восстановлен'
+          : 'Список восстановлен';
+
     showToast({
-        message: archive
-            ? `${isNote ? 'Заметка перемещена' : 'Список перемещён'} в архив`
-            : `${isNote ? 'Заметка восстановлена' : 'Список восстановлен'}`,
+        message: archive ? `${moved} в архив` : restored,
         actionLabel: 'Отменить',
         onAction: () =>
             moveWishlist(wishlist, !archive, {
@@ -610,6 +639,31 @@ const archiveWishlist = (wishlist: Wishlist): void => {
 
 const restoreWishlist = (wishlist: Wishlist): void => {
     moveWithUndo(wishlist, false);
+};
+
+// Очистка архива: удаляются все карточки архива, а не только видимые
+// с текущим фильтром
+const isClearArchiveModalOpen = ref(false);
+const { deleteArchived, isPending: isClearingArchive } =
+    useDeleteArchivedWishlists();
+
+const clearArchive = (): void => {
+    deleteArchived(
+        wishLists.value.map((wishlist) => wishlist.id),
+        {
+            onSuccess: () => {
+                isClearArchiveModalOpen.value = false;
+                showToast({ message: 'Архив очищен' });
+            },
+            onError: () => {
+                isClearArchiveModalOpen.value = false;
+                showToast({
+                    message: 'Не удалось очистить архив',
+                    tone: 'error',
+                });
+            },
+        },
+    );
 };
 
 onMounted(generateRandomPhrase);
@@ -698,22 +752,32 @@ onMounted(generateRandomPhrase);
             </button>
         </div>
 
-        <!-- Переход между активными списками и архивом -->
-        <router-link
-            v-if="hasSectionLink"
-            :to="{ name: archived ? 'dashboard' : 'dashboard-archive' }"
-            class="sort-btn section-link"
-        >
-            <template v-if="archived">
-                <ArrowLeft :size="12" aria-hidden="true" />
-                <span>Мои карточки</span>
-            </template>
-            <template v-else>
-                <Archive :size="12" aria-hidden="true" />
-                <span>Архив</span>
-                <span class="sort-count">{{ archivedCount }}</span>
-            </template>
-        </router-link>
+        <!-- Переход между активными списками и архивом, в архиве справа
+             от него — удаление всех карточек архива -->
+        <div v-if="hasSectionLink" class="section-actions">
+            <router-link
+                :to="{ name: archived ? 'dashboard' : 'dashboard-archive' }"
+                class="sort-btn section-link"
+            >
+                <template v-if="archived">
+                    <ArrowLeft :size="12" aria-hidden="true" />
+                    <span>Мои карточки</span>
+                </template>
+                <template v-else>
+                    <Archive :size="12" aria-hidden="true" />
+                    <span>Архив</span>
+                    <span class="sort-count">{{ archivedCount }}</span>
+                </template>
+            </router-link>
+            <button
+                v-if="archived"
+                class="sort-btn clear-btn"
+                @click="isClearArchiveModalOpen = true"
+            >
+                <Trash2 :size="12" aria-hidden="true" />
+                <span>Удалить все</span>
+            </button>
+        </div>
     </div>
 
     <div
@@ -819,6 +883,14 @@ onMounted(generateRandomPhrase);
         :is-pending="isDeleting"
         @close="closeDeleteModal"
         @confirm="deleteWishlist(wishlistToDelete.id)"
+    />
+
+    <WishlistArchiveClearModal
+        v-if="isClearArchiveModalOpen"
+        :count="wishLists.length"
+        :is-pending="isClearingArchive"
+        @close="isClearArchiveModalOpen = false"
+        @confirm="clearArchive"
     />
 
     <ActionToast
@@ -976,10 +1048,26 @@ onMounted(generateRandomPhrase);
     color: var(--app-ink-soft, #6b7280);
 }
 
-// Ссылка между разделами — в конце панели, справа от сортировки
-.section-link {
+// Ссылка между разделами и «Удалить все» — в конце панели, справа от сортировки
+.section-actions {
+    display: flex;
+    gap: 8px;
     margin-left: auto;
+}
+
+.section-link {
     text-decoration: none;
+}
+
+// Удаление всех карточек архива: в розовых тонах кнопки подтверждения удаления
+.clear-btn {
+    color: #ec4899;
+    border-color: rgba(236, 72, 153, 0.35);
+
+    &:hover {
+        color: #ec4899;
+        border-color: #ec4899;
+    }
 }
 
 .grid {

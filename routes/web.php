@@ -61,6 +61,8 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard', RenewReme
     Route::get('/wishlists/{id}/selections', [WishlistController::class, 'getSelectedItems']);
     Route::patch('/wishlists/{id}/items/{itemId}', [WishlistController::class, 'updateWishlistItem']);
     Route::delete('/wishlists/{id}/items/{itemId}/selection', [WishlistController::class, 'clearItemSelection']);
+    // Выше /wishlists/{id}, иначе «archived» попадёт в {id}
+    Route::delete('/wishlists/archived', [WishlistController::class, 'deleteArchivedWishlists']);
     Route::delete('/wishlists/{id}', [WishlistController::class, 'deleteWishlist']);
     Route::post('/wishlists/{id}/archive', [WishlistController::class, 'archiveWishlist']);
     Route::delete('/wishlists/{id}/archive', [WishlistController::class, 'restoreWishlist']);

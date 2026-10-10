@@ -16,7 +16,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['username', 'email', 'password', 'is_active', 'email_verified_at', 'deactivated_at', 'background', 'avatar_path'])]
+#[Fillable(['username', 'email', 'password', 'is_active', 'email_verified_at', 'deactivated_at', 'background', 'show_friends_events', 'avatar_path'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -36,6 +36,7 @@ class User extends Authenticatable
             'deactivated_at' => 'datetime',
             'password' => 'hashed',
             'background' => AppBackground::class,
+            'show_friends_events' => 'boolean',
         ];
     }
 

@@ -79,10 +79,10 @@ const routes: RouteRecordRaw[] = [
 
     {
         // Публичная страница: доступна всем, но шапка зависит от того, авторизован ли пользователь
-        // У списка дел свой адрес; страница после загрузки исправляет адрес,
+        // У списка дел и сбора свои адреса; страница после загрузки исправляет адрес,
         // если он не соответствует типу списка (lib/sharedLink.ts)
         path: '/shared-wishlist/:id',
-        alias: '/shared-todolist/:id',
+        alias: ['/shared-todolist/:id', '/shared-fund/:id'],
         component: DashboardLayout,
         meta: { loadUser: true },
         children: [

@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { Gift, Hourglass, ListChecks, PartyPopper, X } from '@lucide/vue';
+import {
+    BadgeRussianRuble,
+    Gift,
+    Hourglass,
+    ListChecks,
+    PartyPopper,
+    X,
+} from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 import UserAvatar from '@/components/ui/UserAvatar.vue';
@@ -21,17 +28,21 @@ const emit = defineEmits<{
 
 const isTodo = computed(() => props.wishlist.type === 'todo');
 
+const isFund = computed(() => props.wishlist.type === 'fund');
+
 const sharedPath = computed(() =>
     getSharedWishlistPath(props.wishlist.id, props.wishlist.type ?? 'gift'),
 );
 
 const ownerName = computed(() => props.wishlist.username ?? 'Пользователь');
 
-// «Выбрано 2 из 5» у списка желаний, «Выполнено 2 из 5» у списка дел
+// «Выбрано 2 из 5» у списка желаний, «Выполнено 2 из 5» у списка дел,
+// «Целей: 2» у сбора: сколько собрано, сервис не знает
 const progressLabel = computed(() => {
     const { itemsCount, selectedCount } = props.wishlist;
 
     if (!itemsCount) return 'Список пуст';
+    if (isFund.value) return `Целей: ${itemsCount}`;
 
     return `${isTodo.value ? 'Выполнено' : 'Выбрано'} ${selectedCount ?? 0} из ${itemsCount}`;
 });
@@ -77,7 +88,14 @@ const confirmRemove = (): void => {
     >
         <div class="card-top">
             <span
-                v-if="wishlist.available"
+                v-if="wishlist.available && isFund"
+                class="card-type card-type--fund"
+            >
+                <BadgeRussianRuble :size="12" />
+                Сбор
+            </span>
+            <span
+                v-else-if="wishlist.available"
                 :class="[
                     'card-type',
                     isTodo ? 'card-type--todo' : 'card-type--gift',
@@ -153,7 +171,11 @@ const confirmRemove = (): void => {
                 :datetime="wishlist.dueDate ?? undefined"
                 :title="dueDateLabel"
             >
-                <Hourglass v-if="isTodo" :size="12" aria-hidden="true" />
+                <Hourglass
+                    v-if="isTodo || isFund"
+                    :size="12"
+                    aria-hidden="true"
+                />
                 <PartyPopper v-else :size="12" aria-hidden="true" />
                 <span class="sr-only">{{ dueDateLabel }}.</span>
                 {{ dueStatus.text }}
@@ -222,6 +244,11 @@ const confirmRemove = (): void => {
 .card-type--todo {
     background: rgba(16, 185, 129, 0.14);
     color: #059669;
+}
+
+.card-type--fund {
+    background: rgba(236, 72, 153, 0.13);
+    color: #be185d;
 }
 
 .remove-btn {

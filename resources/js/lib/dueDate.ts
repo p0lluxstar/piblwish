@@ -48,12 +48,25 @@ export const formatDays = (count: number): string => {
     return `${count} дней`;
 };
 
-// Подпись к дате: «Сделать до» у списка дел, «Дата события» у списка желаний
-export const dueDateTitle = (type: WishlistType): string =>
-    type === 'todo' ? 'Сделать до' : 'Дата события';
+// Подпись к дате: «Сделать до» у списка дел, «Сбор до» у сбора,
+// «Дата события» у списка желаний
+export const dueDateTitle = (type: WishlistType): string => {
+    if (type === 'todo') return 'Сделать до';
+    if (type === 'fund') return 'Сбор до';
 
-// soon — срок списка дел через 3 дня или раньше, today — дата наступила сегодня,
-// overdue — срок списка дел прошёл
+    return 'Дата события';
+};
+
+// «Остался 21 день», «Осталось 5 дней»
+const formatDaysLeft = (days: number): string => {
+    const verb = days % 10 === 1 && days % 100 !== 11 ? 'Остался' : 'Осталось';
+
+    return `${verb} ${formatDays(days)}`;
+};
+
+// soon — срок списка дел или сбора через 3 дня или раньше, today — дата наступила
+// сегодня, overdue — срок списка дел прошёл. Прошедший срок сбора просрочкой
+// не считается: это не невыполненная обязанность, поэтому тон у него normal
 export type DueDateTone = 'normal' | 'soon' | 'today' | 'overdue';
 
 export interface DueDateStatus {
@@ -63,7 +76,8 @@ export interface DueDateStatus {
 }
 
 // Сколько осталось до даты списка; null — счётчик не показывается:
-// все дела выполнены или событие списка желаний уже прошло
+// все дела выполнены или событие списка желаний уже прошло.
+// isCompleted учитывается только у списка дел
 export const getDueDateStatus = (
     type: WishlistType,
     dueDate: string,
@@ -84,12 +98,19 @@ export const getDueDateStatus = (
         if (days === 0) return { text: 'Срок сегодня', tone: 'today' };
         if (days === 1) return { text: 'Срок завтра', tone: 'soon' };
 
-        // «Остался 21 день», «Осталось 5 дней»
-        const verb =
-            days % 10 === 1 && days % 100 !== 11 ? 'Остался' : 'Осталось';
+        return {
+            text: formatDaysLeft(days),
+            tone: days <= 3 ? 'soon' : 'normal',
+        };
+    }
+
+    if (type === 'fund') {
+        if (days < 0) return { text: 'Срок сбора прошёл', tone: 'normal' };
+        if (days === 0) return { text: 'Срок сегодня', tone: 'today' };
+        if (days === 1) return { text: 'Срок завтра', tone: 'soon' };
 
         return {
-            text: `${verb} ${formatDays(days)}`,
+            text: formatDaysLeft(days),
             tone: days <= 3 ? 'soon' : 'normal',
         };
     }

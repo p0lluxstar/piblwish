@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {
     ArrowLeft,
+    BadgeRussianRuble,
+    Check,
     ChevronDown,
     ChevronUp,
     Gift,
@@ -14,8 +16,10 @@ import {
 import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 
 import { useItemReorder } from '../../composables/useItemReorder';
+import { FUND_PLATFORMS_TEXT } from '../../constants/fundHosts';
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
 import { daysUntil } from '../../lib/dueDate';
+import { getFundPlatformOfInput, getFundUrlError } from '../../lib/fundUrl';
 import {
     getItemUrlErrors,
     MAX_ITEM_URLS,
@@ -61,9 +65,9 @@ const defaultForm = (type: WishlistType = 'gift'): WishlistForm => ({
     // Выбор гостей, однажды увиденный владельцем, уже не скрыть,
     // поэтому список желаний по умолчанию создаётся в режиме сюрприза
     hideSelections: true,
-    // Список желаний по умолчанию открыт по ссылке: его создают, чтобы поделиться.
+    // Список желаний и сбор по умолчанию открыты по ссылке: их создают, чтобы поделиться.
     // Список дел по умолчанию личный: доступ по ссылке владелец включает сам
-    isShared: type === 'gift',
+    isShared: type === 'gift' || type === 'fund',
     guestsCanCheck: false,
     // Имя гостя по умолчанию обязательно: ради подписей под делами отметки и включают
     guestNameRequired: true,
@@ -87,9 +91,9 @@ const sourceForm = (source: Wishlist): WishlistForm => ({
     content: source.content ?? '',
     color: source.color,
     hideSelections: source.hideSelections ?? false,
-    // Копия списка желаний открыта по ссылке, как новый список желаний. Копия
+    // Копия списка желаний и сбора открыта по ссылке, как новый список. Копия
     // списка дел создаётся личной: ссылку на неё владелец ещё никому не давал
-    isShared: (source.type ?? 'gift') === 'gift',
+    isShared: (source.type ?? 'gift') !== 'todo',
     guestsCanCheck: source.guestsCanCheck ?? false,
     guestNameRequired: source.guestNameRequired ?? true,
     // Прошедшая дата копии не нужна: копию обычно делают для следующего события
@@ -148,13 +152,19 @@ const isTodo = computed(() => form.value.type === 'todo');
 // Заметка: вместо названия и позиций одно текстовое поле
 const isNote = computed(() => form.value.type === 'note');
 
+// Сбор: у каждой цели одна обязательная ссылка на сбор и целевая сумма
+const isFund = computed(() => form.value.type === 'fund');
+
 const modalTitle = computed(() => {
     if (props.source) {
-        return isNote.value ? 'Дублировать заметку' : 'Дублировать список';
+        if (isNote.value) return 'Дублировать заметку';
+
+        return isFund.value ? 'Дублировать сбор' : 'Дублировать список';
     }
 
     if (step.value === 'type') return 'Новая карточка';
     if (isNote.value) return 'Новая заметка';
+    if (isFund.value) return 'Новый сбор';
 
     return isTodo.value ? 'Новый список дел' : 'Новый список желаний';
 });
@@ -240,6 +250,24 @@ const prepareItems = (): WishlistItem[] | null => {
             .map((item) => ({ label: item.label, isSelected: false }));
     }
 
+    // У цели сбора одна обязательная ссылка на разрешённую платформу и нет приоритета
+    if (isFund.value) {
+        urlErrors.value = form.value.items.map((item) =>
+            item.label.trim() ? [getFundUrlError(item.urls?.[0]) !== null] : [],
+        );
+
+        if (urlErrors.value.some((errors) => errors.some(Boolean))) return null;
+
+        return form.value.items
+            .filter((item) => item.label.trim())
+            .map((item) => ({
+                label: item.label,
+                urls: normalizeItemUrls(item.urls),
+                price: item.price ?? null,
+                isSelected: false,
+            }));
+    }
+
     // Ссылки пустых позиций не проверяются: такие позиции не отправляются
     urlErrors.value = form.value.items.map((item) =>
         item.label.trim() ? getItemUrlErrors(item.urls) : [],
@@ -280,8 +308,8 @@ const handleSubmit = (): void => {
         type: form.value.type,
         title: form.value.title,
         color: form.value.color,
-        // У списка дел нет режима сюрприза, а отметки гостей настраиваются только у него
-        hideSelections: !isTodo.value && form.value.hideSelections,
+        // Режим сюрприза есть только у списка желаний, а отметки гостей — только у списка дел
+        hideSelections: form.value.type === 'gift' && form.value.hideSelections,
         isShared: form.value.isShared,
         dueDate: form.value.dueDate || null,
         ...(isTodo.value
@@ -399,6 +427,24 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                 <button
                     class="type-option"
                     type="button"
+                    @click="chooseType('fund')"
+                >
+                    <span class="type-option-icon">
+                        <BadgeRussianRuble :size="22" />
+                    </span>
+
+                    <span class="type-option-text">
+                        <span class="type-option-title">Сбор</span>
+                        <span class="type-option-description">
+                            Цели со ссылками на сбор денег в банке или сервисе
+                            переводов; друзья переходят по ним и делают перевод
+                        </span>
+                    </span>
+                </button>
+
+                <button
+                    class="type-option"
+                    type="button"
                     @click="chooseType('note')"
                 >
                     <span class="type-option-icon">
@@ -437,7 +483,9 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                         :placeholder="
                             isTodo
                                 ? 'Например: Дела на выходные'
-                                : 'Например: День рождения'
+                                : isFund
+                                  ? 'Например: Мои цели'
+                                  : 'Например: День рождения'
                         "
                         @input="isTitleMissing = false"
                     />
@@ -509,19 +557,30 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                 </div>
 
                 <div v-else class="form-group">
-                    <label>{{ isTodo ? 'Дела' : 'Список желаний' }}</label>
+                    <label>
+                        {{
+                            isTodo
+                                ? 'Дела'
+                                : isFund
+                                  ? 'Цели сбора'
+                                  : 'Список желаний'
+                        }}
+                    </label>
 
                     <div
                         v-for="(item, index) in form.items"
                         :key="itemKey(item)"
                         :class="[
                             'wishlist-item',
-                            { 'wishlist-item--todo': isTodo },
+                            { 'wishlist-item--todo': isTodo || isFund },
                         ]"
                     >
                         <div class="wishlist-item-fields">
-                            <!-- Приоритет над полем описания у левого края -->
-                            <div v-if="!isTodo" class="item-meta-row">
+                            <!-- Приоритет над полем описания у левого края; у дел и целей сбора его нет -->
+                            <div
+                                v-if="form.type === 'gift'"
+                                class="item-meta-row"
+                            >
                                 <ItemPriorityPicker v-model="item.priority" />
                             </div>
 
@@ -531,13 +590,74 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                                 :placeholder="
                                     isTodo
                                         ? 'Например: Купить продукты'
-                                        : 'Например: Книга'
+                                        : isFund
+                                          ? 'Например: На машину'
+                                          : 'Например: Книга'
                                 "
                             />
 
+                            <!-- Цель сбора: одна обязательная ссылка на сбор и целевая сумма.
+                                 Платформа определяется по ссылке и показывается под полем -->
+                            <div v-if="isFund" class="item-branches">
+                                <div class="item-url-row">
+                                    <Link
+                                        :size="13"
+                                        class="item-url-icon"
+                                        aria-hidden="true"
+                                    />
+
+                                    <input
+                                        :value="item.urls?.[0] ?? ''"
+                                        type="text"
+                                        inputmode="url"
+                                        autocomplete="off"
+                                        :class="[
+                                            'item-url-input',
+                                            {
+                                                'item-url-input--error':
+                                                    urlErrors[index]?.[0],
+                                            },
+                                        ]"
+                                        placeholder="Ссылка на сбор"
+                                        :aria-invalid="
+                                            urlErrors[index]?.[0] || undefined
+                                        "
+                                        @input="setItemUrl(index, 0, $event)"
+                                    />
+                                </div>
+
+                                <span
+                                    v-if="urlErrors[index]?.[0]"
+                                    class="item-url-error"
+                                >
+                                    {{ getFundUrlError(item.urls?.[0]) }}
+                                </span>
+
+                                <span
+                                    v-else-if="
+                                        getFundPlatformOfInput(item.urls?.[0])
+                                    "
+                                    class="item-url-hint item-url-hint--ok"
+                                >
+                                    <Check :size="12" aria-hidden="true" />
+                                    {{ getFundPlatformOfInput(item.urls?.[0]) }}
+                                </span>
+
+                                <span v-else class="item-url-hint">
+                                    Поддерживаются: {{ FUND_PLATFORMS_TEXT }}
+                                </span>
+
+                                <div class="item-price-row">
+                                    <ItemPriceInput
+                                        v-model="item.price"
+                                        target
+                                    />
+                                </div>
+                            </div>
+
                             <!-- Ссылка и цена соединены с полем описания линиями-ветвями:
                                  они относятся к этой позиции -->
-                            <div v-if="!isTodo" class="item-branches">
+                            <div v-else-if="!isTodo" class="item-branches">
                                 <div
                                     v-for="(url, urlIndex) in item.urls"
                                     :key="urlIndex"
@@ -661,7 +781,13 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                     </div>
 
                     <button class="add-item-btn" type="button" @click="addItem">
-                        {{ isTodo ? '+ Добавить дело' : '+ Добавить желание' }}
+                        {{
+                            isTodo
+                                ? '+ Добавить дело'
+                                : isFund
+                                  ? '+ Добавить цель'
+                                  : '+ Добавить желание'
+                        }}
                     </button>
                 </div>
 
