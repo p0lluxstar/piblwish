@@ -24,11 +24,7 @@ class SharedWishlistService
         string $id
     ): Wishlist {
         return Wishlist::query()
-            ->where(fn (Builder $query) => $query
-                ->where('type', WishlistType::Gift)
-                ->orWhere(fn (Builder $query) => $query
-                    ->where('type', WishlistType::Todo)
-                    ->where('is_shared', true)))
+            ->openByLink()
             ->with(['items.jointGift', 'user'])
             ->findOrFail($id);
     }

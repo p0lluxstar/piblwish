@@ -10,6 +10,7 @@ import HelpPage from '@/pages/HelpPage.vue';
 import LoginPage from '@/pages/LoginPage.vue';
 import MainPage from '@/pages/MainPage.vue';
 import RegistrationPage from '@/pages/RegistrationPage.vue';
+import SavedWishlistsPage from '@/pages/SavedWishlistsPage.vue';
 import WishlistSharedPage from '@/pages/WishlistSharedPage.vue';
 import { useAuthStore } from '@/stores/auth';
 
@@ -51,6 +52,20 @@ const routes: RouteRecordRaw[] = [
                 path: '',
                 name: 'dashboard',
                 component: DashboardPage,
+            },
+        ],
+    },
+
+    {
+        // Чужие списки, добавленные к себе с общей страницы
+        path: '/saved',
+        component: DashboardLayout,
+        meta: { requiresAuth: true },
+        children: [
+            {
+                path: '',
+                name: 'saved-wishlists',
+                component: SavedWishlistsPage,
             },
         ],
     },

@@ -81,6 +81,9 @@ export interface Wishlist {
     guestsCanCheck?: boolean;
     // Должен ли гость указать имя, отмечая дела; у списка желаний и заметки false
     guestNameRequired?: boolean;
+    // Срок списка дел или дата события списка желаний (Y-m-d); null — дата
+    // не указана, у заметки всегда null
+    dueDate?: string | null;
     username: string | null;
     // Фотография владельца; приходит только на общей странице
     avatarUrl?: string | null;
@@ -107,6 +110,8 @@ export type WishlistForm = Pick<Wishlist, 'color' | 'items'> & {
     guestsCanCheck: boolean;
     // Обязательно ли гостю указывать имя; у других типов не отправляется
     guestNameRequired: boolean;
+    // Дата списка (Y-m-d); пустая строка — дата не указана. У заметки не отправляется
+    dueDate: string;
 };
 
 // Данные запроса на создание: у списка нет content, у заметки — title, items
@@ -124,7 +129,10 @@ export type WishlistCreatePayload = Pick<WishlistForm, 'type' | 'color'> &
             | 'guestNameRequired'
             | 'items'
         >
-    >;
+    > & {
+        // null убирает дату при изменении
+        dueDate?: string | null;
+    };
 
 // Данные запроса на изменение: тип после создания не меняется
 export type WishlistUpdatePayload = Omit<WishlistCreatePayload, 'type'> & {

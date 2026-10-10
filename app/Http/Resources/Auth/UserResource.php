@@ -20,6 +20,8 @@ class UserResource extends ApiResource
             'background' => ($this->background ?? AppBackground::Blossom)->value,
             // Адрес фотографии или null — тогда показывается первая буква имени
             'avatarUrl' => $this->avatarUrl(),
+            // Дата регистрации, показывается в окне настроек аккаунта
+            'createdAt' => $this->created_at?->toIso8601String(),
         ];
     }
 }

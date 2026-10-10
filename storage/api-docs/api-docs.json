@@ -274,6 +274,169 @@
                 ]
             }
         },
+        "/v1/saved-wishlists": {
+            "get": {
+                "tags": [
+                    "Saved wishlists"
+                ],
+                "summary": "Чужие списки пользователя, последние добавленные — первыми",
+                "operationId": "1b5df88744eb1f5b5e3905bdb5c678bb",
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/SavedWishlist"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/v1/saved-wishlists/{id}": {
+            "post": {
+                "tags": [
+                    "Saved wishlists"
+                ],
+                "summary": "Добавить чужой список к себе",
+                "description": "Добавить можно список желаний или список дел с доступом по ссылке. Повторное добавление возвращает прежнюю запись",
+                "operationId": "81e18fdd578ebee1a3ea49d6f9b3a047",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID списка",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список добавлен",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/SavedWishlist"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Список не найден или не открывается по ссылке (заметка, закрытый список дел)"
+                    },
+                    "422": {
+                        "description": "Свой список нельзя добавить в чужие"
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Saved wishlists"
+                ],
+                "summary": "Убрать список из чужих",
+                "description": "Отсутствующая запись не считается ошибкой",
+                "operationId": "8553567bd7bc2be8d7b0df0436e9355d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID списка",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список убран",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "example": "01jq3v7x8k2m4n6p8r0t2w4y6z"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/shared-wishlists/{id}": {
             "get": {
                 "tags": [
@@ -337,6 +500,12 @@
                                                 "guestNameRequired": {
                                                     "description": "Должен ли гость указать имя, отмечая дела; false, если отмечать нельзя",
                                                     "type": "boolean"
+                                                },
+                                                "dueDate": {
+                                                    "description": "Срок списка дел или дата события списка желаний (Y-m-d); null — дата не указана",
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "nullable": true
                                                 },
                                                 "username": {
                                                     "type": "string",
@@ -849,6 +1018,11 @@
                                                     "type": "string",
                                                     "example": "https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp",
                                                     "nullable": true
+                                                },
+                                                "createdAt": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "example": "2026-09-12T10:15:00+00:00"
                                                 }
                                             },
                                             "type": "object"
@@ -993,6 +1167,11 @@
                                                     "type": "string",
                                                     "example": null,
                                                     "nullable": true
+                                                },
+                                                "createdAt": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "example": "2026-09-12T10:15:00+00:00"
                                                 }
                                             },
                                             "type": "object"
@@ -1117,6 +1296,11 @@
                                                 "avatarUrl": {
                                                     "type": "string",
                                                     "example": "https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp"
+                                                },
+                                                "createdAt": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "example": "2026-09-12T10:15:00+00:00"
                                                 }
                                             },
                                             "type": "object"
@@ -1221,6 +1405,11 @@
                                                     "type": "string",
                                                     "example": null,
                                                     "nullable": true
+                                                },
+                                                "createdAt": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "example": "2026-09-12T10:15:00+00:00"
                                                 }
                                             },
                                             "type": "object"
@@ -1543,6 +1732,11 @@
                                                     "type": "string",
                                                     "example": null,
                                                     "nullable": true
+                                                },
+                                                "createdAt": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "example": "2026-09-12T10:15:00+00:00"
                                                 }
                                             },
                                             "type": "object"
@@ -1690,6 +1884,13 @@
                                                         "type": "boolean",
                                                         "example": true
                                                     },
+                                                    "dueDate": {
+                                                        "description": "Срок списка дел или дата события списка желаний (Y-m-d); null — дата не указана, у заметки всегда null",
+                                                        "type": "string",
+                                                        "format": "date",
+                                                        "example": "2026-12-31",
+                                                        "nullable": true
+                                                    },
                                                     "items": {
                                                         "type": "array",
                                                         "items": {
@@ -1834,6 +2035,13 @@
                                         "type": "boolean",
                                         "example": true
                                     },
+                                    "dueDate": {
+                                        "description": "Срок списка дел или дата события списка желаний (Y-m-d). Необязательна; у заметки запрещена",
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-12-31",
+                                        "nullable": true
+                                    },
                                     "guestsCanCheck": {
                                         "description": "Разрешить гостям отмечать дела выполненными по ссылке (снять отметку может только владелец). Необязателен, по умолчанию false; передаётся только для списка дел и действует при isShared = true",
                                         "type": "boolean",
@@ -1965,6 +2173,13 @@
                                                     "description": "Должен ли гость указать имя, отмечая дела; у списка желаний и заметки false",
                                                     "type": "boolean",
                                                     "example": true
+                                                },
+                                                "dueDate": {
+                                                    "description": "Срок списка дел или дата события списка желаний (Y-m-d); null — дата не указана",
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "example": "2026-12-31",
+                                                    "nullable": true
                                                 },
                                                 "items": {
                                                     "type": "array",
@@ -2270,6 +2485,87 @@
     },
     "components": {
         "schemas": {
+            "SavedWishlist": {
+                "description": "Сводка чужого списка. Если владелец закрыл доступ к списку дел, available = false и поля списка равны null",
+                "properties": {
+                    "id": {
+                        "description": "ID самого списка",
+                        "type": "string",
+                        "example": "01jq3v7x8k2m4n6p8r0t2w4y6z"
+                    },
+                    "available": {
+                        "description": "Открывается ли список по ссылке",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "savedAt": {
+                        "description": "Когда список добавлен",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-10-10T09:15:00+00:00"
+                    },
+                    "username": {
+                        "description": "Имя владельца",
+                        "type": "string",
+                        "example": "anna",
+                        "nullable": true
+                    },
+                    "avatarUrl": {
+                        "description": "Фотография владельца; null — показывается первая буква имени",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "type": {
+                        "type": "string",
+                        "example": "gift",
+                        "nullable": true,
+                        "enum": [
+                            "gift",
+                            "todo"
+                        ]
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "День рождения",
+                        "nullable": true
+                    },
+                    "color": {
+                        "type": "string",
+                        "example": "mint",
+                        "nullable": true,
+                        "enum": [
+                            "white",
+                            "lavender",
+                            "pink",
+                            "peach",
+                            "lemon",
+                            "mint",
+                            "sky"
+                        ]
+                    },
+                    "dueDate": {
+                        "description": "Срок списка дел или дата события списка желаний (Y-m-d)",
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-12-31",
+                        "nullable": true
+                    },
+                    "itemsCount": {
+                        "description": "Число позиций",
+                        "type": "integer",
+                        "example": 5,
+                        "nullable": true
+                    },
+                    "selectedCount": {
+                        "description": "Выбранные гостями подарки или выполненные дела",
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "SharedWishlistReservation": {
                 "description": "Бронь гостя: позиции, выбранные за одно сохранение",
                 "properties": {
@@ -2333,6 +2629,10 @@
         }
     },
     "tags": [
+        {
+            "name": "Saved wishlists",
+            "description": "Чужие списки, добавленные пользователем к себе с общей страницы"
+        },
         {
             "name": "Shared wishlists",
             "description": "Общая страница списка: выбор подарков гостями и отмена выбора"

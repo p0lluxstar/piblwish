@@ -5,6 +5,7 @@ use App\Http\Middleware\RenewRememberCookie;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WishlistController;
+use App\Http\Controllers\Api\SavedWishlistController;
 
 /*
 |--------------------------------------------------------------------------
@@ -61,6 +62,10 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard', RenewReme
     Route::patch('/wishlists/{id}/items/{itemId}', [WishlistController::class, 'updateWishlistItem']);
     Route::delete('/wishlists/{id}/items/{itemId}/selection', [WishlistController::class, 'clearItemSelection']);
     Route::delete('/wishlists/{id}', [WishlistController::class, 'deleteWishlist']);
+    // Чужие списки, добавленные к себе с общей страницы; {id} — id самого списка
+    Route::get('/saved-wishlists', [SavedWishlistController::class, 'getSavedWishlists']);
+    Route::post('/saved-wishlists/{id}', [SavedWishlistController::class, 'saveWishlist']);
+    Route::delete('/saved-wishlists/{id}', [SavedWishlistController::class, 'removeSavedWishlist']);
 });
 
 /**

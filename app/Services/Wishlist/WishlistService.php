@@ -74,8 +74,8 @@ class WishlistService
             // Обновляются только переданные поля
             $attributes = $this->wishlistAttributes($data);
 
-            // У заметки изменяются только цвет и текст: названия, позиций
-            // и режима сюрприза у неё нет
+            // У заметки изменяются только цвет и текст: названия, позиций,
+            // режима сюрприза и даты у неё нет
             if ($wishlist->isNote()) {
                 $attributes = Arr::only($attributes, ['color']) + Arr::only($data, ['content']);
             }
@@ -326,6 +326,11 @@ class WishlistService
 
         if (array_key_exists('guestNameRequired', $data)) {
             $attributes['guest_name_required'] = (bool) $data['guestNameRequired'];
+        }
+
+        // null убирает дату
+        if (array_key_exists('dueDate', $data)) {
+            $attributes['due_date'] = $data['dueDate'];
         }
 
         return $attributes;

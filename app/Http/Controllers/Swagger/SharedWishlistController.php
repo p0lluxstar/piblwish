@@ -98,6 +98,13 @@ use OpenApi\Attributes as OA;
                                 description: 'Должен ли гость указать имя, отмечая дела; false, если отмечать нельзя',
                                 type: 'boolean'
                             ),
+                            new OA\Property(
+                                property: 'dueDate',
+                                description: 'Срок списка дел или дата события списка желаний (Y-m-d); null — дата не указана',
+                                type: 'string',
+                                format: 'date',
+                                nullable: true
+                            ),
                             new OA\Property(property: 'username', type: 'string', nullable: true),
                             new OA\Property(
                                 property: 'avatarUrl',

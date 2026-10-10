@@ -55,6 +55,12 @@ class User extends Authenticatable
         return $this->hasMany(Wishlist::class);
     }
 
+    // Чужие списки, добавленные к себе с общей страницы
+    public function savedWishlists(): HasMany
+    {
+        return $this->hasMany(SavedWishlist::class);
+    }
+
     // Адрес фотографии на диске public или null, если фотографии нет
     public function avatarUrl(): ?string
     {

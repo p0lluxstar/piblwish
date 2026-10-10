@@ -308,12 +308,15 @@ class UserService
     // Удаление аккаунта текущего пользователя.
     // Запись пользователя не удаляется, а деактивируется через deactivated_at.
     // Вишлисты удаляются, их позиции — каскадно на уровне БД.
+    // Добавленные к себе чужие списки удаляются явно: запись пользователя
+    // остаётся, поэтому каскад по user_id не срабатывает.
     public function deleteAccount(Request $request): void
     {
         $user = $request->user();
 
         DB::transaction(function () use ($user): void {
             $user->wishlists()->delete();
+            $user->savedWishlists()->delete();
 
             $user->update([
                 'deactivated_at' => now(),

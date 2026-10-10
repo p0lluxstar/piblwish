@@ -47,6 +47,17 @@ class CreateWishlistRequest extends FormRequest
             // Действует, только если включён guestsCanCheck
             'guestNameRequired' => ['sometimes', 'boolean', 'prohibited_unless:type,todo'],
 
+            // Срок списка дел или дата события списка желаний; необязательна.
+            // У заметки даты нет. Границы отсекают опечатки в годе
+            'dueDate' => [
+                'sometimes',
+                'nullable',
+                'prohibited_if:type,note',
+                'date_format:Y-m-d',
+                'after_or_equal:2000-01-01',
+                'before:2100-01-01',
+            ],
+
             // У заметки нет позиций
             'items' => ['prohibited_if:type,note', 'required_unless:type,note', 'array', 'min:1'],
 
@@ -112,6 +123,11 @@ class CreateWishlistRequest extends FormRequest
             'isShared.prohibited_unless' => 'Доступ по ссылке включается только у списка дел',
             'guestsCanCheck.prohibited_unless' => 'Отмечать позиции по ссылке гости могут только в списке дел',
             'guestNameRequired.prohibited_unless' => 'Имя гостя запрашивается только в списке дел',
+
+            'dueDate.prohibited_if' => 'У заметки нет даты',
+            'dueDate.date_format' => 'Некорректная дата',
+            'dueDate.after_or_equal' => 'Некорректная дата',
+            'dueDate.before' => 'Некорректная дата',
 
             'items.required_unless' => 'Добавьте хотя бы один элемент',
             'items.prohibited_if' => 'У заметки нет позиций',

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import {
+    Bookmark,
     CircleQuestionMark,
     Gift,
     LayoutList,
     LogOut,
-    Mail,
     Settings,
 } from '@lucide/vue';
 import { computed, ref } from 'vue';
@@ -83,17 +83,19 @@ const handleDeleteAccount = (): void => {
                     <LayoutList :size="16" />
                     <span class="btn-text">Мои карточки</span>
                 </router-link>
+                <!-- Чужие списки, добавленные к себе с общей страницы -->
+                <router-link
+                    v-if="auth.user"
+                    to="/saved"
+                    class="nav-link"
+                    aria-label="Чужие списки"
+                >
+                    <Bookmark :size="16" />
+                    <span class="btn-text">Чужие списки</span>
+                </router-link>
                 <router-link to="/help" class="nav-link" aria-label="Помощь">
                     <CircleQuestionMark :size="16" />
                     <span class="btn-text">Помощь</span>
-                </router-link>
-                <router-link
-                    to="/contacts"
-                    class="nav-link"
-                    aria-label="Контакты"
-                >
-                    <Mail :size="16" />
-                    <span class="btn-text">Контакты</span>
                 </router-link>
             </nav>
             <div v-if="auth.user" class="user-info">

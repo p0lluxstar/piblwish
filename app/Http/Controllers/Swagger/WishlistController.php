@@ -104,6 +104,15 @@ use OpenApi\Attributes as OA;
                                 ),
 
                                 new OA\Property(
+                                    property: 'dueDate',
+                                    description: 'Срок списка дел или дата события списка желаний (Y-m-d); null — дата не указана, у заметки всегда null',
+                                    type: 'string',
+                                    format: 'date',
+                                    nullable: true,
+                                    example: '2026-12-31'
+                                ),
+
+                                new OA\Property(
                                     property: 'items',
                                     type: 'array',
                                     items: new OA\Items(
@@ -244,6 +253,15 @@ use OpenApi\Attributes as OA;
                 ),
 
                 new OA\Property(
+                    property: 'dueDate',
+                    description: 'Срок списка дел или дата события списка желаний (Y-m-d). Необязательна; у заметки запрещена',
+                    type: 'string',
+                    format: 'date',
+                    nullable: true,
+                    example: '2026-12-31'
+                ),
+
+                new OA\Property(
                     property: 'guestsCanCheck',
                     description: 'Разрешить гостям отмечать дела выполненными по ссылке (снять отметку может только владелец). Необязателен, по умолчанию false; передаётся только для списка дел и действует при isShared = true',
                     type: 'boolean',
@@ -380,6 +398,15 @@ use OpenApi\Attributes as OA;
                                 description: 'Должен ли гость указать имя, отмечая дела; у списка желаний и заметки false',
                                 type: 'boolean',
                                 example: true
+                            ),
+
+                            new OA\Property(
+                                property: 'dueDate',
+                                description: 'Срок списка дел или дата события списка желаний (Y-m-d); null — дата не указана',
+                                type: 'string',
+                                format: 'date',
+                                nullable: true,
+                                example: '2026-12-31'
                             ),
 
                             new OA\Property(

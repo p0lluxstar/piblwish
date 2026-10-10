@@ -14,6 +14,17 @@ const auth = useAuthStore();
 const username = computed(() => auth.user?.username ?? '');
 const avatarUrl = computed(() => auth.user?.avatarUrl ?? null);
 
+// «С 12 сентября 2026 г.»
+const registeredAt = computed(() => {
+    if (!auth.user?.createdAt) return '';
+
+    return new Date(auth.user.createdAt).toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
+});
+
 const {
     mutate: deleteAvatar,
     isPending: isDeleting,
@@ -99,6 +110,9 @@ const confirmDelete = (): void => {
             <div class="profile-info">
                 <span class="profile-label">Имя пользователя</span>
                 <span class="profile-username">{{ username }}</span>
+                <span v-if="registeredAt" class="profile-registered">
+                    В сервисе с {{ registeredAt }}
+                </span>
 
                 <div v-if="!isDeleteConfirmVisible" class="avatar-actions">
                     <button
@@ -224,6 +238,11 @@ const confirmDelete = (): void => {
     color: var(--ink, #241533);
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.profile-registered {
+    font-size: 12px;
+    color: var(--ink-soft, #6b5878);
 }
 
 // Действия с фотографией — компактные текстовые кнопки под именем

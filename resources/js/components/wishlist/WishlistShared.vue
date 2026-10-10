@@ -12,10 +12,12 @@ import { isAxiosError } from 'axios';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import SaveWishlistButton from '@/components/saved/SaveWishlistButton.vue';
 import { useGuestReservations } from '@/composables/useGuestReservations';
 import { useGuestTodoChecks } from '@/composables/useGuestTodoChecks';
 import { api } from '@/lib/api';
 import { copyToClipboard } from '@/lib/clipboard';
+import { dueDateTitle, formatDueDate, getDueDateStatus } from '@/lib/dueDate';
 import { formatPrice } from '@/lib/itemPrice';
 import { getItemUrlShortHost } from '@/lib/itemUrl';
 import { getSharedWishlistPath, getSharedWishlistUrl } from '@/lib/sharedLink';
@@ -575,6 +577,40 @@ const todoProgressLabel = computed(() => {
     return `Выполнено ${done} из ${items.length}`;
 });
 
+// «Сделать до 31 декабря 2026 г. · осталось 5 дней» или
+// «Дата события: 31 декабря 2026 г. · через 12 дней». После события
+// списка желаний строка не показывается, а у выполненного списка дел
+// остаётся только дата
+const dueDateLine = computed(() => {
+    const dueDate = wishlist.value?.dueDate;
+
+    if (!dueDate) return '';
+
+    const type = wishlist.value?.type ?? 'gift';
+    const status = getDueDateStatus(type, dueDate, allSelected.value);
+
+    if (!status && type !== 'todo') return '';
+
+    const title = dueDateTitle(type);
+    const date = formatDueDate(dueDate);
+    const line = type === 'todo' ? `${title} ${date}` : `${title}: ${date}`;
+
+    if (!status) return line;
+
+    return `${line} · ${status.text.charAt(0).toLowerCase()}${status.text.slice(1)}`;
+});
+
+// Срок списка дел прошёл, а дела не выполнены: строка выделяется красным
+const isDueDateOverdue = computed(() => {
+    const dueDate = wishlist.value?.dueDate;
+
+    if (!dueDate || !isTodo.value) return false;
+
+    return (
+        getDueDateStatus('todo', dueDate, allSelected.value)?.tone === 'overdue'
+    );
+});
+
 // Порядок позиций: заданный владельцем, по приоритету (сначала «очень хочу»)
 // или по стоимости
 type ItemOrder = 'owner' | 'priority' | 'price-asc' | 'price-desc';
@@ -708,6 +744,23 @@ onMounted(getWishlist);
                 <p v-else-if="allSelected" class="intro-note">
                     Все подарки из этого списка уже выбраны
                 </p>
+
+                <p
+                    v-if="dueDateLine"
+                    :class="[
+                        'intro-note',
+                        'intro-due-date',
+                        { 'intro-due-date--overdue': isDueDateOverdue },
+                    ]"
+                >
+                    {{ dueDateLine }}
+                </p>
+
+                <!-- Вошедший пользователь добавляет чужой список в раздел «Чужие списки» -->
+                <SaveWishlistButton
+                    :wishlist-id="wishlist.id"
+                    :owner-username="wishlist.username"
+                />
             </section>
 
             <!-- После сохранения: ссылка для отмены выбора с другого устройства -->
@@ -1279,6 +1332,14 @@ onMounted(getWishlist);
     margin: 0;
     font-size: 12px;
     color: var(--app-ink-soft, var(--ink-soft, #6b5878));
+}
+
+.intro-due-date {
+    font-weight: 600;
+}
+
+.intro-due-date--overdue {
+    color: #be123c;
 }
 
 .loader,

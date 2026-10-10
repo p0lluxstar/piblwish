@@ -7,8 +7,10 @@ import {
     EyeOff,
     FileEdit,
     Gift,
+    Hourglass,
     Link,
     ListChecks,
+    PartyPopper,
     StickyNote,
     Trash2,
     Users,
@@ -17,6 +19,11 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
 import { copyToClipboard } from '../../lib/clipboard';
+import {
+    dueDateTitle,
+    formatDueDate,
+    getDueDateStatus,
+} from '../../lib/dueDate';
 import { formatPrice } from '../../lib/itemPrice';
 import { getItemUrlHost } from '../../lib/itemUrl';
 import { getSharedWishlistUrl } from '../../lib/sharedLink';
@@ -259,6 +266,26 @@ const createdAtDate = computed(() => {
 // «Создан 12 сентября 2026 г.»: подсказка и подпись для экранных дикторов
 const createdAtLabel = computed(
     () => `${isNote.value ? 'Создана' : 'Создан'} ${createdAtDate.value}`,
+);
+
+// Сколько осталось до срока списка дел или до события списка желаний.
+// У выполненного списка дел счётчика нет, иначе он числился бы просроченным
+const dueStatus = computed(() => {
+    const { type, dueDate, items } = props.wishlist;
+
+    if (!dueDate || isNote.value) return null;
+
+    const isCompleted =
+        items.length > 0 && items.every((item) => item.isSelected);
+
+    return getDueDateStatus(type ?? 'gift', dueDate, isCompleted);
+});
+
+// «Сделать до 31 декабря 2026 г.»: подсказка и подпись для экранных дикторов
+const dueDateLabel = computed(() =>
+    props.wishlist.dueDate
+        ? `${dueDateTitle(props.wishlist.type ?? 'gift')}: ${formatDueDate(props.wishlist.dueDate)}`
+        : '',
 );
 </script>
 
@@ -567,24 +594,42 @@ const createdAtLabel = computed(
                 </div>
             </div>
 
-            <time
-                v-if="createdAtDate"
-                class="card-created-at"
-                :datetime="wishlist.createdAt"
-                :title="createdAtLabel"
-            >
-                <!-- Значок рисуется цветом текста (currentColor); слово «Создан»
-                     видно только экранным дикторам -->
-                <Calendar :size="12" aria-hidden="true" />
-                <span class="sr-only">{{ isNote ? 'Создана' : 'Создан' }}</span>
-                {{ createdAtDate }}
-            </time>
+            <div v-if="createdAtDate || dueStatus" class="card-dates">
+                <time
+                    v-if="createdAtDate"
+                    class="card-created-at"
+                    :datetime="wishlist.createdAt"
+                    :title="createdAtLabel"
+                >
+                    <!-- Значок рисуется цветом текста (currentColor); слово «Создан»
+                         видно только экранным дикторам -->
+                    <Calendar :size="12" aria-hidden="true" />
+                    <span class="sr-only">
+                        {{ isNote ? 'Создана' : 'Создан' }}
+                    </span>
+                    {{ createdAtDate }}
+                </time>
+
+                <!-- Счётчик до даты списка; сама дата — в подсказке -->
+                <time
+                    v-if="dueStatus"
+                    :class="['card-due', `card-due--${dueStatus.tone}`]"
+                    :datetime="wishlist.dueDate ?? undefined"
+                    :title="dueDateLabel"
+                >
+                    <Hourglass v-if="isTodo" :size="12" aria-hidden="true" />
+                    <PartyPopper v-else :size="12" aria-hidden="true" />
+                    <span class="sr-only">{{ dueDateLabel }}.</span>
+                    {{ dueStatus.text }}
+                </time>
+            </div>
         </div>
     </div>
 </template>
 
 <style scoped lang="scss">
 @use '../../../scss/ui/checkboxCard.scss';
+@use '../../../scss/ui/dueDateBadge.scss';
 @use '../../../scss/ui/wishlistColors.scss';
 
 .card {
@@ -1102,11 +1147,20 @@ $card-content-max-height: 150px;
     }
 }
 
+// Дата создания слева, счётчик до даты списка справа
+.card-dates {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 10px;
+    margin-top: 10px;
+}
+
 .card-created-at {
     display: flex;
     align-items: center;
     gap: 4px;
-    margin-top: 10px;
     font-size: 11px;
     line-height: normal;
     color: #baa7c7;

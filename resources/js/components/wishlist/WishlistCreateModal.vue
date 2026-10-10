@@ -15,6 +15,7 @@ import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 
 import { useItemReorder } from '../../composables/useItemReorder';
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
+import { daysUntil } from '../../lib/dueDate';
 import {
     getItemUrlErrors,
     MAX_ITEM_URLS,
@@ -32,6 +33,7 @@ import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import ItemPriceInput from './ItemPriceInput.vue';
 import ItemPriorityPicker from './ItemPriorityPicker.vue';
 import WishlistColorPicker from './WishlistColorPicker.vue';
+import WishlistDueDateField from './WishlistDueDateField.vue';
 import WishlistGuestCheckToggle from './WishlistGuestCheckToggle.vue';
 import WishlistGuestNameToggle from './WishlistGuestNameToggle.vue';
 import WishlistShareToggle from './WishlistShareToggle.vue';
@@ -64,6 +66,7 @@ const defaultForm = (type: WishlistType = 'gift'): WishlistForm => ({
     guestsCanCheck: false,
     // Имя гостя по умолчанию обязательно: ради подписей под делами отметки и включают
     guestNameRequired: true,
+    dueDate: '',
     items: [
         {
             label: '',
@@ -87,6 +90,9 @@ const sourceForm = (source: Wishlist): WishlistForm => ({
     isShared: false,
     guestsCanCheck: source.guestsCanCheck ?? false,
     guestNameRequired: source.guestNameRequired ?? true,
+    // Прошедшая дата копии не нужна: копию обычно делают для следующего события
+    dueDate:
+        source.dueDate && daysUntil(source.dueDate) >= 0 ? source.dueDate : '',
     items: source.items.length
         ? source.items.map((item) => ({
               label: item.label,
@@ -115,6 +121,7 @@ const formSnapshot = (value: WishlistForm): string =>
         isShared: value.isShared,
         guestsCanCheck: value.guestsCanCheck,
         guestNameRequired: value.guestNameRequired,
+        dueDate: value.dueDate,
         items: value.items
             .filter((item) => item.label.trim())
             .map((item) => ({
@@ -273,6 +280,7 @@ const handleSubmit = (): void => {
         color: form.value.color,
         // У списка дел нет режима сюрприза, а доступ по ссылке включается только у него
         hideSelections: !isTodo.value && form.value.hideSelections,
+        dueDate: form.value.dueDate || null,
         ...(isTodo.value
             ? {
                   isShared: form.value.isShared,
@@ -445,6 +453,14 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                     <label>{{ isNote ? 'Цвет заметки' : 'Цвет списка' }}</label>
 
                     <WishlistColorPicker v-model="form.color" />
+                </div>
+
+                <!-- Срок списка дел или дата события списка желаний; у заметки даты нет -->
+                <div v-if="!isNote" class="form-group">
+                    <WishlistDueDateField
+                        v-model="form.dueDate"
+                        :type="form.type"
+                    />
                 </div>
 
                 <!-- Режим сюрприза есть только у списка желаний: у остальных гости ничего не выбирают -->

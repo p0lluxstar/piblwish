@@ -15,4 +15,6 @@ export type User = {
     background: AppBackground;
     // Адрес фотографии; null — фотографии нет, показывается первая буква имени
     avatarUrl: string | null;
+    // Дата регистрации в ISO 8601
+    createdAt: string | null;
 };

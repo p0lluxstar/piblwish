@@ -48,6 +48,7 @@ use OpenApi\Attributes as OA;
                                 nullable: true,
                                 example: 'https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp'
                             ),
+                            new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
                         type: 'object'
                     ),
@@ -107,6 +108,7 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'email', type: 'string', example: 'john@example.com'),
                             new OA\Property(property: 'background', type: 'string', example: 'ocean'),
                             new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
+                            new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
                         type: 'object'
                     ),
@@ -192,6 +194,7 @@ use OpenApi\Attributes as OA;
                                 type: 'string',
                                 example: 'https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp'
                             ),
+                            new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
                         type: 'object'
                     ),
@@ -258,6 +261,7 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'email', type: 'string', example: 'john@example.com'),
                             new OA\Property(property: 'background', type: 'string', example: 'blossom'),
                             new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
+                            new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
                         type: 'object'
                     ),
@@ -498,6 +502,7 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'email', type: 'string', example: 'new@example.com'),
                             new OA\Property(property: 'background', type: 'string', example: 'blossom'),
                             new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
+                            new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
                         type: 'object'
                     ),

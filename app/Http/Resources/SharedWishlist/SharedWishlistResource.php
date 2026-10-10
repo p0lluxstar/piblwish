@@ -32,6 +32,8 @@ class SharedWishlistResource extends ApiResource
             'guestsCanCheck' => $this->guestsCanCheck(),
             // Должен ли гость указать имя, отмечая дела; false, если отмечать нельзя
             'guestNameRequired' => $this->guestsCanCheck() && $this->guest_name_required,
+            // Срок списка дел или дата события списка желаний (Y-m-d) либо null
+            'dueDate' => $this->due_date?->toDateString(),
             'username' => $this->whenLoaded('user') ? $this->user->username : null,
             // Фотография владельца или null — тогда показывается первая буква имени
             'avatarUrl' => $this->relationLoaded('user') ? $this->user->avatarUrl() : null,

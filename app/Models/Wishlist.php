@@ -5,12 +5,14 @@ namespace App\Models;
 use App\Enums\WishlistColor;
 use App\Enums\WishlistType;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'type', 'title', 'content', 'color', 'hide_selections', 'is_shared', 'guests_can_check', 'guest_name_required'])]
+#[Fillable(['user_id', 'type', 'title', 'content', 'color', 'hide_selections', 'is_shared', 'guests_can_check', 'guest_name_required', 'due_date'])]
 class Wishlist extends Model
 {
     use HasUlids;
@@ -35,6 +37,8 @@ class Wishlist extends Model
             'is_shared' => 'boolean',
             'guests_can_check' => 'boolean',
             'guest_name_required' => 'boolean',
+            // Только дата, без времени: срок списка дел или дата события списка желаний
+            'due_date' => 'date',
         ];
     }
 
@@ -63,6 +67,18 @@ class Wishlist extends Model
     public function isShared(): bool
     {
         return $this->isGift() || ($this->isTodo() && $this->is_shared);
+    }
+
+    // То же условие, что в isShared(), для запроса: списки желаний
+    // и списки дел с включённым доступом по ссылке
+    #[Scope]
+    protected function openByLink(Builder $query): void
+    {
+        $query->where(fn (Builder $query) => $query
+            ->where('type', WishlistType::Gift)
+            ->orWhere(fn (Builder $query) => $query
+                ->where('type', WishlistType::Todo)
+                ->where('is_shared', true)));
     }
 
     // Могут ли гости по ссылке отмечать дела выполненными: только в списке дел,

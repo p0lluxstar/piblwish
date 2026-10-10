@@ -19,7 +19,8 @@ class UpdateWishlistRequest extends FormRequest
         // Тип списка после создания не меняется, поэтому поля type здесь нет.
         // Ссылки, цену, приоритет и режим сюрприза у списка дел очищает WishlistService.
         // У заметки WishlistService изменяет только цвет и текст, у списков — всё, кроме текста.
-        // isShared, guestsCanCheck и guestNameRequired WishlistService учитывает только у списка дел
+        // isShared, guestsCanCheck и guestNameRequired WishlistService учитывает только у списка дел.
+        // dueDate у заметки WishlistService не сохраняет; null убирает дату
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'content' => ['sometimes', 'required', 'string', 'max:5000'],
@@ -28,6 +29,8 @@ class UpdateWishlistRequest extends FormRequest
             'isShared' => ['sometimes', 'boolean'],
             'guestsCanCheck' => ['sometimes', 'boolean'],
             'guestNameRequired' => ['sometimes', 'boolean'],
+            // Границы — как в CreateWishlistRequest
+            'dueDate' => ['sometimes', 'nullable', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before:2100-01-01'],
             'items' => ['sometimes', 'array'],
             // id существующей позиции: по нему в режиме сюрприза сохраняется выбор гостей
             'items.*.id' => ['sometimes', 'nullable', 'string'],
@@ -48,6 +51,9 @@ class UpdateWishlistRequest extends FormRequest
             'content.required' => 'Текст заметки обязателен',
             'content.max' => 'Текст заметки не может быть длиннее 5000 символов',
             'color.enum' => 'Недопустимый цвет списка',
+            'dueDate.date_format' => 'Некорректная дата',
+            'dueDate.after_or_equal' => 'Некорректная дата',
+            'dueDate.before' => 'Некорректная дата',
             'items.required' => 'Добавьте хотя бы один элемент',
             'items.*.label.required_with' => 'Описание элемента обязательно',
             'items.*.urls.array' => 'Некорректный список ссылок на товар',
