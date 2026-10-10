@@ -23,8 +23,9 @@ class WishlistResource extends ApiResource
             'createdAt' => $this->created_at?->toIso8601String(),
             // Режим сюрприза: при включённом флаге у позиций нет поля isSelected
             'hideSelections' => $this->hide_selections,
-            // Открывается ли список по общей ссылке: у списка желаний всегда true,
-            // у заметки false, у списка дел — если владелец включил доступ
+            // Включён ли доступ по общей ссылке: у списка желаний — если владелец его
+            // не закрыл, у списка дел — если включил, у заметки всегда false.
+            // Настройка сохраняется и в архиве, хотя архивный список по ссылке не открывается
             'isShared' => $this->isShared(),
             // Разрешено ли гостям отмечать дела по ссылке; у списка желаний и заметки false.
             // Сохранённое значение, а не действующее: при выключенном доступе по ссылке
@@ -35,6 +36,8 @@ class WishlistResource extends ApiResource
             // Срок списка дел или дата события списка желаний (Y-m-d) либо null;
             // у заметки всегда null
             'dueDate' => $this->due_date?->toDateString(),
+            // Время переноса в архив (ISO 8601) либо null, если список не в архиве
+            'archivedAt' => $this->archived_at?->toIso8601String(),
             'items' => $this->whenLoaded('items', fn () => $this->items->map(
                 fn ($item) => (new WishlistItemResource($item))
                     ->hideSelection($this->hide_selections)

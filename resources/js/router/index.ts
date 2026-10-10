@@ -53,6 +53,13 @@ const routes: RouteRecordRaw[] = [
                 name: 'dashboard',
                 component: DashboardPage,
             },
+            {
+                // Архив: та же страница, но со списками из архива, только для просмотра
+                path: 'archive',
+                name: 'dashboard-archive',
+                component: DashboardPage,
+                props: { archived: true },
+            },
         ],
     },
 

@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'type', 'title', 'content', 'color', 'hide_selections', 'is_shared', 'guests_can_check', 'guest_name_required', 'due_date'])]
+#[Fillable(['user_id', 'type', 'title', 'content', 'color', 'hide_selections', 'is_shared', 'guests_can_check', 'guest_name_required', 'due_date', 'archived_at'])]
 class Wishlist extends Model
 {
     use HasUlids;
@@ -47,6 +47,7 @@ class Wishlist extends Model
             'guest_name_required' => 'boolean',
             // Только дата, без времени: срок списка дел или дата события списка желаний
             'due_date' => 'date',
+            'archived_at' => 'datetime',
         ];
     }
 
@@ -69,26 +70,55 @@ class Wishlist extends Model
         return $this->type === WishlistType::Note;
     }
 
-    // Открывается ли список по общей ссылке: список желаний или дел — если
-    // владелец не закрыл (у желаний) или включил (у дел) доступ, заметка — никогда
+    // Находится ли список в архиве: владелец видит его только для просмотра,
+    // по ссылке он не открывается
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    // Включён ли у списка доступ по общей ссылке: у списка желаний — если владелец
+    // его не закрыл, у списка дел — если включил, у заметки — никогда. Это настройка
+    // владельца; открывается ли список сейчас, показывает isOpenByLink()
     public function isShared(): bool
     {
         return ! $this->isNote() && $this->is_shared;
     }
 
-    // То же условие, что в isShared(), для запроса
+    // Открывается ли список по общей ссылке: доступ включён и список не в архиве
+    public function isOpenByLink(): bool
+    {
+        return $this->isShared() && ! $this->isArchived();
+    }
+
+    // То же условие, что в isOpenByLink(), для запроса
     #[Scope]
     protected function openByLink(Builder $query): void
     {
         $query->where('type', '!=', WishlistType::Note)
-            ->where('is_shared', true);
+            ->where('is_shared', true)
+            ->whereNull('archived_at');
+    }
+
+    // Списки, которые не в архиве
+    #[Scope]
+    protected function active(Builder $query): void
+    {
+        $query->whereNull('archived_at');
+    }
+
+    // Списки в архиве
+    #[Scope]
+    protected function archived(Builder $query): void
+    {
+        $query->whereNotNull('archived_at');
     }
 
     // Могут ли гости по ссылке отмечать дела выполненными: только в списке дел,
     // открытом по ссылке, и только если владелец это разрешил
     public function guestsCanCheck(): bool
     {
-        return $this->isTodo() && $this->is_shared && $this->guests_can_check;
+        return $this->isTodo() && $this->isOpenByLink() && $this->guests_can_check;
     }
 
     public function user(): BelongsTo

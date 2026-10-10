@@ -14,12 +14,53 @@ use Illuminate\Validation\ValidationException;
 
 class WishlistService
 {
-    public function getUserWishlists(User $user): Collection
+    // Активные списки пользователя, новые первыми, или его архив ($archived),
+    // где первыми идут списки, перенесённые в архив последними
+    public function getUserWishlists(User $user, bool $archived = false): Collection
     {
-        return $user->wishlists()
-            ->with('items')
-            ->latest()
-            ->get();
+        $query = $user->wishlists()->with('items');
+
+        return $archived
+            ? $query->archived()->latest('archived_at')->latest()->get()
+            : $query->active()->latest()->get();
+    }
+
+    // Число списков в архиве: дашборд показывает его на ссылке в архив,
+    // не загружая сами списки
+    public function getArchivedCount(User $user): int
+    {
+        return $user->wishlists()->archived()->count();
+    }
+
+    /**
+     * Перенести список в архив.
+     *
+     * Список становится доступен владельцу только для просмотра и перестаёт
+     * открываться по ссылке. is_shared, брони и совместные подарки не меняются,
+     * поэтому после восстановления список открывается гостям в прежнем виде.
+     * Повторный перенос не меняет время переноса.
+     */
+    public function archiveWishlist(User $user, string $id): Wishlist
+    {
+        $wishlist = $this->findUserWishlist($user, $id);
+
+        if (! $wishlist->isArchived()) {
+            $wishlist->update(['archived_at' => now()]);
+        }
+
+        return $wishlist->load('items');
+    }
+
+    // Восстановить список из архива; для списка не в архиве ничего не меняется
+    public function restoreWishlist(User $user, string $id): Wishlist
+    {
+        $wishlist = $this->findUserWishlist($user, $id);
+
+        if ($wishlist->isArchived()) {
+            $wishlist->update(['archived_at' => null]);
+        }
+
+        return $wishlist->load('items');
     }
 
     public function createWishlist(
@@ -66,10 +107,9 @@ class WishlistService
     public function updateWishlist(User $user, string $id, array $data): Wishlist
     {
         return DB::transaction(function () use ($user, $id, $data) {
-            $wishlist = Wishlist::query()
-                ->where('user_id', $user->id)
-                ->where('id', $id)
-                ->firstOrFail();
+            $wishlist = $this->findUserWishlist($user, $id);
+
+            $this->ensureNotArchived($wishlist);
 
             // Обновляются только переданные поля
             $attributes = $this->wishlistAttributes($data);
@@ -113,10 +153,9 @@ class WishlistService
      */
     public function getSelections(User $user, string $id, bool $reveal): array
     {
-        $wishlist = Wishlist::query()
-            ->where('user_id', $user->id)
-            ->where('id', $id)
-            ->firstOrFail();
+        $wishlist = $this->findUserWishlist($user, $id);
+
+        $this->ensureNotArchived($wishlist);
 
         // Время берётся до чтения выбора: позиция, выбранная между ними, попадёт
         // в ответ, но её бронь не раньше checkedAt, и сервер откажет в снятии,
@@ -143,10 +182,9 @@ class WishlistService
     public function setItemSelected(User $user, string $id, string $itemId, bool $isSelected): Wishlist
     {
         return DB::transaction(function () use ($user, $id, $itemId, $isSelected) {
-            $wishlist = Wishlist::query()
-                ->where('user_id', $user->id)
-                ->where('id', $id)
-                ->firstOrFail();
+            $wishlist = $this->findUserWishlist($user, $id);
+
+            $this->ensureNotArchived($wishlist);
 
             if (! $wishlist->isTodo()) {
                 throw ValidationException::withMessages([
@@ -183,10 +221,9 @@ class WishlistService
     public function clearItemSelection(User $user, string $id, string $itemId, CarbonInterface $checkedAt): Wishlist
     {
         return DB::transaction(function () use ($user, $id, $itemId, $checkedAt) {
-            $wishlist = Wishlist::query()
-                ->where('user_id', $user->id)
-                ->where('id', $id)
-                ->firstOrFail();
+            $wishlist = $this->findUserWishlist($user, $id);
+
+            $this->ensureNotArchived($wishlist);
 
             // В списке дел отметка означает «выполнено» и меняется через setItemSelected
             if (! $wishlist->isGift()) {
@@ -336,14 +373,30 @@ class WishlistService
         return $attributes;
     }
 
+    // Архивный список можно удалить
     public function deleteWishlist(User $user, string $id): void
     {
         DB::transaction(function () use ($user, $id) {
-            $wishlist = Wishlist::query()
-                ->where('user_id', $user->id)
-                ->where('id', $id)
-                ->firstOrFail();
+            $wishlist = $this->findUserWishlist($user, $id);
             $wishlist->delete();
         });
+    }
+
+    // Список пользователя; чужой или несуществующий — 404
+    private function findUserWishlist(User $user, string $id): Wishlist
+    {
+        return Wishlist::query()
+            ->where('user_id', $user->id)
+            ->where('id', $id)
+            ->firstOrFail();
+    }
+
+    // Архивный список доступен только для просмотра: изменить его,
+    // отметить дело или снять выбор гостя можно после восстановления
+    private function ensureNotArchived(Wishlist $wishlist): void
+    {
+        if ($wishlist->isArchived()) {
+            abort(409, 'Список находится в архиве. Восстановите его, чтобы изменить');
+        }
     }
 }

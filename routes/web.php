@@ -62,6 +62,8 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard', RenewReme
     Route::patch('/wishlists/{id}/items/{itemId}', [WishlistController::class, 'updateWishlistItem']);
     Route::delete('/wishlists/{id}/items/{itemId}/selection', [WishlistController::class, 'clearItemSelection']);
     Route::delete('/wishlists/{id}', [WishlistController::class, 'deleteWishlist']);
+    Route::post('/wishlists/{id}/archive', [WishlistController::class, 'archiveWishlist']);
+    Route::delete('/wishlists/{id}/archive', [WishlistController::class, 'restoreWishlist']);
     // Чужие списки, добавленные к себе с общей страницы; {id} — id самого списка
     Route::get('/saved-wishlists', [SavedWishlistController::class, 'getSavedWishlists']);
     Route::post('/saved-wishlists/{id}', [SavedWishlistController::class, 'saveWishlist']);

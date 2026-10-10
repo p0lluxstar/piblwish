@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import {
+    Archive,
+    ArchiveRestore,
     Calendar,
     Check,
     CopyPlus,
@@ -42,6 +44,8 @@ const emit = defineEmits<{
     edit: [wishlist: Wishlist];
     duplicate: [wishlist: Wishlist];
     delete: [wishlist: Wishlist];
+    archive: [wishlist: Wishlist];
+    restore: [wishlist: Wishlist];
     toggleItem: [wishlist: Wishlist, item: WishlistItem];
     updateContent: [wishlist: Wishlist, content: string];
     expand: [wishlist: Wishlist];
@@ -73,9 +77,14 @@ const isNote = computed(() => props.wishlist.type === 'note');
 // Список желаний: позиции выбирают гости по ссылке
 const isGift = computed(() => !isTodo.value && !isNote.value);
 
-// Ссылка для гостей: у списков желаний и дел — если доступ включён, у заметки её нет
+// Список в архиве: только просмотр, восстановление, дубликат и удаление
+const isArchived = computed(() => Boolean(props.wishlist.archivedAt));
+
+// Ссылка для гостей: у списков желаний и дел — если доступ включён, у заметки её нет.
+// Архивный список по ссылке не открывается, хотя настройка доступа сохраняется
 const hasShareLink = computed(
-    () => !isNote.value && Boolean(props.wishlist.isShared),
+    () =>
+        !isNote.value && !isArchived.value && Boolean(props.wishlist.isShared),
 );
 
 // Свои отметки владелец видит подписью «Вы», если в списке есть и отметки гостей
@@ -114,6 +123,14 @@ const deleteCard = (): void => {
     emit('delete', props.wishlist);
 };
 
+const archiveCard = (): void => {
+    emit('archive', props.wishlist);
+};
+
+const restoreCard = (): void => {
+    emit('restore', props.wishlist);
+};
+
 // Дело, отметку гостя с которого владелец собирается снять: под ним показано подтверждение
 const uncheckConfirmItemId = ref<string | null>(null);
 const cardItemsRef = ref<HTMLElement | null>(null);
@@ -127,6 +144,8 @@ const isUncheckConfirmShown = (item: WishlistItem): boolean =>
 // Снятие отметки гостя стирает, кто отметил дело, и вернуть это нельзя,
 // поэтому сначала спрашивается подтверждение
 const toggleItem = (item: WishlistItem): void => {
+    if (isArchived.value) return;
+
     if (item.isSelected && item.checkedBy?.guest && item.id) {
         uncheckConfirmItemId.value =
             uncheckConfirmItemId.value === item.id ? null : item.id;
@@ -186,7 +205,11 @@ const clearNoteSaveTimer = (): void => {
 const saveNote = (): void => {
     clearNoteSaveTimer();
 
-    if (!noteDraft.value.trim() || noteDraft.value === props.wishlist.content) {
+    if (
+        isArchived.value ||
+        !noteDraft.value.trim() ||
+        noteDraft.value === props.wishlist.content
+    ) {
         return;
     }
 
@@ -289,16 +312,28 @@ const createdAtLabel = computed(
 );
 
 // Сколько осталось до срока списка дел или до события списка желаний.
-// У выполненного списка дел счётчика нет, иначе он числился бы просроченным
+// У выполненного списка дел счётчика нет, иначе он числился бы просроченным.
+// В архиве вместо счётчика выводится дата переноса
 const dueStatus = computed(() => {
     const { type, dueDate, items } = props.wishlist;
 
-    if (!dueDate || isNote.value) return null;
+    if (!dueDate || isNote.value || isArchived.value) return null;
 
     const isCompleted =
         items.length > 0 && items.every((item) => item.isSelected);
 
     return getDueDateStatus(type ?? 'gift', dueDate, isCompleted);
+});
+
+// «10 октября 2026 г.»: когда список перенесён в архив
+const archivedAtDate = computed(() => {
+    if (!props.wishlist.archivedAt) return '';
+
+    return new Date(props.wishlist.archivedAt).toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
 });
 
 // «Сделать до 31 декабря 2026 г.»: подсказка и подпись для экранных дикторов
@@ -331,126 +366,155 @@ const dueDateLabel = computed(() =>
             <Gift v-else :size="100" :stroke-width="1.5" />
         </div>
 
-        <!-- Тип списка виден сразу, даже у пустой карточки: цвет фона выбирает
+        <!-- Метки слева и кнопки справа в одном ряду: в узкой карточке
+             кнопки переносятся на следующую строку, а не накрывают метки -->
+        <div class="card-top">
+            <!-- Тип списка виден сразу, даже у пустой карточки: цвет фона выбирает
              пользователь, поэтому тип им не обозначается. Значки те же, что
              на шаге выбора типа при создании -->
-        <div class="card-badges">
-            <span v-if="isNote" class="card-type card-type--note">
-                <StickyNote :size="12" />
-                Заметка
-            </span>
-            <span
-                v-else
-                :class="[
-                    'card-type',
-                    isTodo ? 'card-type--todo' : 'card-type--gift',
-                ]"
-            >
-                <ListChecks v-if="isTodo" :size="12" />
-                <Gift v-else :size="12" />
-                {{ isTodo ? 'Дела' : 'Желания' }}
-            </span>
+            <div class="card-badges">
+                <span v-if="isNote" class="card-type card-type--note">
+                    <StickyNote :size="12" />
+                    Заметка
+                </span>
+                <span
+                    v-else
+                    :class="[
+                        'card-type',
+                        isTodo ? 'card-type--todo' : 'card-type--gift',
+                    ]"
+                >
+                    <ListChecks v-if="isTodo" :size="12" />
+                    <Gift v-else :size="12" />
+                    {{ isTodo ? 'Дела' : 'Желания' }}
+                </span>
 
-            <!-- Режим сюрприза: выбор гостей скрыт от владельца -->
-            <span
-                v-if="wishlist.hideSelections"
-                class="card-surprise"
-                role="img"
-                aria-label="Режим сюрприза: выбор гостей скрыт"
-                title="Режим сюрприза: выбор гостей скрыт"
-            >
-                <EyeOff :size="14" />
-            </span>
+                <!-- Режим сюрприза: выбор гостей скрыт от владельца -->
+                <span
+                    v-if="wishlist.hideSelections"
+                    class="card-surprise"
+                    role="img"
+                    aria-label="Режим сюрприза: выбор гостей скрыт"
+                    title="Режим сюрприза: выбор гостей скрыт"
+                >
+                    <EyeOff :size="14" />
+                </span>
 
-            <!-- Список дел открыт по ссылке. Значок не ссылки, а людей: значок
+                <!-- Список дел открыт по ссылке. Значок не ссылки, а людей: значок
                  ссылки уже у кнопки копирования в углу карточки -->
-            <span
-                v-if="isTodo && wishlist.isShared"
-                class="card-shared"
-                role="img"
-                :aria-label="sharedLabel"
-                :title="sharedLabel"
-            >
-                <Users :size="14" />
-            </span>
+                <span
+                    v-if="isTodo && wishlist.isShared && !isArchived"
+                    class="card-shared"
+                    role="img"
+                    :aria-label="sharedLabel"
+                    :title="sharedLabel"
+                >
+                    <Users :size="14" />
+                </span>
 
-            <!-- Список желаний скрыт от гостей. У списка желаний значок ставится
+                <!-- Список желаний скрыт от гостей. У списка желаний значок ставится
                  у закрытого, а не у открытого: по умолчанию он открыт по ссылке.
                  Значок — ссылка кнопки копирования, перечёркнутая линией в CSS -->
-            <span
-                v-if="isGift && !wishlist.isShared"
-                class="card-hidden"
-                role="img"
-                aria-label="Скрыт от гостей: ссылка не открывается"
-                title="Скрыт от гостей: ссылка не открывается"
-            >
-                <Link :size="14" />
-            </span>
-        </div>
-
-        <div class="card-actions">
-            <button
-                class="card-actions-btn"
-                type="button"
-                :aria-label="`Редактировать ${subject}`"
-                title="Редактировать"
-                @click="editCard"
-            >
-                <FileEdit :size="14" />
-            </button>
-            <button
-                class="card-actions-btn"
-                type="button"
-                :aria-label="`Сделать дубликат: ${subject}`"
-                title="Сделать дубликат"
-                @click="duplicateCard"
-            >
-                <CopyPlus :size="14" />
-            </button>
-            <!-- Заметка и список дел без доступа по ссылке видны только владельцу -->
-            <div v-if="hasShareLink" class="copy-action">
-                <button
-                    :class="[
-                        'card-actions-btn',
-                        {
-                            'card-actions-btn--success':
-                                copyStatus === 'copied',
-                        },
-                    ]"
-                    type="button"
-                    aria-label="Скопировать ссылку на список"
-                    @click="copyLink"
+                <span
+                    v-if="isGift && !wishlist.isShared && !isArchived"
+                    class="card-hidden"
+                    role="img"
+                    aria-label="Скрыт от гостей: ссылка не открывается"
+                    title="Скрыт от гостей: ссылка не открывается"
                 >
-                    <Check v-if="copyStatus === 'copied'" :size="14" />
-                    <Link v-else :size="14" />
-                </button>
-
-                <Transition name="copy-tooltip">
-                    <span
-                        v-if="copyStatus !== 'idle'"
-                        :class="[
-                            'copy-tooltip',
-                            { 'copy-tooltip--error': copyStatus === 'error' },
-                        ]"
-                        role="status"
-                    >
-                        {{
-                            copyStatus === 'copied'
-                                ? 'Ссылка скопирована'
-                                : 'Не удалось скопировать'
-                        }}
-                    </span>
-                </Transition>
+                    <Link :size="14" />
+                </span>
             </div>
-            <button
-                class="card-actions-btn"
-                type="button"
-                :aria-label="`Удалить ${subject}`"
-                title="Удалить"
-                @click="deleteCard"
-            >
-                <Trash2 :size="14" />
-            </button>
+
+            <div class="card-actions">
+                <!-- Архивный список не редактируется: сначала его нужно восстановить -->
+                <button
+                    v-if="isArchived"
+                    class="card-actions-btn"
+                    type="button"
+                    :aria-label="`Восстановить ${subject} из архива`"
+                    title="Восстановить из архива"
+                    @click="restoreCard"
+                >
+                    <ArchiveRestore :size="14" />
+                </button>
+                <button
+                    v-else
+                    class="card-actions-btn"
+                    type="button"
+                    :aria-label="`Редактировать ${subject}`"
+                    title="Редактировать"
+                    @click="editCard"
+                >
+                    <FileEdit :size="14" />
+                </button>
+                <button
+                    class="card-actions-btn"
+                    type="button"
+                    :aria-label="`Сделать дубликат: ${subject}`"
+                    title="Сделать дубликат"
+                    @click="duplicateCard"
+                >
+                    <CopyPlus :size="14" />
+                </button>
+                <!-- Заметка и список дел без доступа по ссылке видны только владельцу -->
+                <div v-if="hasShareLink" class="copy-action">
+                    <button
+                        :class="[
+                            'card-actions-btn',
+                            {
+                                'card-actions-btn--success':
+                                    copyStatus === 'copied',
+                            },
+                        ]"
+                        type="button"
+                        aria-label="Скопировать ссылку на список"
+                        @click="copyLink"
+                    >
+                        <Check v-if="copyStatus === 'copied'" :size="14" />
+                        <Link v-else :size="14" />
+                    </button>
+
+                    <Transition name="copy-tooltip">
+                        <span
+                            v-if="copyStatus !== 'idle'"
+                            :class="[
+                                'copy-tooltip',
+                                {
+                                    'copy-tooltip--error':
+                                        copyStatus === 'error',
+                                },
+                            ]"
+                            role="status"
+                        >
+                            {{
+                                copyStatus === 'copied'
+                                    ? 'Ссылка скопирована'
+                                    : 'Не удалось скопировать'
+                            }}
+                        </span>
+                    </Transition>
+                </div>
+                <button
+                    v-if="!isArchived"
+                    class="card-actions-btn"
+                    type="button"
+                    :aria-label="`Перенести ${subject} в архив`"
+                    title="В архив"
+                    @click="archiveCard"
+                >
+                    <Archive :size="14" />
+                </button>
+                <button
+                    class="card-actions-btn"
+                    type="button"
+                    :aria-label="`Удалить ${subject}`"
+                    title="Удалить"
+                    @click="deleteCard"
+                >
+                    <Trash2 :size="14" />
+                </button>
+            </div>
         </div>
 
         <!-- Заметка: текст редактируется прямо на карточке и сохраняется
@@ -461,6 +525,7 @@ const dueDateLabel = computed(() =>
             class="note-text"
             rows="3"
             :maxlength="NOTE_CONTENT_MAX_LENGTH"
+            :readonly="isArchived"
             aria-label="Текст заметки"
             @focus="isNoteFocused = true"
             @input="scheduleNoteSave"
@@ -505,6 +570,7 @@ const dueDateLabel = computed(() =>
                         'todo-toggle',
                         item.isSelected ? 'reserved-icon' : 'checkbox-custom',
                     ]"
+                    :disabled="isArchived"
                     @click="toggleItem(item)"
                 >
                     <Check v-if="item.isSelected" :size="12" />
@@ -641,7 +707,10 @@ const dueDateLabel = computed(() =>
                 </div>
             </div>
 
-            <div v-if="createdAtDate || dueStatus" class="card-dates">
+            <div
+                v-if="createdAtDate || dueStatus || archivedAtDate"
+                class="card-dates"
+            >
                 <time
                     v-if="createdAtDate"
                     class="card-created-at"
@@ -668,6 +737,17 @@ const dueDateLabel = computed(() =>
                     <PartyPopper v-else :size="12" aria-hidden="true" />
                     <span class="sr-only">{{ dueDateLabel }}.</span>
                     {{ dueStatus.text }}
+                </time>
+
+                <time
+                    v-if="archivedAtDate"
+                    class="card-archived-at"
+                    :datetime="wishlist.archivedAt ?? undefined"
+                    :title="`В архиве с ${archivedAtDate}`"
+                >
+                    <Archive :size="12" aria-hidden="true" />
+                    <span class="sr-only">В архиве с</span>
+                    {{ archivedAtDate }}
                 </time>
             </div>
         </div>
@@ -739,12 +819,20 @@ const dueDateLabel = computed(() =>
     cursor: pointer;
 }
 
+.card-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    // Ряд ближе к краям карточки, чем её содержимое: отступы 10px сверху и 12px по бокам
+    margin: -10px -8px 0;
+}
+
 .card-actions {
-    position: absolute;
     display: flex;
     gap: 6px;
-    top: 10px;
-    right: 12px;
+    // Справа и в своей строке, если ряд перенёсся
+    margin-left: auto;
     font-size: 10px;
     color: #b3b3b3;
 
@@ -806,7 +894,7 @@ const dueDateLabel = computed(() =>
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 18px;
+    margin-top: 4px;
     margin-bottom: 10px;
 }
 
@@ -1002,8 +1090,13 @@ $card-content-max-height: 150px;
     cursor: pointer;
     transition: all 0.15s;
 
-    &:hover {
+    &:hover:not(:disabled) {
         transform: scale(1.08);
+    }
+
+    // Архивный список дел только для просмотра
+    &:disabled {
+        cursor: default;
     }
 
     // Выполненное дело: форма значка выбранного подарка, но зелёный градиент,
@@ -1092,9 +1185,6 @@ $card-content-max-height: 150px;
 }
 
 .card-badges {
-    position: absolute;
-    top: 10px;
-    left: 12px;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -1134,7 +1224,7 @@ $card-content-max-height: 150px;
     display: block;
     width: 100%;
     // Отступ под метками типа
-    margin: 15px 0 0;
+    margin: 1px 0 0;
     padding: 0;
     max-height: $card-content-max-height;
     overflow-y: auto;
@@ -1157,6 +1247,15 @@ $card-content-max-height: 150px;
     &:focus {
         outline: none;
         box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
+    }
+
+    // Заметка в архиве только для просмотра: поле не подсвечивается
+    &:read-only {
+        cursor: inherit;
+
+        &:focus {
+            box-shadow: none;
+        }
     }
 }
 
@@ -1257,7 +1356,8 @@ $card-content-max-height: 150px;
     margin-top: 10px;
 }
 
-.card-created-at {
+.card-created-at,
+.card-archived-at {
     display: flex;
     align-items: center;
     gap: 4px;
@@ -1289,19 +1389,14 @@ $card-content-max-height: 150px;
             color-mix(in srgb, var(--wishlist-glow, #64748b) 25%, transparent);
     }
 
-    .card-badges {
-        top: 14px;
-        left: 18px;
-    }
-
-    // Справа от кнопок — крестик окна просмотра
-    .card-actions {
-        top: 14px;
-        right: 52px;
+    // Отступы ряда 14px сверху и 18px слева. Справа от кнопок — крестик
+    // окна просмотра, поэтому ряд заканчивается в 52px от края
+    .card-top {
+        margin: -14px 24px 0 -10px;
     }
 
     .card-header {
-        margin-top: 26px;
+        margin-top: 16px;
         margin-bottom: 14px;
     }
 
@@ -1338,7 +1433,7 @@ $card-content-max-height: 150px;
     }
 
     .note-text {
-        margin-top: 24px;
+        margin-top: 14px;
         font-size: 16px;
         line-height: 1.4;
     }

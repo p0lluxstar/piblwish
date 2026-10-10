@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {
+    Archive,
     ArrowDown,
+    ArrowLeft,
     ArrowUp,
     Gift,
     LayoutList,
@@ -9,11 +11,17 @@ import {
     RefreshCcw,
     StickyNote,
 } from '@lucide/vue';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
+import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { isAxiosError } from 'axios';
 import { type Component, computed, onMounted, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { useMotivationalPhrase } from '@/composables/useMotivationalPhrase';
+import {
+    useArchivedCount,
+    useUserWishlists,
+    useWishlistArchive,
+} from '@/composables/useWishlistArchive';
 import {
     useWishlistSort,
     type WishlistSortField,
@@ -29,6 +37,7 @@ import type {
     WishlistType,
     WishlistUpdatePayload,
 } from '../../types/wishlist';
+import ActionToast from '../ui/ActionToast.vue';
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
 import WishlistCard from './WishlistCard.vue';
 import WishlistCardPreview from './WishlistCardPreview.vue';
@@ -36,7 +45,13 @@ import WishlistCreateModal from './WishlistCreateModal.vue';
 import WishlistDeleteModal from './WishlistDeleteModal.vue';
 import WishlistEditModal from './WishlistEditModal.vue';
 
+const props = defineProps<{
+    // Архив (/dashboard/archive): списки только для просмотра, без создания
+    archived?: boolean;
+}>();
+
 const queryClient = useQueryClient();
+const router = useRouter();
 const isCreateModalOpen = ref(false);
 // Список, с которого делается дубликат; null — создание с пустой формы
 const duplicateSource = ref<Wishlist | null>(null);
@@ -50,24 +65,30 @@ const previewWishlistId = ref<string | null>(null);
 // Фраза показывается в шапке под названием сайта
 const { generatePhrase: generateRandomPhrase } = useMotivationalPhrase();
 
-const fetchWishlists = async (): Promise<Wishlist[]> => {
-    const response = await api.get<{ data: Wishlist[] }>('/v1/wishlists');
-
-    return response.data.data;
-};
-
-const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: ['wishlists'],
-    queryFn: fetchWishlists,
-});
+const { data, isLoading, isFetching, error } = useUserWishlists(props.archived);
 
 const wishLists = computed(() => data.value ?? []);
 
-const { sort, setSort, sortedWishlists } = useWishlistSort(wishLists);
+// Число списков в архиве для ссылки «Архив»
+const archivedCount = useArchivedCount();
+
+// В архиве «По дате» означает время переноса в архив. Сортировка и фильтр
+// архива хранятся отдельно от основного раздела
+const { sort, setSort, sortedWishlists } = useWishlistSort(
+    wishLists,
+    props.archived
+        ? {
+              storageKey: 'wishlists-archive-sort',
+              dateOf: (wishlist): string => wishlist.archivedAt ?? '',
+          }
+        : {},
+);
 
 type WishlistTypeFilter = 'all' | WishlistType;
 
-const TYPE_FILTER_STORAGE_KEY = 'wishlists-type-filter';
+const TYPE_FILTER_STORAGE_KEY = props.archived
+    ? 'wishlists-archive-type-filter'
+    : 'wishlists-type-filter';
 
 // Чтение защищено так же, как у сортировки: localStorage может быть недоступен
 const readTypeFilter = (): WishlistTypeFilter => {
@@ -147,6 +168,12 @@ const filteredWishlists = computed(() => {
         (wishlist) => typeOf(wishlist) === activeTypeFilter.value,
     );
 });
+
+// Ссылка в архив — при непустом архиве. Ссылка из архива — при непустом архиве:
+// у пустого архива переход есть в пояснении на месте карточек
+const hasSectionLink = computed(() =>
+    props.archived ? wishLists.value.length > 0 : archivedCount.value > 0,
+);
 
 // Карточки выводятся порциями: все списки уже загружены, ограничивается только отрисовка.
 // Следующая порция добавляется кнопкой «Показать ещё»
@@ -273,6 +300,15 @@ const { mutate: createWishlist, isPending: isCreating } = useMutation({
 
         closeCreateModal();
         generateRandomPhrase();
+
+        // Дубликат из архива создаётся среди активных списков, а не в архиве
+        if (props.archived) {
+            showToast({
+                message: 'Копия создана в «Моих карточках»',
+                actionLabel: 'Перейти',
+                onAction: () => void router.push({ name: 'dashboard' }),
+            });
+        }
     },
 
     onError: (error) => {
@@ -515,6 +551,67 @@ const closeDeleteModal = (): void => {
     wishlistToDelete.value = null;
 };
 
+// Уведомление внизу страницы; id пересоздаёт компонент, и таймер
+// закрытия нового уведомления начинается заново
+type Toast = {
+    id: number;
+    message: string;
+    tone?: 'default' | 'error';
+    actionLabel?: string;
+    onAction?: () => void;
+};
+
+const toast = ref<Toast | null>(null);
+let toastId = 0;
+
+const showToast = (value: Omit<Toast, 'id'>): void => {
+    toastId += 1;
+    toast.value = { id: toastId, ...value };
+};
+
+const { moveWishlist } = useWishlistArchive();
+
+// Перенос в архив и восстановление. Карточка сразу исчезает из раздела,
+// а уведомление позволяет отменить действие
+const moveWithUndo = (wishlist: Wishlist, archive: boolean): void => {
+    const isNote = wishlist.type === 'note';
+
+    moveWishlist(wishlist, archive, {
+        onError: () => {
+            showToast({
+                message: archive
+                    ? `Не удалось перенести ${isNote ? 'заметку' : 'список'} в архив`
+                    : `Не удалось восстановить ${isNote ? 'заметку' : 'список'}`,
+                tone: 'error',
+            });
+        },
+    });
+
+    showToast({
+        message: archive
+            ? `${isNote ? 'Заметка перемещена' : 'Список перемещён'} в архив`
+            : `${isNote ? 'Заметка восстановлена' : 'Список восстановлен'}`,
+        actionLabel: 'Отменить',
+        onAction: () =>
+            moveWishlist(wishlist, !archive, {
+                onError: () => {
+                    showToast({
+                        message: 'Не удалось отменить действие',
+                        tone: 'error',
+                    });
+                },
+            }),
+    });
+};
+
+const archiveWishlist = (wishlist: Wishlist): void => {
+    moveWithUndo(wishlist, true);
+};
+
+const restoreWishlist = (wishlist: Wishlist): void => {
+    moveWithUndo(wishlist, false);
+};
+
 onMounted(generateRandomPhrase);
 </script>
 
@@ -522,9 +619,11 @@ onMounted(generateRandomPhrase);
     <!-- Блок "Мои карточки" всегда отображается -->
     <div class="top">
         <!-- Количество карточек показано в кнопках фильтра по типу -->
-        <div class="heading">Мои карточки</div>
+        <div class="heading">{{ archived ? 'Архив' : 'Мои карточки' }}</div>
         <div v-if="wishLists.length > 0 || isLoading" class="flex gap-2">
+            <!-- В архиве карточки не создаются: дубликат попадает в «Мои карточки» -->
             <button
+                v-if="!archived"
                 class="add-btn"
                 aria-label="Новая карточка"
                 @click="openCreateModal"
@@ -543,8 +642,12 @@ onMounted(generateRandomPhrase);
         </div>
     </div>
 
-    <!-- Сортировка имеет смысл, только когда списков больше одного -->
-    <div v-if="!isLoading && wishLists.length > 1" class="sort-bar">
+    <!-- Сортировка имеет смысл, только когда списков больше одного.
+         Ссылка между разделами видна и при одной карточке -->
+    <div
+        v-if="!isLoading && (wishLists.length > 1 || hasSectionLink)"
+        class="sort-bar"
+    >
         <div
             v-if="hasTypeFilter"
             class="sort-group"
@@ -572,7 +675,12 @@ onMounted(generateRandomPhrase);
             </button>
         </div>
 
-        <div class="sort-group" role="group" aria-label="Сортировка списков">
+        <div
+            v-if="wishLists.length > 1"
+            class="sort-group"
+            role="group"
+            aria-label="Сортировка списков"
+        >
             <button
                 v-for="option in SORT_OPTIONS"
                 :key="option.field"
@@ -589,6 +697,23 @@ onMounted(generateRandomPhrase);
                 </template>
             </button>
         </div>
+
+        <!-- Переход между активными списками и архивом -->
+        <router-link
+            v-if="hasSectionLink"
+            :to="{ name: archived ? 'dashboard' : 'dashboard-archive' }"
+            class="sort-btn section-link"
+        >
+            <template v-if="archived">
+                <ArrowLeft :size="12" aria-hidden="true" />
+                <span>Мои карточки</span>
+            </template>
+            <template v-else>
+                <Archive :size="12" aria-hidden="true" />
+                <span>Архив</span>
+                <span class="sort-count">{{ archivedCount }}</span>
+            </template>
+        </router-link>
     </div>
 
     <div
@@ -606,12 +731,24 @@ onMounted(generateRandomPhrase);
     </div>
 
     <div
+        v-else-if="wishLists.length === 0 && archived"
+        class="flex flex-col items-center justify-center min-h-[300px] text-center"
+    >
+        <p class="empty-text text-lg mb-1">В архиве пока пусто</p>
+        <p class="empty-hint mb-4">
+            Сюда попадают карточки, которые вы перенесли в архив
+        </p>
+        <router-link :to="{ name: 'dashboard' }" class="add-btn px-6 py-2">
+            <ArrowLeft :size="14" class="mr-1.5" />
+            Мои карточки
+        </router-link>
+    </div>
+
+    <div
         v-else-if="wishLists.length === 0"
         class="flex flex-col items-center justify-center min-h-[300px] text-center"
     >
-        <p class="empty-text text-lg mb-4">
-            У вас пока нет карточек
-        </p>
+        <p class="empty-text text-lg mb-4">У вас пока нет карточек</p>
         <button class="add-btn px-6 py-2" @click="openCreateModal">
             <Plus :size="14" class="mr-1.5" />
             Создать карточку
@@ -627,6 +764,8 @@ onMounted(generateRandomPhrase);
                 @edit="openEditModal"
                 @duplicate="openDuplicateModal"
                 @delete="openDeleteModal"
+                @archive="archiveWishlist"
+                @restore="restoreWishlist"
                 @toggle-item="toggleItem"
                 @update-content="updateNoteContent"
                 @expand="openPreview"
@@ -649,6 +788,8 @@ onMounted(generateRandomPhrase);
         @edit="editFromPreview"
         @duplicate="duplicateFromPreview"
         @delete="openDeleteModal"
+        @archive="archiveWishlist"
+        @restore="restoreWishlist"
         @toggle-item="toggleItem"
         @update-content="updateNoteContent"
     />
@@ -678,6 +819,16 @@ onMounted(generateRandomPhrase);
         :is-pending="isDeleting"
         @close="closeDeleteModal"
         @confirm="deleteWishlist(wishlistToDelete.id)"
+    />
+
+    <ActionToast
+        v-if="toast"
+        :key="toast.id"
+        :message="toast.message"
+        :tone="toast.tone"
+        :action-label="toast.actionLabel"
+        @action="toast.onAction?.()"
+        @close="toast = null"
     />
 </template>
 
@@ -818,6 +969,17 @@ onMounted(generateRandomPhrase);
 // Текст лежит прямо на фоне, поэтому цвет зависит от выбранного фона приложения
 .empty-text {
     color: var(--app-ink-soft, #6b7280);
+}
+
+.empty-hint {
+    font-size: 14px;
+    color: var(--app-ink-soft, #6b7280);
+}
+
+// Ссылка между разделами — в конце панели, справа от сортировки
+.section-link {
+    margin-left: auto;
+    text-decoration: none;
 }
 
 .grid {

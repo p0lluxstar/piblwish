@@ -26,10 +26,10 @@ const isSortState = (value: unknown): value is WishlistSortState => {
 
 // Чтение защищено: в приватном режиме доступ к localStorage может выбросить исключение,
 // а сохранённое значение может оказаться повреждённым или устаревшим
-const readSort = (): WishlistSortState => {
+const readSort = (storageKey: string): WishlistSortState => {
     try {
         const parsed: unknown = JSON.parse(
-            window.localStorage.getItem(STORAGE_KEY) ?? 'null',
+            window.localStorage.getItem(storageKey) ?? 'null',
         );
 
         if (isSortState(parsed)) return parsed;
@@ -40,9 +40,9 @@ const readSort = (): WishlistSortState => {
     return DEFAULT_SORT;
 };
 
-const writeSort = (value: WishlistSortState): void => {
+const writeSort = (storageKey: string, value: WishlistSortState): void => {
     try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+        window.localStorage.setItem(storageKey, JSON.stringify(value));
     } catch {
         // Сохранение недоступно — сортировка действует до перезагрузки страницы
     }
@@ -57,17 +57,28 @@ const collator = new Intl.Collator('ru', {
 const sortTitle = (wishlist: Wishlist): string =>
     wishlist.title ?? wishlist.content ?? '';
 
-// Сортировка карточек списков в дашборде; выбор пользователя хранится в localStorage
+// Дата карточки для сортировки «По дате»: по умолчанию дата создания
+const createdAtOf = (wishlist: Wishlist): string => wishlist.createdAt ?? '';
+
+// Сортировка карточек списков в дашборде; выбор пользователя хранится в localStorage.
+// Архив передаёт свой ключ хранения и сортирует по времени переноса в архив
 export const useWishlistSort = (
     wishlists: Ref<Wishlist[]>,
+    {
+        storageKey = STORAGE_KEY,
+        dateOf = createdAtOf,
+    }: {
+        storageKey?: string;
+        dateOf?: (wishlist: Wishlist) => string;
+    } = {},
 ): {
     sort: Ref<WishlistSortState>;
     setSort: (field: WishlistSortField) => void;
     sortedWishlists: ComputedRef<Wishlist[]>;
 } => {
-    const sort = ref<WishlistSortState>(readSort());
+    const sort = ref<WishlistSortState>(readSort(storageKey));
 
-    watch(sort, writeSort);
+    watch(sort, (value) => writeSort(storageKey, value));
 
     // Повторное нажатие на активную кнопку меняет направление.
     // Новое поле выбирается с естественным направлением: даты — новые сверху, названия — от А до Я
@@ -92,7 +103,7 @@ export const useWishlistSort = (
             field === 'title'
                 ? factor * collator.compare(sortTitle(a), sortTitle(b))
                 : // Даты в формате ISO 8601 упорядочиваются при сравнении как строки
-                  factor * (a.createdAt ?? '').localeCompare(b.createdAt ?? ''),
+                  factor * dateOf(a).localeCompare(dateOf(b)),
         );
     });
 

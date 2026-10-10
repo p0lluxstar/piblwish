@@ -15,8 +15,18 @@ use OpenApi\Attributes as OA;
 #[OA\Get(
     path: '/v1/wishlists',
     summary: 'Получить списки желаний пользователя',
+    description: 'Без параметров возвращает активные списки, новые первыми; с archived=1 — архив, первыми идут списки, перенесённые в архив последними. В meta.archivedCount в обоих случаях передаётся число списков в архиве',
     tags: ['Wishlists'],
     security: [['bearerAuth' => []]],
+    parameters: [
+        new OA\Parameter(
+            name: 'archived',
+            description: '1 — вернуть списки из архива',
+            in: 'query',
+            required: false,
+            schema: new OA\Schema(type: 'boolean', example: false)
+        ),
+    ],
     responses: [
         new OA\Response(
             response: 200,
@@ -113,6 +123,15 @@ use OpenApi\Attributes as OA;
                                 ),
 
                                 new OA\Property(
+                                    property: 'archivedAt',
+                                    description: 'Время переноса в архив (ISO 8601); null — список не в архиве. Архивный список не открывается по ссылке, а изменить его можно только после восстановления',
+                                    type: 'string',
+                                    format: 'date-time',
+                                    nullable: true,
+                                    example: null
+                                ),
+
+                                new OA\Property(
                                     property: 'items',
                                     type: 'array',
                                     items: new OA\Items(
@@ -177,6 +196,19 @@ use OpenApi\Attributes as OA;
                             ],
                             type: 'object'
                         )
+                    ),
+
+                    new OA\Property(
+                        property: 'meta',
+                        properties: [
+                            new OA\Property(
+                                property: 'archivedCount',
+                                description: 'Число списков в архиве',
+                                type: 'integer',
+                                example: 2
+                            ),
+                        ],
+                        type: 'object'
                     ),
                 ],
                 type: 'object'
@@ -538,6 +570,11 @@ use OpenApi\Attributes as OA;
         ),
 
         new OA\Response(
+            response: 409,
+            description: 'Список находится в архиве'
+        ),
+
+        new OA\Response(
             response: 401,
             description: 'Не авторизован'
         ),
@@ -586,6 +623,11 @@ use OpenApi\Attributes as OA;
         ),
 
         new OA\Response(
+            response: 409,
+            description: 'Список находится в архиве'
+        ),
+
+        new OA\Response(
             response: 401,
             description: 'Не авторизован'
         ),
@@ -631,12 +673,66 @@ use OpenApi\Attributes as OA;
 
         new OA\Response(
             response: 409,
-            description: 'Позицию выбрали после checkedAt, выбор не снят'
+            description: 'Позицию выбрали после checkedAt или список находится в архиве, выбор не снят'
         ),
 
         new OA\Response(
             response: 422,
             description: 'Ошибка валидации или список не является списком желаний'
+        ),
+
+        new OA\Response(
+            response: 401,
+            description: 'Не авторизован'
+        ),
+    ]
+)]
+
+#[OA\Post(
+    path: '/v1/wishlists/{id}/archive',
+    summary: 'Перенести список в архив',
+    description: 'Архивный список доступен владельцу только для просмотра: изменение списка, отметка дел и снятие выбора гостя отвечают 409. По ссылке он не открывается: общая страница и публичные эндпоинты отвечают 404, а закладки в разделе «Чужие списки» отдаются с available = false. isShared, брони и совместные подарки сохраняются и снова действуют после восстановления. Повторный перенос не меняет archivedAt',
+    tags: ['Wishlists'],
+    security: [['bearerAuth' => []]],
+    parameters: [
+        new OA\Parameter(name: 'id', description: 'ID списка', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+    ],
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Список целиком с заполненным archivedAt, в том же формате, что и в GET /v1/wishlists'
+        ),
+
+        new OA\Response(
+            response: 404,
+            description: 'Список не найден'
+        ),
+
+        new OA\Response(
+            response: 401,
+            description: 'Не авторизован'
+        ),
+    ]
+)]
+
+#[OA\Delete(
+    path: '/v1/wishlists/{id}/archive',
+    summary: 'Восстановить список из архива',
+    description: 'Список снова становится активным, а при включённом isShared — открывается по ссылке. Для списка не в архиве ничего не меняется',
+    tags: ['Wishlists'],
+    security: [['bearerAuth' => []]],
+    parameters: [
+        new OA\Parameter(name: 'id', description: 'ID списка', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+    ],
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Список целиком с archivedAt = null, в том же формате, что и в GET /v1/wishlists'
+        ),
+
+        new OA\Response(
+            response: 404,
+            description: 'Список не найден'
         ),
 
         new OA\Response(

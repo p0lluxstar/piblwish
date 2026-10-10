@@ -20,14 +20,19 @@ class WishlistController extends Controller
         private readonly WishlistService $wishlistService
     ) {}
 
-    // Получить все вишлисты текущего пользователя
+    // Получить активные списки текущего пользователя или, с ?archived=1, его архив.
+    // В meta.archivedCount — число списков в архиве
     public function getUserWishlists(
         Request $request
     ): WishlistCollection {
         $wishlists = $this->wishlistService
-            ->getUserWishlists($request->user());
+            ->getUserWishlists($request->user(), $request->boolean('archived'));
 
-        return new WishlistCollection($wishlists);
+        return (new WishlistCollection($wishlists))->additional([
+            'meta' => [
+                'archivedCount' => $this->wishlistService->getArchivedCount($request->user()),
+            ],
+        ]);
     }
 
     // Создать новый вишлист
@@ -103,6 +108,32 @@ class WishlistController extends Controller
             $id,
             $itemId,
             $request->date('checkedAt')
+        );
+
+        return new WishlistResource($wishlist);
+    }
+
+    // Перенести список в архив
+    public function archiveWishlist(
+        Request $request,
+        string $id
+    ): WishlistResource {
+        $wishlist = $this->wishlistService->archiveWishlist(
+            $request->user(),
+            $id
+        );
+
+        return new WishlistResource($wishlist);
+    }
+
+    // Восстановить список из архива
+    public function restoreWishlist(
+        Request $request,
+        string $id
+    ): WishlistResource {
+        $wishlist = $this->wishlistService->restoreWishlist(
+            $request->user(),
+            $id
         );
 
         return new WishlistResource($wishlist);

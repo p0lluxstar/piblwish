@@ -245,8 +245,8 @@ class SharedWishlistService
     public function checkTodoItems(string $wishlistId, array $itemIds, ?string $name): Wishlist
     {
         $wishlist = Wishlist::query()
+            ->openByLink()
             ->where('type', WishlistType::Todo)
-            ->where('is_shared', true)
             ->where('guests_can_check', true)
             ->findOrFail($wishlistId);
 
@@ -295,12 +295,12 @@ class SharedWishlistService
     }
 
     // Выбирать позиции, отменять выбор и менять совместный подарок можно только в списке
-    // желаний, открытом по ссылке. Для скрытого владельцем списка желаний, для списка дел,
-    // даже открытого по ссылке, и для заметки эти эндпоинты отвечают 404
+    // желаний, открытом по ссылке. Для скрытого владельцем или архивного списка желаний,
+    // для списка дел, даже открытого по ссылке, и для заметки эти эндпоинты отвечают 404
     private function sharedQuery(): Builder
     {
         return Wishlist::query()
-            ->where('type', WishlistType::Gift)
-            ->where('is_shared', true);
+            ->openByLink()
+            ->where('type', WishlistType::Gift);
     }
 }

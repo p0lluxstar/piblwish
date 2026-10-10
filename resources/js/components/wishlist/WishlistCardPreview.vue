@@ -15,6 +15,8 @@ const emit = defineEmits<{
     edit: [wishlist: Wishlist];
     duplicate: [wishlist: Wishlist];
     delete: [wishlist: Wishlist];
+    archive: [wishlist: Wishlist];
+    restore: [wishlist: Wishlist];
     toggleItem: [wishlist: Wishlist, item: WishlistItem];
     updateContent: [wishlist: Wishlist, content: string];
 }>();
@@ -69,6 +71,8 @@ onUnmounted(() => {
                 @edit="emit('edit', $event)"
                 @duplicate="emit('duplicate', $event)"
                 @delete="emit('delete', $event)"
+                @archive="emit('archive', $event)"
+                @restore="emit('restore', $event)"
                 @toggle-item="(list, item) => emit('toggleItem', list, item)"
                 @update-content="
                     (list, content) => emit('updateContent', list, content)
