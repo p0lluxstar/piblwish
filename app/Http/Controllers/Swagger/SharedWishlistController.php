@@ -64,7 +64,7 @@ use OpenApi\Attributes as OA;
 #[OA\Get(
     path: '/api/v1/shared-wishlists/{id}',
     summary: 'Список желаний или список дел для гостя',
-    description: 'Список дел (type = todo) открывается, только если владелец включил доступ по ссылке; у его позиций isSelected означает «выполнено», а поля jointGift нет. Отмечать дела гость может, только если guestsCanCheck = true. У позиций списка желаний есть поле jointGift: данные совместного подарка или null',
+    description: 'Список открывается, только если владелец включил доступ по ссылке (isShared). У позиций списка дел (type = todo) isSelected означает «выполнено», а поля jointGift нет. Отмечать дела гость может, только если guestsCanCheck = true. У позиций списка желаний есть поле jointGift: данные совместного подарка или null',
     tags: ['Shared wishlists'],
     parameters: [
         new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'ulid')),
@@ -144,7 +144,7 @@ use OpenApi\Attributes as OA;
                 type: 'object'
             )
         ),
-        new OA\Response(response: 404, description: 'Список не найден, является заметкой или списком дел без доступа по ссылке'),
+        new OA\Response(response: 404, description: 'Список не найден, является заметкой или владелец не открыл его по ссылке'),
         new OA\Response(response: 429, description: 'Слишком много запросов'),
     ]
 )]
@@ -202,6 +202,7 @@ use OpenApi\Attributes as OA;
                 type: 'object'
             )
         ),
+        new OA\Response(response: 404, description: 'Список желаний не найден или владелец закрыл доступ по ссылке'),
         new OA\Response(response: 422, description: 'Позиция уже выбрана другим гостем или совместный подарок указан для невыбранной позиции'),
         new OA\Response(response: 429, description: 'Слишком много запросов'),
     ]
@@ -282,7 +283,7 @@ use OpenApi\Attributes as OA;
                 type: 'object'
             )
         ),
-        new OA\Response(response: 404, description: 'Список не найден'),
+        new OA\Response(response: 404, description: 'Список желаний не найден или владелец закрыл доступ по ссылке'),
         new OA\Response(response: 422, description: 'Ошибка валидации'),
     ]
 )]
@@ -327,7 +328,7 @@ use OpenApi\Attributes as OA;
                 type: 'object'
             )
         ),
-        new OA\Response(response: 404, description: 'Бронь не найдена'),
+        new OA\Response(response: 404, description: 'Бронь не найдена или владелец закрыл доступ к списку по ссылке'),
         new OA\Response(response: 422, description: 'Позиция не входит в бронь'),
         new OA\Response(response: 429, description: 'Слишком много запросов'),
     ]
@@ -360,7 +361,7 @@ use OpenApi\Attributes as OA;
     ),
     responses: [
         new OA\Response(response: 200, description: 'Совместный подарок изменён; в ответе — список для гостя'),
-        new OA\Response(response: 404, description: 'Бронь не найдена'),
+        new OA\Response(response: 404, description: 'Бронь не найдена или владелец закрыл доступ к списку по ссылке'),
         new OA\Response(response: 422, description: 'Позиция не входит в бронь или данные не прошли проверку'),
         new OA\Response(response: 429, description: 'Слишком много запросов'),
     ]

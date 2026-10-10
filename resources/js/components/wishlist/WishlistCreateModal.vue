@@ -61,8 +61,9 @@ const defaultForm = (type: WishlistType = 'gift'): WishlistForm => ({
     // Выбор гостей, однажды увиденный владельцем, уже не скрыть,
     // поэтому список желаний по умолчанию создаётся в режиме сюрприза
     hideSelections: true,
+    // Список желаний по умолчанию открыт по ссылке: его создают, чтобы поделиться.
     // Список дел по умолчанию личный: доступ по ссылке владелец включает сам
-    isShared: false,
+    isShared: type === 'gift',
     guestsCanCheck: false,
     // Имя гостя по умолчанию обязательно: ради подписей под делами отметки и включают
     guestNameRequired: true,
@@ -86,8 +87,9 @@ const sourceForm = (source: Wishlist): WishlistForm => ({
     content: source.content ?? '',
     color: source.color,
     hideSelections: source.hideSelections ?? false,
-    // Копия списка дел создаётся личной: ссылку на неё владелец ещё никому не давал
-    isShared: false,
+    // Копия списка желаний открыта по ссылке, как новый список желаний. Копия
+    // списка дел создаётся личной: ссылку на неё владелец ещё никому не давал
+    isShared: (source.type ?? 'gift') === 'gift',
     guestsCanCheck: source.guestsCanCheck ?? false,
     guestNameRequired: source.guestNameRequired ?? true,
     // Прошедшая дата копии не нужна: копию обычно делают для следующего события
@@ -278,12 +280,12 @@ const handleSubmit = (): void => {
         type: form.value.type,
         title: form.value.title,
         color: form.value.color,
-        // У списка дел нет режима сюрприза, а доступ по ссылке включается только у него
+        // У списка дел нет режима сюрприза, а отметки гостей настраиваются только у него
         hideSelections: !isTodo.value && form.value.hideSelections,
+        isShared: form.value.isShared,
         dueDate: form.value.dueDate || null,
         ...(isTodo.value
             ? {
-                  isShared: form.value.isShared,
                   guestsCanCheck: form.value.guestsCanCheck,
                   guestNameRequired: form.value.guestNameRequired,
               }
@@ -468,19 +470,22 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                     <WishlistSurpriseToggle v-model="form.hideSelections" />
                 </div>
 
-                <!-- Список желаний доступен по ссылке всегда, а список дел — по выбору владельца -->
-                <div v-if="isTodo" class="form-group">
-                    <WishlistShareToggle v-model="form.isShared" />
+                <!-- Доступ по ссылке: у списка желаний по умолчанию включён, у списка дел выключен -->
+                <div v-if="!isNote" class="form-group">
+                    <WishlistShareToggle
+                        v-model="form.isShared"
+                        :type="form.type"
+                    />
 
-                    <!-- Отмечать дела гости могут только в списке, открытом по ссылке -->
+                    <!-- Отмечать дела гости могут только в списке дел, открытом по ссылке -->
                     <WishlistGuestCheckToggle
-                        v-if="form.isShared"
+                        v-if="isTodo && form.isShared"
                         v-model="form.guestsCanCheck"
                     />
 
                     <!-- Имя гостя нужно, только если гости отмечают дела -->
                     <WishlistGuestNameToggle
-                        v-if="form.isShared && form.guestsCanCheck"
+                        v-if="isTodo && form.isShared && form.guestsCanCheck"
                         v-model="form.guestNameRequired"
                     />
                 </div>

@@ -73,10 +73,9 @@ const isNote = computed(() => props.wishlist.type === 'note');
 // Список желаний: позиции выбирают гости по ссылке
 const isGift = computed(() => !isTodo.value && !isNote.value);
 
-// Ссылка для гостей: у списка желаний всегда, у списка дел — если владелец
-// включил доступ, у заметки её нет
-const hasShareLink = computed(() =>
-    isTodo.value ? Boolean(props.wishlist.isShared) : isGift.value,
+// Ссылка для гостей: у списков желаний и дел — если доступ включён, у заметки её нет
+const hasShareLink = computed(
+    () => !isNote.value && Boolean(props.wishlist.isShared),
 );
 
 // Свои отметки владелец видит подписью «Вы», если в списке есть и отметки гостей
@@ -373,6 +372,19 @@ const dueDateLabel = computed(() =>
                 :title="sharedLabel"
             >
                 <Users :size="14" />
+            </span>
+
+            <!-- Список желаний скрыт от гостей. У списка желаний значок ставится
+                 у закрытого, а не у открытого: по умолчанию он открыт по ссылке.
+                 Значок — ссылка кнопки копирования, перечёркнутая линией в CSS -->
+            <span
+                v-if="isGift && !wishlist.isShared"
+                class="card-hidden"
+                role="img"
+                aria-label="Скрыт от гостей: ссылка не открывается"
+                title="Скрыт от гостей: ссылка не открывается"
+            >
+                <Link :size="14" />
             </span>
         </div>
 
@@ -1149,7 +1161,8 @@ $card-content-max-height: 150px;
 }
 
 .card-surprise,
-.card-shared {
+.card-shared,
+.card-hidden {
     display: grid;
     place-items: center;
     width: 24px;
@@ -1160,6 +1173,24 @@ $card-content-max-height: 150px;
 // В тон метке «Дела»
 .card-shared {
     color: #059669;
+}
+
+.card-hidden {
+    position: relative;
+
+    // Косая черта поверх значка ссылки; толщина близка к линиям значка
+    // (stroke 2 из 24 при размере 14px — около 1.2px)
+    &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 18px;
+        height: 1.25px;
+        background: currentColor;
+        border-radius: 1px;
+        transform: translate(-50%, -50%) rotate(45deg);
+    }
 }
 
 .card-footer {

@@ -69,18 +69,9 @@ class WishlistTodoSharingTest extends TestCase
             ->assertJsonPath('data.isShared', true);
     }
 
-    public function test_is_shared_is_rejected_for_gift_and_note(): void
+    public function test_is_shared_is_rejected_for_note(): void
     {
         $user = User::factory()->create();
-
-        $this->actingAs($user)
-            ->postJson('/v1/wishlists', [
-                'title' => 'День рождения',
-                'isShared' => true,
-                'items' => [['label' => 'Книга']],
-            ])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('isShared', 'data.errors');
 
         $this->actingAs($user)
             ->postJson('/v1/wishlists', [
@@ -92,19 +83,13 @@ class WishlistTodoSharingTest extends TestCase
             ->assertJsonValidationErrors('isShared', 'data.errors');
     }
 
-    public function test_gift_list_is_always_shared_and_note_never(): void
+    public function test_note_is_never_shared(): void
     {
         $user = User::factory()->create();
 
-        $gift = Wishlist::create(['user_id' => $user->id, 'title' => 'День рождения']);
         $note = Wishlist::create(['user_id' => $user->id, 'type' => WishlistType::Note, 'content' => 'Текст']);
 
-        // Флаг в запросе на изменение у них не учитывается
-        $this->actingAs($user)
-            ->patchJson("/v1/wishlists/{$gift->id}", ['isShared' => false])
-            ->assertOk()
-            ->assertJsonPath('data.isShared', true);
-
+        // Флаг в запросе на изменение у заметки не учитывается
         $this->actingAs($user)
             ->patchJson("/v1/wishlists/{$note->id}", ['isShared' => true])
             ->assertOk()

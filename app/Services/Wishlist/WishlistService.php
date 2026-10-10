@@ -81,12 +81,12 @@ class WishlistService
             }
 
             // Выбор гостей в списке дел не скрывается: отметка гостя означает «выполнено»,
-            // поэтому режим сюрприза для него не включается. Доступ по ссылке и отметки
-            // гостей настраиваются только у списка дел: список желаний доступен по ссылке всегда
+            // поэтому режим сюрприза для него не включается. Отметки гостей настраиваются
+            // только у списка дел, доступ по ссылке — у списков желаний и дел
             if ($wishlist->isTodo()) {
                 unset($attributes['hide_selections']);
             } else {
-                unset($attributes['is_shared'], $attributes['guests_can_check'], $attributes['guest_name_required']);
+                unset($attributes['guests_can_check'], $attributes['guest_name_required']);
             }
 
             if ($attributes !== []) {

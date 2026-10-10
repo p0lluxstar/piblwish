@@ -13,7 +13,7 @@ use OpenApi\Attributes as OA;
 
 #[OA\Schema(
     schema: 'SavedWishlist',
-    description: 'Сводка чужого списка. Если владелец закрыл доступ к списку дел, available = false и поля списка равны null',
+    description: 'Сводка чужого списка. Если владелец закрыл доступ к списку, available = false и поля списка равны null',
     properties: [
         new OA\Property(property: 'id', description: 'ID самого списка', type: 'string', example: '01jq3v7x8k2m4n6p8r0t2w4y6z'),
         new OA\Property(property: 'available', description: 'Открывается ли список по ссылке', type: 'boolean', example: true),

@@ -35,9 +35,9 @@ class CreateWishlistRequest extends FormRequest
             // поэтому включить режим сюрприза для них нельзя
             'hideSelections' => ['sometimes', 'boolean', 'declined_if:type,todo,note'],
 
-            // Доступ по ссылке для просмотра; по умолчанию выключен. Включается только
-            // у списка дел: список желаний доступен по ссылке всегда, заметка — никогда
-            'isShared' => ['sometimes', 'boolean', 'prohibited_unless:type,todo'],
+            // Доступ по ссылке: у списка желаний по умолчанию включён, у списка дел
+            // (только просмотр) — выключен. Заметка по ссылке недоступна никогда
+            'isShared' => ['sometimes', 'boolean', 'prohibited_if:type,note'],
 
             // Разрешение гостям отмечать дела по ссылке; по умолчанию выключено.
             // Действует, только если включён isShared
@@ -120,7 +120,7 @@ class CreateWishlistRequest extends FormRequest
 
             'hideSelections.declined_if' => 'Режим сюрприза есть только у списка желаний',
 
-            'isShared.prohibited_unless' => 'Доступ по ссылке включается только у списка дел',
+            'isShared.prohibited_if' => 'Заметка по ссылке недоступна',
             'guestsCanCheck.prohibited_unless' => 'Отмечать позиции по ссылке гости могут только в списке дел',
             'guestNameRequired.prohibited_unless' => 'Имя гостя запрашивается только в списке дел',
 

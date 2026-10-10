@@ -36,7 +36,7 @@ use OpenApi\Attributes as OA;
 
                                 new OA\Property(
                                     property: 'type',
-                                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел открывается по общей ссылке только при isShared = true, а отмечать в нём дела гости могут при guestsCanCheck = true, заметка недоступна по ссылке',
+                                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Список желаний и список дел открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке',
                                     type: 'string',
                                     enum: WishlistType::class,
                                     example: 'gift'
@@ -84,7 +84,7 @@ use OpenApi\Attributes as OA;
 
                                 new OA\Property(
                                     property: 'isShared',
-                                    description: 'Открывается ли список по общей ссылке: у списка желаний всегда true, у заметки false, у списка дел — если владелец включил доступ',
+                                    description: 'Открывается ли список по общей ссылке: у списка желаний и списка дел — если доступ включён, у заметки всегда false',
                                     type: 'boolean',
                                     example: true
                                 ),
@@ -240,7 +240,7 @@ use OpenApi\Attributes as OA;
 
                 new OA\Property(
                     property: 'isShared',
-                    description: 'Доступ к списку дел по общей ссылке. Необязателен, по умолчанию false; передаётся только для списка дел (type = todo)',
+                    description: 'Доступ к списку по общей ссылке. Необязателен, по умолчанию true для списка желаний и false для списка дел; для заметки (type = note) не передаётся',
                     type: 'boolean',
                     example: false
                 ),
@@ -333,7 +333,7 @@ use OpenApi\Attributes as OA;
 
                             new OA\Property(
                                 property: 'type',
-                                description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Список дел открывается по общей ссылке только при isShared = true, а отмечать в нём дела гости могут при guestsCanCheck = true, заметка недоступна по ссылке',
+                                description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка. Список желаний и список дел открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке',
                                 type: 'string',
                                 enum: WishlistType::class,
                                 example: 'gift'
@@ -381,7 +381,7 @@ use OpenApi\Attributes as OA;
 
                             new OA\Property(
                                 property: 'isShared',
-                                description: 'Открывается ли список по общей ссылке: у списка желаний всегда true, у заметки false, у списка дел — если владелец включил доступ',
+                                description: 'Открывается ли список по общей ссылке: у списка желаний и списка дел — если доступ включён, у заметки всегда false',
                                 type: 'boolean',
                                 example: true
                             ),

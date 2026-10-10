@@ -18,15 +18,23 @@ class Wishlist extends Model
     use HasUlids;
 
     // Совпадает со значениями по умолчанию в БД: без этого у только что
-    // созданного списка без цвета или типа поле было бы null до перечитывания
+    // созданного списка без цвета или типа поле было бы null до перечитывания.
+    // is_shared здесь нет: его значение по умолчанию зависит от типа (booted)
     protected $attributes = [
         'type' => 'gift',
         'color' => 'white',
         'hide_selections' => false,
-        'is_shared' => false,
         'guests_can_check' => false,
         'guest_name_required' => true,
     ];
+
+    protected static function booted(): void
+    {
+        // Список желаний по умолчанию открыт по ссылке, список дел и заметка — нет
+        static::creating(function (Wishlist $wishlist) {
+            $wishlist->is_shared ??= $wishlist->isGift();
+        });
+    }
 
     protected function casts(): array
     {
@@ -48,9 +56,8 @@ class Wishlist extends Model
         return $this->type === WishlistType::Gift;
     }
 
-    // Список дел: у позиций нет ссылки, цены и приоритета; по ссылке доступен,
-    // только если владелец включил is_shared, а отмечать дела гости могут
-    // лишь при guests_can_check
+    // Список дел: у позиций нет ссылки, цены и приоритета; отмечать дела
+    // по ссылке гости могут лишь при guests_can_check
     public function isTodo(): bool
     {
         return $this->type === WishlistType::Todo;
@@ -62,23 +69,19 @@ class Wishlist extends Model
         return $this->type === WishlistType::Note;
     }
 
-    // Открывается ли список по общей ссылке: список желаний — всегда,
-    // список дел — если владелец включил доступ, заметка — никогда
+    // Открывается ли список по общей ссылке: список желаний или дел — если
+    // владелец не закрыл (у желаний) или включил (у дел) доступ, заметка — никогда
     public function isShared(): bool
     {
-        return $this->isGift() || ($this->isTodo() && $this->is_shared);
+        return ! $this->isNote() && $this->is_shared;
     }
 
-    // То же условие, что в isShared(), для запроса: списки желаний
-    // и списки дел с включённым доступом по ссылке
+    // То же условие, что в isShared(), для запроса
     #[Scope]
     protected function openByLink(Builder $query): void
     {
-        $query->where(fn (Builder $query) => $query
-            ->where('type', WishlistType::Gift)
-            ->orWhere(fn (Builder $query) => $query
-                ->where('type', WishlistType::Todo)
-                ->where('is_shared', true)));
+        $query->where('type', '!=', WishlistType::Note)
+            ->where('is_shared', true);
     }
 
     // Могут ли гости по ссылке отмечать дела выполненными: только в списке дел,

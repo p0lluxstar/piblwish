@@ -19,7 +19,8 @@ class UpdateWishlistRequest extends FormRequest
         // Тип списка после создания не меняется, поэтому поля type здесь нет.
         // Ссылки, цену, приоритет и режим сюрприза у списка дел очищает WishlistService.
         // У заметки WishlistService изменяет только цвет и текст, у списков — всё, кроме текста.
-        // isShared, guestsCanCheck и guestNameRequired WishlistService учитывает только у списка дел.
+        // isShared WishlistService не учитывает у заметки, а guestsCanCheck
+        // и guestNameRequired учитывает только у списка дел.
         // dueDate у заметки WishlistService не сохраняет; null убирает дату
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],

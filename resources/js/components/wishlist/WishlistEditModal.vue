@@ -531,13 +531,13 @@ const handleSubmit = (): void => {
         id: props.wishlist.id,
         title: form.value.title,
         color: form.value.color,
-        // У списка дел нет режима сюрприза, а доступ по ссылке меняется только у него
+        // У списка дел нет режима сюрприза, а отметки гостей настраиваются только у него
         hideSelections: !isTodo.value && form.value.hideSelections,
+        isShared: form.value.isShared,
         // Пустая строка — владелец убрал дату
         dueDate: form.value.dueDate || null,
         ...(isTodo.value
             ? {
-                  isShared: form.value.isShared,
                   guestsCanCheck: form.value.guestsCanCheck,
                   guestNameRequired: form.value.guestNameRequired,
               }
@@ -659,23 +659,6 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                     />
                 </div>
 
-                <!-- Список желаний доступен по ссылке всегда, а список дел — по выбору владельца -->
-                <div v-if="isTodo" class="form-group">
-                    <WishlistShareToggle v-model="form.isShared" />
-
-                    <!-- Отмечать дела гости могут только в списке, открытом по ссылке -->
-                    <WishlistGuestCheckToggle
-                        v-if="form.isShared"
-                        v-model="form.guestsCanCheck"
-                    />
-
-                    <!-- Имя гостя нужно, только если гости отмечают дела -->
-                    <WishlistGuestNameToggle
-                        v-if="form.isShared && form.guestsCanCheck"
-                        v-model="form.guestNameRequired"
-                    />
-                </div>
-
                 <!-- Режим сюрприза есть только у списка желаний: у остальных гости ничего не выбирают -->
                 <div v-if="!isTodo && !isNote" class="form-group">
                     <WishlistSurpriseToggle v-model="form.hideSelections" />
@@ -689,6 +672,37 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                     >
                         {{ selectionError }}
                     </p>
+                </div>
+
+                <!-- Доступ по ссылке у списков желаний и дел; заметка по ссылке недоступна -->
+                <div v-if="!isNote" class="form-group">
+                    <WishlistShareToggle
+                        v-model="form.isShared"
+                        :type="wishlist.type ?? 'gift'"
+                    />
+
+                    <!-- Закрытие доступа не снимает выбор гостей: после повторного
+                         открытия брони и совместные подарки остаются на месте -->
+                    <p
+                        v-if="!isTodo && wishlist.isShared && !form.isShared"
+                        class="selection-status"
+                    >
+                        Ссылка перестанет открываться, в том числе у гостей,
+                        которые уже выбрали подарки. Их выбор сохранится и
+                        вернётся, если снова открыть доступ.
+                    </p>
+
+                    <!-- Отмечать дела гости могут только в списке дел, открытом по ссылке -->
+                    <WishlistGuestCheckToggle
+                        v-if="isTodo && form.isShared"
+                        v-model="form.guestsCanCheck"
+                    />
+
+                    <!-- Имя гостя нужно, только если гости отмечают дела -->
+                    <WishlistGuestNameToggle
+                        v-if="isTodo && form.isShared && form.guestsCanCheck"
+                        v-model="form.guestNameRequired"
+                    />
                 </div>
 
                 <div v-if="isNote" class="form-group">
