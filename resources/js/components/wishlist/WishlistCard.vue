@@ -33,6 +33,9 @@ import TodoCheckedBy from './TodoCheckedBy.vue';
 
 const props = defineProps<{
     wishlist: Wishlist;
+    // Крупная карточка в окне просмотра (WishlistCardPreview): позиции и текст
+    // заметки выводятся целиком, без прокрутки внутри карточки
+    expanded?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -41,7 +44,25 @@ const emit = defineEmits<{
     delete: [wishlist: Wishlist];
     toggleItem: [wishlist: Wishlist, item: WishlistItem];
     updateContent: [wishlist: Wishlist, content: string];
+    expand: [wishlist: Wishlist];
 }>();
+
+// Клик по этим элементам выполняет их действие и не открывает окно просмотра
+const INTERACTIVE_SELECTOR =
+    'a, button, input, textarea, label, [role="alertdialog"]';
+
+// Карточка в дашборде открывается в окне просмотра кликом по свободному месту.
+// Если пользователь выделял текст мышью, окно не открывается
+const handleCardClick = (event: MouseEvent): void => {
+    if (props.expanded) return;
+
+    const target = event.target as HTMLElement | null;
+
+    if (target?.closest(INTERACTIVE_SELECTOR)) return;
+    if (window.getSelection()?.toString()) return;
+
+    emit('expand', props.wishlist);
+};
 
 // Список дел: выполненные дела зачёркнуты, ссылка для просмотра — по выбору владельца
 const isTodo = computed(() => props.wishlist.type === 'todo');
@@ -294,9 +315,23 @@ const dueDateLabel = computed(() =>
         :class="[
             'card',
             `wishlist-color--${wishlist.color}`,
-            { 'card--todo': isTodo },
+            {
+                'card--todo': isTodo,
+                'card--expanded': expanded,
+                'card--expandable': !expanded,
+            },
         ]"
+        @click="handleCardClick"
     >
+        <!-- Крупный бледный значок типа по центру карточки: тип различается
+             по форме с первого взгляда. Цвет берётся из цвета списка, а не из
+             бейджика, чтобы не спорить с выбранным фоном -->
+        <div class="card-watermark" aria-hidden="true">
+            <StickyNote v-if="isNote" :size="100" :stroke-width="1.5" />
+            <ListChecks v-else-if="isTodo" :size="100" :stroke-width="1.5" />
+            <Gift v-else :size="100" :stroke-width="1.5" />
+        </div>
+
         <!-- Тип списка виден сразу, даже у пустой карточки: цвет фона выбирает
              пользователь, поэтому тип им не обозначается. Значки те же, что
              на шаге выбора типа при создании -->
@@ -650,12 +685,46 @@ const dueDateLabel = computed(() =>
     transition:
         transform 0.25s ease,
         box-shadow 0.25s ease;
+    // Свой контекст наложения: значок с z-index: -1 ложится поверх фона
+    // карточки, но под её содержимое
+    isolation: isolate;
 }
 
 .card:hover {
     transform: translateY(-6px) scale(1.015);
     box-shadow: 0 22px 48px -16px
         color-mix(in srgb, var(--wishlist-glow, #64748b) 40%, transparent);
+}
+
+// Слой на всю карточку центрирует значок; значок не перехватывает клики
+.card-watermark {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+
+    svg {
+        color: var(--wishlist-glow, #64748b);
+        opacity: 0.04;
+        transform: rotate(-15deg);
+        transition: transform 0.35s ease;
+    }
+}
+
+.card:hover .card-watermark svg {
+    transform: rotate(-11deg);
+}
+
+.card--expanded:hover .card-watermark svg {
+    transform: rotate(-15deg);
+}
+
+// Окно просмотра открывается кликом по карточке
+.card--expandable {
+    cursor: pointer;
 }
 
 .card-actions {
@@ -1171,6 +1240,76 @@ $card-content-max-height: 150px;
     svg {
         flex-shrink: 0;
         transform: translateY(1px);
+    }
+}
+
+// Карточка в окне просмотра: крупнее, без подъёма при наведении и без прокрутки
+// внутри; длинное содержимое прокручивает само окно
+.card--expanded {
+    min-height: 280px;
+    padding: 28px;
+    // Края карточки задаёт подложка окна. Рамка рядом с полосой прокрутки окна
+    // выглядела бы лишней линией справа
+    border: none;
+
+    &:hover {
+        transform: none;
+        box-shadow: 0 8px 24px -14px
+            color-mix(in srgb, var(--wishlist-glow, #64748b) 25%, transparent);
+    }
+
+    .card-badges {
+        top: 14px;
+        left: 18px;
+    }
+
+    // Справа от кнопок — крестик окна просмотра
+    .card-actions {
+        top: 14px;
+        right: 52px;
+    }
+
+    .card-header {
+        margin-top: 26px;
+        margin-bottom: 14px;
+    }
+
+    .card-title {
+        font-size: 20px;
+        line-height: 1.3;
+    }
+
+    .card-items,
+    .note-text {
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    // Только по вертикали: у забронированной позиции свой отступ по горизонтали
+    .item {
+        padding-block: 8px;
+
+        &:first-of-type:not(.item--reserved) {
+            padding-top: 0;
+        }
+
+        &:last-child:not(.item--reserved) {
+            padding-bottom: 0;
+        }
+    }
+
+    .item-label {
+        font-size: 15px;
+    }
+
+    .item-price {
+        font-size: 13px;
+    }
+
+    .note-text {
+        margin-top: 24px;
+        font-size: 16px;
+        line-height: 1.4;
     }
 }
 </style>

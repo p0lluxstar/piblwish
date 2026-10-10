@@ -74,8 +74,8 @@ const routes: RouteRecordRaw[] = [
         // Публичная страница: доступна всем, но шапка зависит от того, авторизован ли пользователь
         // У списка дел свой адрес; страница после загрузки исправляет адрес,
         // если он не соответствует типу списка (lib/sharedLink.ts)
-        path: '/shared/:id',
-        alias: '/shared-todolists/:id',
+        path: '/shared-wishlist/:id',
+        alias: '/shared-todolist/:id',
         component: DashboardLayout,
         meta: { loadUser: true },
         children: [
@@ -87,16 +87,19 @@ const routes: RouteRecordRaw[] = [
         ],
     },
 
-    {
-        // Прежний адрес общей страницы: по нему открываются уже разосланные ссылки
-        path: '/shared-wishlists/:id',
-        redirect: (to) => ({
-            name: 'shared-wishlist',
-            params: to.params,
-            query: to.query,
-            hash: to.hash,
+    // Прежние адреса общей страницы: по ним открываются уже разосланные ссылки.
+    // Страница после загрузки исправляет адрес по типу списка
+    ...['/shared/:id', '/shared-wishlists/:id', '/shared-todolists/:id'].map(
+        (path): RouteRecordRaw => ({
+            path,
+            redirect: (to) => ({
+                name: 'shared-wishlist',
+                params: to.params,
+                query: to.query,
+                hash: to.hash,
+            }),
         }),
-    },
+    ),
 
     {
         // Публичные страницы с фоном и шапкой дашборда

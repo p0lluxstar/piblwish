@@ -355,10 +355,10 @@ const handleDeleteAccount = (): void => {
 }
 
 .avatar {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     background: var(--brand-gradient);
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 700;
     color: #fff;
     box-shadow: var(--shadow-glow);
@@ -372,8 +372,8 @@ const handleDeleteAccount = (): void => {
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     border: 2px solid #fff;
     background: var(--brand-amber);
@@ -493,6 +493,11 @@ const handleDeleteAccount = (): void => {
     }
     .user-details {
         display: none;
+    }
+    .avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 15px;
     }
     /* На узком экране вместо полного названия — сокращение PW */
     .logo {

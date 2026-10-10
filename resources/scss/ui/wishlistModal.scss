@@ -36,32 +36,37 @@ $item-price-height: 26px;
 }
 
 // Тонкая полоса прокрутки в фирменных цветах, когда модалка выше экрана.
+// Подключается и в окнах со своей разметкой (WishlistCardPreview).
 // В Chrome 121+ стандартные scrollbar-width и scrollbar-color отключают
 // ::-webkit-scrollbar, поэтому они заданы только для браузеров без него (Firefox)
-@supports not selector(::-webkit-scrollbar) {
-    .modal {
+@mixin modal-scrollbar {
+    @supports not selector(::-webkit-scrollbar) {
         scrollbar-width: thin;
         scrollbar-color: rgba(139, 92, 246, 0.35) transparent;
     }
-}
 
-.modal::-webkit-scrollbar {
-    width: 6px;
-}
-
-// Отступы сверху и снизу: полоса не заходит на скруглённые углы модалки
-.modal::-webkit-scrollbar-track {
-    margin: 22px 0;
-    background: transparent;
-}
-
-.modal::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: rgba(139, 92, 246, 0.3);
-
-    &:hover {
-        background: linear-gradient(180deg, #8b5cf6, #ec4899);
+    &::-webkit-scrollbar {
+        width: 6px;
     }
+
+    // Отступы сверху и снизу: полоса не заходит на скруглённые углы модалки
+    &::-webkit-scrollbar-track {
+        margin: 22px 0;
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: rgba(139, 92, 246, 0.3);
+
+        &:hover {
+            background: linear-gradient(180deg, #8b5cf6, #ec4899);
+        }
+    }
+}
+
+.modal {
+    @include modal-scrollbar;
 }
 
 @keyframes modalPop {

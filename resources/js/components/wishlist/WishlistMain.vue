@@ -31,6 +31,7 @@ import type {
 } from '../../types/wishlist';
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
 import WishlistCard from './WishlistCard.vue';
+import WishlistCardPreview from './WishlistCardPreview.vue';
 import WishlistCreateModal from './WishlistCreateModal.vue';
 import WishlistDeleteModal from './WishlistDeleteModal.vue';
 import WishlistEditModal from './WishlistEditModal.vue';
@@ -43,6 +44,9 @@ const isEditModalOpen = ref(false);
 const selectedWishlist = ref<Wishlist | null>(null);
 const isDeleteModalOpen = ref(false);
 const wishlistToDelete = ref<Wishlist | null>(null);
+// Карточка, открытая в окне просмотра. Хранится id, а сам список берётся
+// из кэша: отметки и правки сразу видны в окне
+const previewWishlistId = ref<string | null>(null);
 // Фраза показывается в шапке под названием сайта
 const { generatePhrase: generateRandomPhrase } = useMotivationalPhrase();
 
@@ -176,6 +180,37 @@ const sortAriaLabel = (field: WishlistSortField, label: string): string => {
     if (sort.value.field !== field) return `Сортировать ${label.toLowerCase()}`;
 
     return `${label}, ${sort.value.direction === 'asc' ? 'по возрастанию' : 'по убыванию'}`;
+};
+
+const previewWishlist = computed(
+    () =>
+        wishLists.value.find(
+            (wishlist) => wishlist.id === previewWishlistId.value,
+        ) ?? null,
+);
+
+// Список удалён: окно просмотра закрывается
+watch(previewWishlist, (wishlist) => {
+    if (!wishlist) previewWishlistId.value = null;
+});
+
+const openPreview = (wishlist: Wishlist): void => {
+    previewWishlistId.value = wishlist.id;
+};
+
+const closePreview = (): void => {
+    previewWishlistId.value = null;
+};
+
+// Окна редактирования и создания открываются вместо просмотра, а не поверх него
+const editFromPreview = (wishlist: Wishlist): void => {
+    closePreview();
+    openEditModal(wishlist);
+};
+
+const duplicateFromPreview = (wishlist: Wishlist): void => {
+    closePreview();
+    openDuplicateModal(wishlist);
 };
 
 const openCreateModal = (): void => {
@@ -594,6 +629,7 @@ onMounted(generateRandomPhrase);
                 @delete="openDeleteModal"
                 @toggle-item="toggleItem"
                 @update-content="updateNoteContent"
+                @expand="openPreview"
             />
         </div>
 
@@ -604,6 +640,18 @@ onMounted(generateRandomPhrase);
             </button>
         </div>
     </template>
+
+    <!-- Перед остальными окнами: подтверждение удаления открывается поверх просмотра -->
+    <WishlistCardPreview
+        v-if="previewWishlist"
+        :wishlist="previewWishlist"
+        @close="closePreview"
+        @edit="editFromPreview"
+        @duplicate="duplicateFromPreview"
+        @delete="openDeleteModal"
+        @toggle-item="toggleItem"
+        @update-content="updateNoteContent"
+    />
 
     <WishlistCreateModal
         v-if="isCreateModalOpen"

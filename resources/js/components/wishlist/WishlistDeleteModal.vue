@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue';
 
+import { lockBodyScroll, unlockBodyScroll } from '../../lib/bodyScrollLock';
 import type { Wishlist } from '../../types/wishlist';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 
@@ -36,22 +37,10 @@ const handleConfirm = (): void => {
     emit('confirm');
 };
 
-// Блокировка прокрутки при открытии модального окна
-const disableBodyScroll = (): void => {
-    document.body.classList.add('modal-open');
-};
-
-const enableBodyScroll = (): void => {
-    document.body.classList.remove('modal-open');
-};
-
-onMounted(() => {
-    disableBodyScroll();
-});
-
-onUnmounted(() => {
-    enableBodyScroll();
-});
+// Блокировка прокрутки при открытии модального окна. Окно может открываться
+// поверх просмотра карточки, и тогда прокрутка остаётся заблокированной после закрытия
+onMounted(lockBodyScroll);
+onUnmounted(unlockBodyScroll);
 </script>
 
 <template>

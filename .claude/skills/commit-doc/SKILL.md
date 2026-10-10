@@ -31,7 +31,7 @@ disable-model-invocation: true
 ## Данные
 
 Последние файлы в `docs/tasks`:
-!`ls docs/tasks | sort -V | tail -3`
+!`ls "$(git rev-parse --show-toplevel)/docs/tasks" | sort -V | tail -3`
 
 Последний коммит:
 !`git log -1 --format='%h %s'`
