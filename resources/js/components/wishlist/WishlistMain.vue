@@ -1,21 +1,8 @@
 <script setup lang="ts">
-import {
-    Archive,
-    ArrowDown,
-    ArrowLeft,
-    ArrowUp,
-    BadgeRussianRuble,
-    Gift,
-    LayoutList,
-    ListChecks,
-    Plus,
-    RefreshCcw,
-    StickyNote,
-    Trash2,
-} from '@lucide/vue';
+import { Archive, ArrowLeft, Plus, RefreshCcw, Trash2 } from '@lucide/vue';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { isAxiosError } from 'axios';
-import { type Component, computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useMotivationalPhrase } from '@/composables/useMotivationalPhrase';
@@ -29,6 +16,7 @@ import {
     useWishlistSort,
     type WishlistSortField,
 } from '@/composables/useWishlistSort';
+import { useWishlistTypeFilter } from '@/composables/useWishlistTypeFilter';
 import { api } from '@/lib/api';
 import type { ApiErrorResponse } from '@/types/api';
 
@@ -48,6 +36,7 @@ import WishlistCardPreview from './WishlistCardPreview.vue';
 import WishlistCreateModal from './WishlistCreateModal.vue';
 import WishlistDeleteModal from './WishlistDeleteModal.vue';
 import WishlistEditModal from './WishlistEditModal.vue';
+import WishlistSortBar from './WishlistSortBar.vue';
 
 const props = defineProps<{
     // Архив (/dashboard/archive): списки только для просмотра, без создания
@@ -76,114 +65,46 @@ const wishLists = computed(() => data.value ?? []);
 // Число списков в архиве для ссылки «Архив»
 const archivedCount = useArchivedCount();
 
-// В архиве «По дате» означает время переноса в архив. Сортировка и фильтр
-// архива хранятся отдельно от основного раздела
-const { sort, setSort, sortedWishlists } = useWishlistSort(
-    wishLists,
-    props.archived
-        ? {
-              storageKey: 'wishlists-archive-sort',
-              dateOf: (wishlist): string => wishlist.archivedAt ?? '',
-          }
-        : {},
-);
+// В архиве «По дате» означает время переноса в архив, а сортировки по сроку нет:
+// карточка архива не показывает срок. Сортировка и фильтр архива хранятся
+// отдельно от основного раздела
+const {
+    sort,
+    setSort,
+    isDefaultSort,
+    resetSort,
+    sortedItems: sortedWishlists,
+} = useWishlistSort(wishLists, {
+    storageKey: props.archived ? 'wishlists-archive-sort' : 'wishlists-sort',
+    fields: props.archived ? ['date', 'title'] : ['date', 'due', 'title'],
+    dateOf: (wishlist): string =>
+        (props.archived ? wishlist.archivedAt : wishlist.createdAt) ?? '',
+    dueDateOf: (wishlist): string => wishlist.dueDate ?? '',
+    // У заметки нет названия: при сортировке по названию учитывается её текст
+    titleOf: (wishlist): string => wishlist.title ?? wishlist.content ?? '',
+});
 
-type WishlistTypeFilter = 'all' | WishlistType;
+const {
+    typeFilter,
+    typeFilterOptions,
+    hasTypeFilter,
+    activeTypeFilter,
+    filterByType,
+} = useWishlistTypeFilter(wishLists, {
+    storageKey: props.archived
+        ? 'wishlists-archive-type-filter'
+        : 'wishlists-type-filter',
+    // Список без типа считается списком желаний, как и на бэкенде
+    typeOf: (wishlist): WishlistType => wishlist.type ?? 'gift',
+});
 
-const TYPE_FILTER_STORAGE_KEY = props.archived
-    ? 'wishlists-archive-type-filter'
-    : 'wishlists-type-filter';
+const filteredWishlists = computed(() => filterByType(sortedWishlists.value));
 
-// Чтение защищено так же, как у сортировки: localStorage может быть недоступен
-const readTypeFilter = (): WishlistTypeFilter => {
-    try {
-        const value = window.localStorage.getItem(TYPE_FILTER_STORAGE_KEY);
-
-        if (
-            value === 'gift' ||
-            value === 'todo' ||
-            value === 'fund' ||
-            value === 'note'
-        ) {
-            return value;
-        }
-    } catch {
-        // Значение недоступно — показываются все списки
-    }
-
-    return 'all';
+// Кнопка «Сбросить»: все типы и сортировка раздела по умолчанию
+const resetFilters = (): void => {
+    typeFilter.value = 'all';
+    resetSort();
 };
-
-const typeFilter = ref<WishlistTypeFilter>(readTypeFilter());
-
-watch(typeFilter, (value) => {
-    try {
-        window.localStorage.setItem(TYPE_FILTER_STORAGE_KEY, value);
-    } catch {
-        // Сохранение недоступно — фильтр действует до перезагрузки страницы
-    }
-});
-
-// Список без типа считается списком желаний, как и на бэкенде
-const typeOf = (wishlist: Wishlist): WishlistType => wishlist.type ?? 'gift';
-
-const typeCounts = computed(() => {
-    const counts = {
-        all: wishLists.value.length,
-        gift: 0,
-        todo: 0,
-        fund: 0,
-        note: 0,
-    };
-
-    for (const wishlist of wishLists.value) {
-        counts[typeOf(wishlist)] += 1;
-    }
-
-    return counts;
-});
-
-// Иконка заменяет подпись кнопки на очень узком экране
-const TYPE_FILTER_OPTIONS: {
-    value: WishlistTypeFilter;
-    label: string;
-    icon: Component;
-}[] = [
-    { value: 'all', label: 'Все', icon: LayoutList },
-    { value: 'gift', label: 'Желания', icon: Gift },
-    { value: 'todo', label: 'Дела', icon: ListChecks },
-    { value: 'fund', label: 'Сборы', icon: BadgeRussianRuble },
-    { value: 'note', label: 'Заметки', icon: StickyNote },
-];
-
-// Кнопки показываются только для типов, которые есть у пользователя
-const typeFilterOptions = computed(() =>
-    TYPE_FILTER_OPTIONS.filter(
-        (option) =>
-            option.value === 'all' || typeCounts.value[option.value] > 0,
-    ),
-);
-
-// Фильтр нужен, только когда есть карточки хотя бы двух типов
-const hasTypeFilter = computed(() => typeFilterOptions.value.length > 2);
-
-// Фильтр действует, только если он показан и у выбранного типа есть карточки.
-// Иначе сохранённый фильтр спрятал бы все карточки без возможности его сбросить
-const activeTypeFilter = computed<WishlistTypeFilter>(() =>
-    hasTypeFilter.value &&
-    typeFilter.value !== 'all' &&
-    typeCounts.value[typeFilter.value] > 0
-        ? typeFilter.value
-        : 'all',
-);
-
-const filteredWishlists = computed(() => {
-    if (activeTypeFilter.value === 'all') return sortedWishlists.value;
-
-    return sortedWishlists.value.filter(
-        (wishlist) => typeOf(wishlist) === activeTypeFilter.value,
-    );
-});
 
 // Ссылка в архив — при непустом архиве. Ссылка из архива — при непустом архиве:
 // у пустого архива переход есть в пояснении на месте карточек
@@ -215,15 +136,9 @@ watch([sort, typeFilter], () => {
 
 const SORT_OPTIONS: { field: WishlistSortField; label: string }[] = [
     { field: 'date', label: 'По дате' },
+    ...(props.archived ? [] : [{ field: 'due' as const, label: 'По сроку' }]),
     { field: 'title', label: 'По названию' },
 ];
-
-// Подпись для экранных дикторов: поле и текущее направление сортировки
-const sortAriaLabel = (field: WishlistSortField, label: string): string => {
-    if (sort.value.field !== field) return `Сортировать ${label.toLowerCase()}`;
-
-    return `${label}, ${sort.value.direction === 'asc' ? 'по возрастанию' : 'по убыванию'}`;
-};
 
 const previewWishlist = computed(
     () =>
@@ -698,60 +613,19 @@ onMounted(generateRandomPhrase);
 
     <!-- Сортировка имеет смысл, только когда списков больше одного.
          Ссылка между разделами видна и при одной карточке -->
-    <div
+    <WishlistSortBar
         v-if="!isLoading && (wishLists.length > 1 || hasSectionLink)"
-        class="sort-bar"
+        :type-options="typeFilterOptions"
+        :active-type="activeTypeFilter"
+        :show-type-filter="hasTypeFilter"
+        :sort-options="SORT_OPTIONS"
+        :sort="sort"
+        :is-default-sort="isDefaultSort"
+        :show-sort="wishLists.length > 1"
+        @update:type="typeFilter = $event"
+        @sort="setSort"
+        @reset="resetFilters"
     >
-        <div
-            v-if="hasTypeFilter"
-            class="sort-group"
-            role="group"
-            aria-label="Тип списков"
-        >
-            <button
-                v-for="option in typeFilterOptions"
-                :key="option.value"
-                class="sort-btn"
-                :class="{ active: activeTypeFilter === option.value }"
-                :aria-pressed="activeTypeFilter === option.value"
-                :aria-label="`${option.label}: ${typeCounts[option.value]}`"
-                :title="option.label"
-                @click="typeFilter = option.value"
-            >
-                <component
-                    :is="option.icon"
-                    class="type-filter-icon"
-                    :size="14"
-                    aria-hidden="true"
-                />
-                <span class="type-filter-label">{{ option.label }}</span>
-                <span class="sort-count">{{ typeCounts[option.value] }}</span>
-            </button>
-        </div>
-
-        <div
-            v-if="wishLists.length > 1"
-            class="sort-group"
-            role="group"
-            aria-label="Сортировка списков"
-        >
-            <button
-                v-for="option in SORT_OPTIONS"
-                :key="option.field"
-                class="sort-btn"
-                :class="{ active: sort.field === option.field }"
-                :aria-pressed="sort.field === option.field"
-                :aria-label="sortAriaLabel(option.field, option.label)"
-                @click="setSort(option.field)"
-            >
-                <span>{{ option.label }}</span>
-                <template v-if="sort.field === option.field">
-                    <ArrowUp v-if="sort.direction === 'asc'" :size="12" />
-                    <ArrowDown v-else :size="12" />
-                </template>
-            </button>
-        </div>
-
         <!-- Переход между активными списками и архивом, в архиве справа
              от него — удаление всех карточек архива -->
         <div v-if="hasSectionLink" class="section-actions">
@@ -778,7 +652,7 @@ onMounted(generateRandomPhrase);
                 <span>Удалить все</span>
             </button>
         </div>
-    </div>
+    </WishlistSortBar>
 
     <div
         v-if="isLoading || isFetching"
@@ -985,59 +859,6 @@ onMounted(generateRandomPhrase);
     }
 }
 
-.sort-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 20px;
-    margin: -10px 0 18px;
-}
-
-.sort-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.sort-count {
-    font-size: 11px;
-    opacity: 0.6;
-}
-
-.sort-btn {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: #fff;
-    color: var(--ink-soft);
-    border: 1.5px solid var(--surface-border);
-    padding: 5px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    font-family: inherit;
-    line-height: 1.5;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover {
-        color: var(--brand-violet);
-        border-color: var(--brand-violet);
-    }
-
-    &.active {
-        color: var(--brand-violet);
-        border-color: var(--brand-violet);
-        background: rgba(139, 92, 246, 0.08);
-    }
-}
-
-.type-filter-icon {
-    display: none;
-    flex-shrink: 0;
-}
-
 // Текст лежит прямо на фоне, поэтому цвет зависит от выбранного фона приложения
 .empty-text {
     color: var(--app-ink-soft, #6b7280);
@@ -1059,8 +880,9 @@ onMounted(generateRandomPhrase);
     text-decoration: none;
 }
 
-// Удаление всех карточек архива: в розовых тонах кнопки подтверждения удаления
-.clear-btn {
+// Удаление всех карточек архива: в розовых тонах кнопки подтверждения удаления.
+// Двойной класс перебивает оформление .sort-btn из WishlistSortBar
+.sort-btn.clear-btn {
     color: #ec4899;
     border-color: rgba(236, 72, 153, 0.35);
 
@@ -1107,16 +929,5 @@ onMounted(generateRandomPhrase);
 .more-count {
     color: var(--ink-soft);
     font-weight: 500;
-}
-
-/* Очень узкий экран: у кнопок фильтра по типу иконка вместо подписи,
-   чтобы ряд занимал меньше места */
-@media (max-width: 399px) {
-    .type-filter-icon {
-        display: block;
-    }
-    .type-filter-label {
-        display: none;
-    }
 }
 </style>

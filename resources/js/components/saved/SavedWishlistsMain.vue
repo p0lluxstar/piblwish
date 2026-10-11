@@ -3,10 +3,16 @@ import { RefreshCcw } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 import LaoderPageSpinner from '@/components/ui/LaoderPageSpinner.vue';
+import WishlistSortBar from '@/components/wishlist/WishlistSortBar.vue';
 import {
     useSavedWishlists,
     useToggleSavedWishlist,
 } from '@/composables/useSavedWishlists';
+import {
+    useWishlistSort,
+    type WishlistSortField,
+} from '@/composables/useWishlistSort';
+import { useWishlistTypeFilter } from '@/composables/useWishlistTypeFilter';
 import type { SavedWishlist } from '@/types/savedWishlist';
 
 import SavedWishlistCard from './SavedWishlistCard.vue';
@@ -16,6 +22,42 @@ import SavedWishlistCard from './SavedWishlistCard.vue';
 const { data, isLoading, isFetching, error, refetch } = useSavedWishlists();
 
 const wishlists = computed(() => data.value ?? []);
+
+// Сортировки по дате создания нет: она не видна на карточке. По умолчанию
+// сверху списки с ближайшей датой. Недоступные списки (без даты и названия)
+// при любой сортировке стоят в конце
+const { sort, setSort, isDefaultSort, resetSort, sortedItems } =
+    useWishlistSort(wishlists, {
+        storageKey: 'saved-wishlists-sort',
+        fields: ['due', 'title'],
+        dueDateOf: (wishlist): string => wishlist.dueDate ?? '',
+        titleOf: (wishlist): string => wishlist.title ?? '',
+    });
+
+// Недоступный список без типа виден только в «Все»
+const {
+    typeFilter,
+    typeFilterOptions,
+    hasTypeFilter,
+    activeTypeFilter,
+    filterByType,
+} = useWishlistTypeFilter(wishlists, {
+    storageKey: 'saved-wishlists-type-filter',
+    typeOf: (wishlist) => wishlist.type,
+});
+
+const visibleWishlists = computed(() => filterByType(sortedItems.value));
+
+// Кнопка «Сбросить»: все типы и сортировка по сроку
+const resetFilters = (): void => {
+    typeFilter.value = 'all';
+    resetSort();
+};
+
+const SORT_OPTIONS: { field: WishlistSortField; label: string }[] = [
+    { field: 'due', label: 'По сроку' },
+    { field: 'title', label: 'По названию' },
+];
 
 const {
     mutate: toggleSaved,
@@ -66,6 +108,21 @@ const refresh = (): void => {
         {{ removeErrorMessage }}
     </p>
 
+    <!-- Панель имеет смысл, только когда списков больше одного -->
+    <WishlistSortBar
+        v-if="!isLoading && wishlists.length > 1"
+        :type-options="typeFilterOptions"
+        :active-type="activeTypeFilter"
+        :show-type-filter="hasTypeFilter"
+        :sort-options="SORT_OPTIONS"
+        :sort="sort"
+        :is-default-sort="isDefaultSort"
+        show-sort
+        @update:type="typeFilter = $event"
+        @sort="setSort"
+        @reset="resetFilters"
+    />
+
     <div v-if="isLoading" class="state">
         <LaoderPageSpinner />
     </div>
@@ -84,7 +141,7 @@ const refresh = (): void => {
 
     <div v-else class="grid">
         <SavedWishlistCard
-            v-for="wishlist in wishlists"
+            v-for="wishlist in visibleWishlists"
             :key="wishlist.id"
             :wishlist="wishlist"
             :is-removing="removingId === wishlist.id"
