@@ -1080,6 +1080,28 @@
                                                     "example": "https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp",
                                                     "nullable": true
                                                 },
+                                                "stats": {
+                                                    "description": "Сколько карточек каждого типа пользователь создал за всё время, включая удалённые и дубликаты",
+                                                    "properties": {
+                                                        "gift": {
+                                                            "type": "integer",
+                                                            "example": 4
+                                                        },
+                                                        "todo": {
+                                                            "type": "integer",
+                                                            "example": 7
+                                                        },
+                                                        "note": {
+                                                            "type": "integer",
+                                                            "example": 2
+                                                        },
+                                                        "fund": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
                                                 "createdAt": {
                                                     "type": "string",
                                                     "format": "date-time",
@@ -1256,6 +1278,15 @@
                                                     "example": null,
                                                     "nullable": true
                                                 },
+                                                "stats": {
+                                                    "type": "object",
+                                                    "example": {
+                                                        "gift": 4,
+                                                        "todo": 7,
+                                                        "note": 2,
+                                                        "fund": 1
+                                                    }
+                                                },
                                                 "createdAt": {
                                                     "type": "string",
                                                     "format": "date-time",
@@ -1397,6 +1428,28 @@
                                                     "type": "string",
                                                     "example": "https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp"
                                                 },
+                                                "stats": {
+                                                    "description": "Сколько карточек каждого типа пользователь создал за всё время, включая удалённые и дубликаты",
+                                                    "properties": {
+                                                        "gift": {
+                                                            "type": "integer",
+                                                            "example": 4
+                                                        },
+                                                        "todo": {
+                                                            "type": "integer",
+                                                            "example": 7
+                                                        },
+                                                        "note": {
+                                                            "type": "integer",
+                                                            "example": 2
+                                                        },
+                                                        "fund": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
                                                 "createdAt": {
                                                     "type": "string",
                                                     "format": "date-time",
@@ -1517,6 +1570,15 @@
                                                     "type": "string",
                                                     "example": null,
                                                     "nullable": true
+                                                },
+                                                "stats": {
+                                                    "type": "object",
+                                                    "example": {
+                                                        "gift": 4,
+                                                        "todo": 7,
+                                                        "note": 2,
+                                                        "fund": 1
+                                                    }
                                                 },
                                                 "createdAt": {
                                                     "type": "string",
@@ -1856,6 +1918,15 @@
                                                     "type": "string",
                                                     "example": null,
                                                     "nullable": true
+                                                },
+                                                "stats": {
+                                                    "type": "object",
+                                                    "example": {
+                                                        "gift": 4,
+                                                        "todo": 7,
+                                                        "note": 2,
+                                                        "fund": 1
+                                                    }
                                                 },
                                                 "createdAt": {
                                                     "type": "string",

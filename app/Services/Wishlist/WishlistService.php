@@ -85,6 +85,10 @@ class WishlistService
 
             $wishlist = $user->wishlists()->create($attributes);
 
+            // Статистика созданных карточек: счётчик не уменьшается при удалении
+            // списка. Дубликат создаётся этим же запросом и тоже учитывается
+            $user->increment(User::createdCountColumn($type));
+
             // У заметки нет позиций: её текст уже сохранён в content
             if ($wishlist->isNote()) {
                 return $wishlist->load('items');

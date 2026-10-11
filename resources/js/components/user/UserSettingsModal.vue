@@ -10,6 +10,7 @@ import PasswordChangeSection from '@/components/user/PasswordChangeSection.vue';
 import ProfileSection from '@/components/user/ProfileSection.vue';
 import ReminderDaysPicker from '@/components/user/ReminderDaysPicker.vue';
 import UserSettingToggle from '@/components/user/UserSettingToggle.vue';
+import UserStatsSection from '@/components/user/UserStatsSection.vue';
 
 const props = defineProps<{
     isDeletingAccount?: boolean;
@@ -69,6 +70,8 @@ const closeModal = (): void => {
                 </div>
 
                 <ProfileSection />
+
+                <UserStatsSection />
 
                 <section class="background-section">
                     <h3 class="section-title">Фон приложения</h3>

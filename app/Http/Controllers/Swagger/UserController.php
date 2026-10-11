@@ -66,6 +66,17 @@ use OpenApi\Attributes as OA;
                                 nullable: true,
                                 example: 'https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp'
                             ),
+                            new OA\Property(
+                                property: 'stats',
+                                description: 'Сколько карточек каждого типа пользователь создал за всё время, включая удалённые и дубликаты',
+                                properties: [
+                                    new OA\Property(property: 'gift', type: 'integer', example: 4),
+                                    new OA\Property(property: 'todo', type: 'integer', example: 7),
+                                    new OA\Property(property: 'note', type: 'integer', example: 2),
+                                    new OA\Property(property: 'fund', type: 'integer', example: 1),
+                                ],
+                                type: 'object'
+                            ),
                             new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
                         type: 'object'
@@ -149,6 +160,7 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'emailReminders', type: 'boolean', example: true),
                             new OA\Property(property: 'reminderDays', type: 'integer', example: 3),
                             new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
+                            new OA\Property(property: 'stats', type: 'object', example: ['gift' => 4, 'todo' => 7, 'note' => 2, 'fund' => 1]),
                             new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
                         type: 'object'
@@ -238,6 +250,17 @@ use OpenApi\Attributes as OA;
                                 type: 'string',
                                 example: 'https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp'
                             ),
+                            new OA\Property(
+                                property: 'stats',
+                                description: 'Сколько карточек каждого типа пользователь создал за всё время, включая удалённые и дубликаты',
+                                properties: [
+                                    new OA\Property(property: 'gift', type: 'integer', example: 4),
+                                    new OA\Property(property: 'todo', type: 'integer', example: 7),
+                                    new OA\Property(property: 'note', type: 'integer', example: 2),
+                                    new OA\Property(property: 'fund', type: 'integer', example: 1),
+                                ],
+                                type: 'object'
+                            ),
                             new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
                         type: 'object'
@@ -308,6 +331,7 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'emailReminders', type: 'boolean', example: true),
                             new OA\Property(property: 'reminderDays', type: 'integer', example: 3),
                             new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
+                            new OA\Property(property: 'stats', type: 'object', example: ['gift' => 4, 'todo' => 7, 'note' => 2, 'fund' => 1]),
                             new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
                         type: 'object'
@@ -552,6 +576,7 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'emailReminders', type: 'boolean', example: true),
                             new OA\Property(property: 'reminderDays', type: 'integer', example: 3),
                             new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
+                            new OA\Property(property: 'stats', type: 'object', example: ['gift' => 4, 'todo' => 7, 'note' => 2, 'fund' => 1]),
                             new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
                         type: 'object'

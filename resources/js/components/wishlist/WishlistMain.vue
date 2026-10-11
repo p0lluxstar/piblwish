@@ -19,6 +19,7 @@ import {
 } from '@/composables/useWishlistSort';
 import { useWishlistTypeFilter } from '@/composables/useWishlistTypeFilter';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth';
 import type { ApiErrorResponse } from '@/types/api';
 
 import type {
@@ -47,6 +48,7 @@ const props = defineProps<{
 
 const queryClient = useQueryClient();
 const router = useRouter();
+const auth = useAuthStore();
 const isCreateModalOpen = ref(false);
 // Список, с которого делается дубликат; null — создание с пустой формы
 const duplicateSource = ref<Wishlist | null>(null);
@@ -212,7 +214,13 @@ const { mutate: createWishlist, isPending: isCreating } = useMutation({
         createErrorMessage.value = null;
     },
 
-    onSuccess: async () => {
+    onSuccess: async (created) => {
+        // Сервер уже увеличил счётчик статистики; локальная копия обновляется,
+        // чтобы окно настроек показывало его без перезапроса пользователя
+        if (auth.user?.stats) {
+            auth.user.stats[created.type] += 1;
+        }
+
         await queryClient.invalidateQueries({
             queryKey: ['wishlists'],
         });

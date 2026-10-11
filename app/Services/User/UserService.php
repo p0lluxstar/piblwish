@@ -3,6 +3,7 @@
 namespace App\Services\User;
 
 use App\Enums\AppBackground;
+use App\Enums\WishlistType;
 use App\Mail\EmailChangeCodeMail;
 use App\Mail\EmailChangedMail;
 use App\Mail\PasswordChangedMail;
@@ -328,10 +329,16 @@ class UserService
             $user->wishlists()->delete();
             $user->savedWishlists()->delete();
 
-            $user->update([
+            // forceFill: счётчики статистики не входят в fillable
+            $user->forceFill([
                 'deactivated_at' => now(),
                 'avatar_path' => null,
-            ]);
+                // Статистика созданных карточек обнуляется вместе со списками
+                ...array_fill_keys(
+                    array_map(User::createdCountColumn(...), WishlistType::cases()),
+                    0
+                ),
+            ])->save();
 
             // Завершаем сессии пользователя на других устройствах:
             // запись пользователя остаётся, поэтому они продолжили бы работать

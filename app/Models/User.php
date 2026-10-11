@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\AppBackground;
+use App\Enums\WishlistType;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -41,6 +42,10 @@ class User extends Authenticatable
             'show_friends_events' => 'boolean',
             'email_reminders' => 'boolean',
             'reminder_days' => 'integer',
+            'created_gift_count' => 'integer',
+            'created_todo_count' => 'integer',
+            'created_note_count' => 'integer',
+            'created_fund_count' => 'integer',
         ];
     }
 
@@ -74,6 +79,12 @@ class User extends Authenticatable
     public function savedWishlists(): HasMany
     {
         return $this->hasMany(SavedWishlist::class);
+    }
+
+    // Колонка счётчика списков данного типа, созданных за всё время
+    public static function createdCountColumn(WishlistType $type): string
+    {
+        return "created_{$type->value}_count";
     }
 
     // Адрес фотографии на диске public или null, если фотографии нет

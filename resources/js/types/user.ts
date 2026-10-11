@@ -1,3 +1,5 @@
+import type { WishlistType } from '@/types/wishlist';
+
 // Ключ фона приложения, совпадает с App\Enums\AppBackground на бэкенде
 export type AppBackground =
     | 'blossom'
@@ -21,6 +23,8 @@ export type User = {
     reminderDays: number;
     // Адрес фотографии; null — фотографии нет, показывается первая буква имени
     avatarUrl: string | null;
+    // Сколько карточек каждого типа создано за всё время, включая удалённые
+    stats: Record<WishlistType, number>;
     // Дата регистрации в ISO 8601
     createdAt: string | null;
 };
