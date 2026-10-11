@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import { BellRing, PartyPopper } from '@lucide/vue';
 import { onMounted, onUnmounted, ref } from 'vue';
 
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import AppBackgroundPicker from '@/components/user/AppBackgroundPicker.vue';
 import EmailChangeSection from '@/components/user/EmailChangeSection.vue';
-import FriendsEventsToggle from '@/components/user/FriendsEventsToggle.vue';
 import LogoutAllDevicesSection from '@/components/user/LogoutAllDevicesSection.vue';
 import PasswordChangeSection from '@/components/user/PasswordChangeSection.vue';
 import ProfileSection from '@/components/user/ProfileSection.vue';
+import ReminderDaysPicker from '@/components/user/ReminderDaysPicker.vue';
+import UserSettingToggle from '@/components/user/UserSettingToggle.vue';
 
 const props = defineProps<{
     isDeletingAccount?: boolean;
@@ -77,7 +79,25 @@ const closeModal = (): void => {
                 <section class="background-section">
                     <h3 class="section-title">Дашборд</h3>
 
-                    <FriendsEventsToggle />
+                    <UserSettingToggle
+                        setting="showFriendsEvents"
+                        title="Скоро у друзей"
+                        hint="Ближайшие даты чужих списков"
+                        :icon="PartyPopper"
+                    />
+                </section>
+
+                <section class="background-section">
+                    <h3 class="section-title">Уведомления</h3>
+
+                    <UserSettingToggle
+                        setting="emailReminders"
+                        title="Напоминания на почту"
+                        hint="Перед датой своих и сохранённых списков"
+                        :icon="BellRing"
+                    />
+
+                    <ReminderDaysPicker />
                 </section>
 
                 <EmailChangeSection />

@@ -35,16 +35,21 @@ class UserService
     // Качество WebP (0–100)
     private const AVATAR_QUALITY = 85;
 
-    // Изменение настроек текущего пользователя: фон приложения и показ строки
-    // «Скоро у друзей» в дашборде; null означает, что настройка не меняется
+    // Изменение настроек текущего пользователя: фон приложения, показ строки
+    // «Скоро у друзей» в дашборде, письма-напоминания о сроке списков и их срок;
+    // null означает, что настройка не меняется
     public function updateSettings(
         User $user,
         ?AppBackground $background,
-        ?bool $showFriendsEvents = null
+        ?bool $showFriendsEvents = null,
+        ?bool $emailReminders = null,
+        ?int $reminderDays = null
     ): User {
         $user->update(array_filter([
             'background' => $background,
             'show_friends_events' => $showFriendsEvents,
+            'email_reminders' => $emailReminders,
+            'reminder_days' => $reminderDays,
         ], fn ($value) => $value !== null));
 
         return $user;

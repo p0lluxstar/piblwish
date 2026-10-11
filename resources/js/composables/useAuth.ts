@@ -371,7 +371,10 @@ export const useUpdateBackground = (): UseUpdateBackgroundReturn => {
     };
 };
 
-type UseUpdateShowFriendsEventsReturn = UseMutationReturnType<
+// Логическая настройка пользователя, которая меняется переключателем в окне настроек
+export type UserToggleSetting = 'showFriendsEvents' | 'emailReminders';
+
+type UseUpdateUserToggleReturn = UseMutationReturnType<
     AxiosResponse,
     AxiosError<ApiErrorResponse>,
     boolean,
@@ -380,51 +383,111 @@ type UseUpdateShowFriendsEventsReturn = UseMutationReturnType<
     errorMessage: ComputedRef<string | null>;
 };
 
-// Показ строки «Скоро у друзей» в дашборде. Переключатель меняется сразу,
-// до ответа сервера; при ошибке возвращается прежнее значение
-export const useUpdateShowFriendsEvents =
-    (): UseUpdateShowFriendsEventsReturn => {
-        const authStore = useAuthStore();
+// Изменение логической настройки: строки «Скоро у друзей» в дашборде или писем
+// о сроке списков. Переключатель меняется сразу, до ответа сервера;
+// при ошибке возвращается прежнее значение
+export const useUpdateUserToggle = (
+    setting: UserToggleSetting,
+): UseUpdateUserToggleReturn => {
+    const authStore = useAuthStore();
 
-        const setValue = (showFriendsEvents: boolean): void => {
-            if (authStore.user) {
-                authStore.setUser({ ...authStore.user, showFriendsEvents });
-            }
-        };
-
-        const mutation = useMutation<
-            AxiosResponse,
-            AxiosError<ApiErrorResponse>,
-            boolean
-        >({
-            mutationFn: (showFriendsEvents) =>
-                api.patch('/v1/user', { showFriendsEvents }),
-
-            onMutate: (showFriendsEvents) => {
-                setValue(showFriendsEvents);
-            },
-
-            // Значение после ошибки противоположно отправленному. Если пользователь
-            // уже переключил ещё раз, состояние и так совпадает с этим значением
-            onError: (_error, showFriendsEvents) => {
-                if (authStore.user?.showFriendsEvents === showFriendsEvents) {
-                    setValue(!showFriendsEvents);
-                }
-            },
-        });
-
-        const errorMessage = computed((): string | null =>
-            getApiErrorMessage(
-                mutation.error.value,
-                'Не удалось сохранить настройку',
-            ),
-        );
-
-        return {
-            ...mutation,
-            errorMessage,
-        };
+    const setValue = (value: boolean): void => {
+        if (authStore.user) {
+            authStore.setUser({ ...authStore.user, [setting]: value });
+        }
     };
+
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        boolean
+    >({
+        mutationFn: (value) => api.patch('/v1/user', { [setting]: value }),
+
+        onMutate: (value) => {
+            setValue(value);
+        },
+
+        // Значение после ошибки противоположно отправленному. Если пользователь
+        // уже переключил ещё раз, состояние и так совпадает с этим значением
+        onError: (_error, value) => {
+            if (authStore.user?.[setting] === value) {
+                setValue(!value);
+            }
+        },
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(
+            mutation.error.value,
+            'Не удалось сохранить настройку',
+        ),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type UseUpdateReminderDaysReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    number,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Срок напоминаний на почту (1–7 дней до даты списка). Выбор применяется сразу,
+// до ответа сервера; при ошибке возвращается прежнее значение, если пользователь
+// после этого не выбрал другое
+export const useUpdateReminderDays = (): UseUpdateReminderDaysReturn => {
+    const authStore = useAuthStore();
+
+    const setValue = (reminderDays: number): void => {
+        if (authStore.user) {
+            authStore.setUser({ ...authStore.user, reminderDays });
+        }
+    };
+
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        number,
+        { previous: number | undefined }
+    >({
+        mutationFn: (reminderDays) => api.patch('/v1/user', { reminderDays }),
+
+        onMutate: (reminderDays) => {
+            const previous = authStore.user?.reminderDays;
+            setValue(reminderDays);
+
+            return { previous };
+        },
+
+        onError: (_error, reminderDays, context) => {
+            if (
+                context?.previous !== undefined &&
+                authStore.user?.reminderDays === reminderDays
+            ) {
+                setValue(context.previous);
+            }
+        },
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(
+            mutation.error.value,
+            'Не удалось сохранить настройку',
+        ),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
 
 type UseUploadAvatarReturn = UseMutationReturnType<
     AxiosResponse<{ data: User }>,

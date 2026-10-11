@@ -4,7 +4,9 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SavedWishlistController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WishlistController;
+use App\Http\Controllers\EmailReminderController;
 use App\Http\Middleware\RenewRememberCookie;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -72,6 +74,15 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard', RenewReme
     Route::get('/saved-wishlists', [SavedWishlistController::class, 'getSavedWishlists']);
     Route::post('/saved-wishlists/{id}', [SavedWishlistController::class, 'saveWishlist']);
     Route::delete('/saved-wishlists/{id}', [SavedWishlistController::class, 'removeSavedWishlist']);
+});
+
+// Отписка от напоминаний о сроке по ссылке из письма (EmailReminderController).
+// Подпись проверяется без хоста и схемы (signed:relative), см. DueDateReminderService::unsubscribeUrl
+Route::middleware('signed:relative')->group(function () {
+    Route::get('/email-reminders/unsubscribe/{user}', [EmailReminderController::class, 'showUnsubscribe'])
+        ->name('email-reminders.unsubscribe');
+    Route::post('/email-reminders/unsubscribe/{user}', [EmailReminderController::class, 'unsubscribe'])
+        ->withoutMiddleware(ValidateCsrfToken::class);
 });
 
 /**

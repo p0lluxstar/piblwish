@@ -1064,6 +1064,16 @@
                                                     "type": "boolean",
                                                     "example": true
                                                 },
+                                                "emailReminders": {
+                                                    "description": "Присылать письма перед датой своих и сохранённых чужих списков",
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "reminderDays": {
+                                                    "description": "За сколько дней до даты списка приходит напоминание, 1–7 (по умолчанию 3)",
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
                                                 "avatarUrl": {
                                                     "description": "Адрес фотографии пользователя; null — фотографии нет, показывается первая буква имени",
                                                     "type": "string",
@@ -1151,7 +1161,7 @@
                     "User"
                 ],
                 "summary": "Изменить настройки текущего пользователя",
-                "description": "Сохраняет фон приложения и показ строки «Скоро у друзей» в дашборде. Можно передать одну или обе настройки, непереданная не меняется; запрос без них отклоняется (422). Фон по умолчанию — blossom, строка по умолчанию показывается. Возвращает пользователя в том же виде, что GET /v1/user.",
+                "description": "Сохраняет фон приложения, показ строки «Скоро у друзей» в дашборде и письма-напоминания о сроке списков и их срок (reminderDays, 1–7 дней, по умолчанию 3). Можно передать одну или несколько настроек, непереданная не меняется; запрос без них отклоняется (422). Фон по умолчанию — blossom, строка и напоминания по умолчанию включены. Возвращает пользователя в том же виде, что GET /v1/user.",
                 "operationId": "05db2d69688dae19cebf7374eb736629",
                 "requestBody": {
                     "required": true,
@@ -1164,8 +1174,20 @@
                                         "type": "boolean",
                                         "example": false
                                     },
+                                    "emailReminders": {
+                                        "description": "Присылать письма перед датой своих и сохранённых чужих списков",
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "reminderDays": {
+                                        "description": "За сколько дней до даты списка приходит напоминание, 1–7; о каждом списке с данной датой — один раз",
+                                        "type": "integer",
+                                        "example": 3,
+                                        "maximum": 7,
+                                        "minimum": 1
+                                    },
                                     "background": {
-                                        "description": "Обязателен, если не передан showFriendsEvents",
+                                        "description": "Обязателен, если не переданы showFriendsEvents, emailReminders и reminderDays",
                                         "type": "string",
                                         "example": "ocean",
                                         "enum": [
@@ -1221,6 +1243,14 @@
                                                     "type": "boolean",
                                                     "example": true
                                                 },
+                                                "emailReminders": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "reminderDays": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
                                                 "avatarUrl": {
                                                     "type": "string",
                                                     "example": null,
@@ -1244,7 +1274,7 @@
                         "description": "Не авторизован"
                     },
                     "422": {
-                        "description": "Ошибка валидации: не передана ни одна настройка, такого фона нет или showFriendsEvents не логическое значение",
+                        "description": "Ошибка валидации: не передана ни одна настройка, такого фона нет или showFriendsEvents/emailReminders не логическое значение или reminderDays вне 1–7",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1354,6 +1384,14 @@
                                                 "showFriendsEvents": {
                                                     "type": "boolean",
                                                     "example": true
+                                                },
+                                                "emailReminders": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "reminderDays": {
+                                                    "type": "integer",
+                                                    "example": 3
                                                 },
                                                 "avatarUrl": {
                                                     "type": "string",
@@ -1466,6 +1504,14 @@
                                                 "showFriendsEvents": {
                                                     "type": "boolean",
                                                     "example": true
+                                                },
+                                                "emailReminders": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "reminderDays": {
+                                                    "type": "integer",
+                                                    "example": 3
                                                 },
                                                 "avatarUrl": {
                                                     "type": "string",
@@ -1797,6 +1843,14 @@
                                                 "showFriendsEvents": {
                                                     "type": "boolean",
                                                     "example": true
+                                                },
+                                                "emailReminders": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "reminderDays": {
+                                                    "type": "integer",
+                                                    "example": 3
                                                 },
                                                 "avatarUrl": {
                                                     "type": "string",

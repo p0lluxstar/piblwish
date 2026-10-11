@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Enums\AppBackground;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\User\ChangePasswordRequest;
 use App\Http\Requests\User\ConfirmEmailChangeRequest;
 use App\Http\Requests\User\RequestEmailChangeRequest;
@@ -32,17 +32,21 @@ class UserController extends Controller
         return new UserResource($request->user());
     }
 
-    // Изменить настройки текущего пользователя: фон приложения
-    // и показ строки «Скоро у друзей»; непереданная настройка не меняется
+    // Изменить настройки текущего пользователя: фон приложения, показ строки
+    // «Скоро у друзей», напоминания о сроке и их срок; непереданная настройка не меняется
     public function updateUser(UpdateUserRequest $request): UserResource
     {
         $background = $request->validated('background');
         $showFriendsEvents = $request->validated('showFriendsEvents');
+        $emailReminders = $request->validated('emailReminders');
+        $reminderDays = $request->validated('reminderDays');
 
         $user = $this->userService->updateSettings(
             $request->user(),
             $background === null ? null : AppBackground::from($background),
-            $showFriendsEvents === null ? null : (bool) $showFriendsEvents
+            $showFriendsEvents === null ? null : (bool) $showFriendsEvents,
+            $emailReminders === null ? null : (bool) $emailReminders,
+            $reminderDays === null ? null : (int) $reminderDays
         );
 
         return new UserResource($user);
