@@ -5,6 +5,7 @@ import { isAxiosError } from 'axios';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { useCardPaging } from '@/composables/useCardPaging';
 import { useMotivationalPhrase } from '@/composables/useMotivationalPhrase';
 import {
     useArchivedCount,
@@ -30,6 +31,7 @@ import type {
 } from '../../types/wishlist';
 import ActionToast from '../ui/ActionToast.vue';
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
+import ShowMoreButtons from '../ui/ShowMoreButtons.vue';
 import WishlistArchiveClearModal from './WishlistArchiveClearModal.vue';
 import WishlistCard from './WishlistCard.vue';
 import WishlistCardPreview from './WishlistCardPreview.vue';
@@ -112,27 +114,13 @@ const hasSectionLink = computed(() =>
     props.archived ? wishLists.value.length > 0 : archivedCount.value > 0,
 );
 
-// Карточки выводятся порциями: все списки уже загружены, ограничивается только отрисовка.
-// Следующая порция добавляется кнопкой «Показать ещё»
-const PAGE_SIZE = 12;
-const visibleCount = ref(PAGE_SIZE);
-
-const visibleWishlists = computed(() =>
-    filteredWishlists.value.slice(0, visibleCount.value),
-);
-const hiddenCount = computed(() =>
-    Math.max(filteredWishlists.value.length - visibleCount.value, 0),
-);
-
-const showMore = (): void => {
-    visibleCount.value += PAGE_SIZE;
-};
-
-// После смены сортировки или фильтра набор карточек другой, поэтому вывод
-// начинается с первой порции
-watch([sort, typeFilter], () => {
-    visibleCount.value = PAGE_SIZE;
-});
+const {
+    visibleItems: visibleWishlists,
+    hiddenCount,
+    nextCount,
+    showMore,
+    showAll,
+} = useCardPaging(filteredWishlists, [sort, typeFilter]);
 
 const SORT_OPTIONS: { field: WishlistSortField; label: string }[] = [
     { field: 'date', label: 'По дате' },
@@ -710,12 +698,12 @@ onMounted(generateRandomPhrase);
             />
         </div>
 
-        <div v-if="hiddenCount > 0" class="more">
-            <button class="more-btn" @click="showMore">
-                Показать ещё
-                <span class="more-count">{{ hiddenCount }}</span>
-            </button>
-        </div>
+        <ShowMoreButtons
+            :hidden-count="hiddenCount"
+            :next-count="nextCount"
+            @more="showMore"
+            @all="showAll"
+        />
     </template>
 
     <!-- Перед остальными окнами: подтверждение удаления открывается поверх просмотра -->
@@ -896,38 +884,5 @@ onMounted(generateRandomPhrase);
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 20px;
-}
-
-.more {
-    display: flex;
-    justify-content: center;
-    margin-top: 28px;
-}
-
-.more-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #fff;
-    color: var(--brand-violet);
-    border: 1.5px solid var(--surface-border);
-    padding: 9px 22px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: inherit;
-    line-height: 1.5;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover {
-        border-color: var(--brand-violet);
-        box-shadow: var(--shadow-glow);
-    }
-}
-
-.more-count {
-    color: var(--ink-soft);
-    font-weight: 500;
 }
 </style>

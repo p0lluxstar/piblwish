@@ -3,7 +3,9 @@ import { RefreshCcw } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 import LaoderPageSpinner from '@/components/ui/LaoderPageSpinner.vue';
+import ShowMoreButtons from '@/components/ui/ShowMoreButtons.vue';
 import WishlistSortBar from '@/components/wishlist/WishlistSortBar.vue';
+import { useCardPaging } from '@/composables/useCardPaging';
 import {
     useSavedWishlists,
     useToggleSavedWishlist,
@@ -46,7 +48,15 @@ const {
     typeOf: (wishlist) => wishlist.type,
 });
 
-const visibleWishlists = computed(() => filterByType(sortedItems.value));
+const filteredWishlists = computed(() => filterByType(sortedItems.value));
+
+const {
+    visibleItems: visibleWishlists,
+    hiddenCount,
+    nextCount,
+    showMore,
+    showAll,
+} = useCardPaging(filteredWishlists, [sort, typeFilter]);
 
 // Кнопка «Сбросить»: все типы и сортировка по сроку
 const resetFilters = (): void => {
@@ -148,6 +158,14 @@ const refresh = (): void => {
             @remove="removeWishlist"
         />
     </div>
+
+    <ShowMoreButtons
+        v-if="!isLoading && !error"
+        :hidden-count="hiddenCount"
+        :next-count="nextCount"
+        @more="showMore"
+        @all="showAll"
+    />
 </template>
 
 <style scoped lang="scss">

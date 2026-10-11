@@ -38,7 +38,10 @@ const backgroundClass = computed(
     display: flex;
     flex-direction: column;
     background: var(--app-bg);
-    overflow-x: hidden;
+    // clip, а не hidden: с hidden overflow-y становится auto, блок превращается
+    // в контейнер прокрутки и показывает вторую полосу рядом с полосой страницы,
+    // а липкая шапка прилипает к нему, а не к окну
+    overflow-x: clip;
     isolation: isolate;
 }
 
