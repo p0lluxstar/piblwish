@@ -327,9 +327,10 @@ class WishlistService
         }
     }
 
-    // Поля позиции из запроса в атрибуты модели. У дел нет ссылок, приоритета
-    // и стоимости, у целей сбора — приоритета: они не сохраняются, даже если
-    // переданы в запросе на изменение. price у цели сбора — целевая сумма
+    // Поля позиции из запроса в атрибуты модели. У дел нет ссылок и стоимости
+    // (priority у дела означает важность), у целей сбора — приоритета: они
+    // не сохраняются, даже если переданы в запросе на изменение. price у цели
+    // сбора — целевая сумма
     private function itemAttributes(Wishlist $wishlist, array $item, int $position): array
     {
         $isTodo = $wishlist->isTodo();
@@ -337,7 +338,7 @@ class WishlistService
         return [
             'description' => $item['label'],
             'urls' => $isTodo ? null : $this->itemUrls($item['urls'] ?? null),
-            'priority' => $isTodo || $wishlist->isFund() ? null : ($item['priority'] ?? null),
+            'priority' => $wishlist->isFund() ? null : ($item['priority'] ?? null),
             'price' => $isTodo ? null : ($item['price'] ?? null),
             'position' => $position,
         ];

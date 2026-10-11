@@ -39,7 +39,7 @@ import { formatPrice } from '../../lib/itemPrice';
 import { getItemUrlHost } from '../../lib/itemUrl';
 import { getSharedWishlistUrl } from '../../lib/sharedLink';
 import type { Wishlist, WishlistItem } from '../../types/wishlist';
-import ItemPriorityHearts from './ItemPriorityHearts.vue';
+import ItemPriorityIcons from './ItemPriorityIcons.vue';
 import TodoCheckedBy from './TodoCheckedBy.vue';
 
 const props = defineProps<{
@@ -703,7 +703,8 @@ const dueDateLabel = computed(() =>
                     <span class="checkbox-custom"></span>
                 </label>
 
-                <!-- Справа от выполненного дела — кто его отметил: имя гостя или «Вы» -->
+                <!-- Справа от выполненного дела — кто его отметил: имя гостя или «Вы».
+                     У дела с важностью имя стоит в колонке справа под молниями -->
                 <span class="item-text">
                     <!-- В карточке дашборда название обрезается до двух строк,
                          полный текст — в подсказке и в развёрнутой карточке -->
@@ -714,7 +715,7 @@ const dueDateLabel = computed(() =>
                         {{ item.label }}
                     </span>
                     <TodoCheckedBy
-                        v-if="isTodo"
+                        v-if="isTodo && !item.priority"
                         :checked-by="item.checkedBy"
                         :owner-name="ownCheckLabel"
                         :is-own="
@@ -731,12 +732,26 @@ const dueDateLabel = computed(() =>
                     v-if="
                         item.priority || item.price != null || item.urls?.length
                     "
-                    class="item-meta"
+                    :class="['item-meta', { 'item-meta--todo': isTodo }]"
                 >
-                    <ItemPriorityHearts
+                    <ItemPriorityIcons
                         v-if="item.priority"
                         :priority="item.priority"
+                        :todo="isTodo"
                         :muted="item.isSelected"
+                    />
+
+                    <!-- Кто отметил дело — второй строкой под важностью -->
+                    <TodoCheckedBy
+                        v-if="isTodo"
+                        :checked-by="item.checkedBy"
+                        :owner-name="ownCheckLabel"
+                        :is-own="
+                            ownCheckLabel !== null &&
+                            item.checkedBy?.guest === false
+                        "
+                        :truncate="!expanded"
+                        class="item-meta-checked-by"
                     />
 
                     <!-- Стоимость 0 ₽ тоже выводится: null — не указана.
@@ -1120,6 +1135,16 @@ $card-height: 280px;
 
     .item-link {
         height: 19px;
+    }
+}
+
+// У дела в колонке важность и под ней имя отметившего: колонка не шире 45%
+// строки, как подпись с именем без важности, и длинное имя обрезается в ней
+.item-meta--todo {
+    max-width: 45%;
+
+    > .item-meta-checked-by {
+        max-width: 100%;
     }
 }
 

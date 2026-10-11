@@ -159,7 +159,7 @@ use OpenApi\Attributes as OA;
 
                                             new OA\Property(
                                                 property: 'priority',
-                                                description: 'Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан',
+                                                description: 'Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; у списка дел — важность (1 — можно отложить, 2 — важно, 3 — очень важно); у сбора всегда null; null — не указан',
                                                 type: 'integer',
                                                 enum: [1, 2, 3],
                                                 nullable: true,
@@ -234,7 +234,7 @@ use OpenApi\Attributes as OA;
             properties: [
                 new OA\Property(
                     property: 'type',
-                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать urls, priority и price. У позиций сбора (целей) обязательна ровно одна ссылка https на разрешённую платформу (Т-Банк, ЮMoney, CloudTips), price — целевая сумма до 100 000 000, priority запрещён. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний',
+                    description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать urls и price, priority означает важность дела. У позиций сбора (целей) обязательна ровно одна ссылка https на разрешённую платформу (Т-Банк, ЮMoney, CloudTips), price — целевая сумма до 100 000 000, priority запрещён. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний',
                     type: 'string',
                     enum: WishlistType::class,
                     example: 'gift'
@@ -323,7 +323,7 @@ use OpenApi\Attributes as OA;
 
                             new OA\Property(
                                 property: 'priority',
-                                description: 'Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан',
+                                description: 'Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; у списка дел — важность (1 — можно отложить, 2 — важно, 3 — очень важно); у сбора всегда null; null — не указан',
                                 type: 'integer',
                                 enum: [1, 2, 3],
                                 nullable: true,
@@ -469,7 +469,7 @@ use OpenApi\Attributes as OA;
 
                                         new OA\Property(
                                             property: 'priority',
-                                            description: 'Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан',
+                                            description: 'Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; у списка дел — важность (1 — можно отложить, 2 — важно, 3 — очень важно); у сбора всегда null; null — не указан',
                                             type: 'integer',
                                             enum: [1, 2, 3],
                                             nullable: true,

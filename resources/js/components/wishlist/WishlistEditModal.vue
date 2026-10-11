@@ -481,13 +481,15 @@ const removeItemUrl = (index: number, urlIndex: number): void => {
 
 // Пустые позиции отбрасываются, ссылки нормализуются; null — в форме есть некорректная ссылка
 const prepareItems = (): WishlistItem[] | null => {
-    // У дел есть только текст и отметка: ссылку, приоритет и цену сервер для них не сохраняет
+    // У дел есть только текст, важность (priority) и отметка: ссылку и цену
+    // сервер для них не сохраняет
     if (isTodo.value) {
         return form.value.items
             .filter((item) => item.label.trim())
             .map((item) => ({
                 id: item.id,
                 label: item.label,
+                priority: item.priority,
                 isSelected: item.isSelected ?? false,
             }));
     }
@@ -911,13 +913,18 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                             </span>
 
                             <div class="wishlist-item-fields">
-                                <!-- Приоритет над полем описания у левого края,
+                                <!-- Приоритет (у дела — важность) над полем описания у левого края,
                                  снятие выбора гостя — у правого -->
-                                <div v-if="isGift" class="item-meta-row">
+                                <div
+                                    v-if="isGift || isTodo"
+                                    class="item-meta-row"
+                                >
                                     <ItemPriorityPicker
                                         v-model="item.priority"
+                                        :todo="isTodo"
                                         :muted="
-                                            showSelection && item.isSelected
+                                            (isTodo || showSelection) &&
+                                            item.isSelected
                                         "
                                     />
 
@@ -1358,7 +1365,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 .item-checked-by {
     position: absolute;
     right: 14px;
-    bottom: 2px;
+    top: 2px;
     max-width: calc(100% - 28px);
     pointer-events: none;
 }

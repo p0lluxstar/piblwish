@@ -37,7 +37,7 @@ import type {
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import UserAvatar from '../ui/UserAvatar.vue';
-import ItemPriorityHearts from './ItemPriorityHearts.vue';
+import ItemPriorityIcons from './ItemPriorityIcons.vue';
 import JointGiftFields from './JointGiftFields.vue';
 import TodoCheckedBy from './TodoCheckedBy.vue';
 import TodoGuestNameModal from './TodoGuestNameModal.vue';
@@ -672,8 +672,8 @@ const createdAtLabel = computed(() => {
         : '';
 });
 
-// Порядок позиций: заданный владельцем, по приоритету (сначала «очень хочу»)
-// или по стоимости
+// Порядок позиций: заданный владельцем, по приоритету (сначала «очень хочу»,
+// у дел — «очень важно») или по стоимости
 type ItemOrder = 'owner' | 'priority' | 'price-asc' | 'price-desc';
 
 const itemOrder = ref<ItemOrder>('owner');
@@ -693,7 +693,12 @@ const hasPrices = computed(() =>
 const itemOrderOptions = computed(() => [
     { value: 'owner' as const, label: 'По порядку' },
     ...(hasPriorities.value
-        ? [{ value: 'priority' as const, label: 'По приоритету' }]
+        ? [
+              {
+                  value: 'priority' as const,
+                  label: isTodo.value ? 'По важности' : 'По приоритету',
+              },
+          ]
         : []),
     ...(hasPrices.value && !isFund.value
         ? [
@@ -1047,7 +1052,8 @@ onMounted(getWishlist);
                             </span>
                         </label>
 
-                        <!-- Справа от выполненного дела — кто его отметил -->
+                        <!-- Справа от выполненного дела — кто его отметил.
+                             У дела с важностью имя стоит в колонке справа под молниями -->
                         <span class="item-text">
                             <span
                                 :class="[
@@ -1060,7 +1066,7 @@ onMounted(getWishlist);
                             <!-- Отметки владельца подписываются его именем,
                                  отметки из этого браузера — словом «Вы» -->
                             <TodoCheckedBy
-                                v-if="isTodo"
+                                v-if="isTodo && !item.priority"
                                 :checked-by="item.checkedBy"
                                 :owner-name="wishlist.username ?? 'Владелец'"
                                 :is-own="guestTodoChecks.isOwnCheck(item)"
@@ -1078,10 +1084,20 @@ onMounted(getWishlist);
                             "
                             class="item-meta"
                         >
-                            <ItemPriorityHearts
+                            <ItemPriorityIcons
                                 v-if="item.priority"
                                 :priority="item.priority"
+                                :todo="isTodo"
                                 :muted="item.isSelected"
+                            />
+
+                            <!-- Кто отметил дело — второй строкой под важностью -->
+                            <TodoCheckedBy
+                                v-if="isTodo"
+                                :checked-by="item.checkedBy"
+                                :owner-name="wishlist.username ?? 'Владелец'"
+                                :is-own="guestTodoChecks.isOwnCheck(item)"
+                                class="item-meta-checked-by"
                             />
 
                             <!-- Стоимость 0 ₽ тоже выводится: null — не указана -->
@@ -1779,6 +1795,12 @@ onMounted(getWishlist);
     > * {
         max-width: 100%;
     }
+}
+
+// Имя отметившего под важностью дела занимает всю ширину колонки: собственное
+// ограничение TodoCheckedBy (45% строки) здесь сузило бы его вдвое
+.item-meta > .item-meta-checked-by {
+    max-width: 100%;
 }
 
 .item-price {

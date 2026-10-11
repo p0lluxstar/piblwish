@@ -643,16 +643,20 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                         :key="itemKey(item)"
                         :class="[
                             'wishlist-item',
-                            { 'wishlist-item--todo': isTodo || isFund },
+                            {
+                                'wishlist-item--todo': isTodo || isFund,
+                                'wishlist-item--task': isTodo,
+                            },
                         ]"
                     >
                         <div class="wishlist-item-fields">
-                            <!-- Приоритет над полем описания у левого края; у дел и целей сбора его нет -->
-                            <div
-                                v-if="form.type === 'gift'"
-                                class="item-meta-row"
-                            >
-                                <ItemPriorityPicker v-model="item.priority" />
+                            <!-- Приоритет (у дела — важность) над полем описания у левого края;
+                                 у целей сбора его нет -->
+                            <div v-if="!isFund" class="item-meta-row">
+                                <ItemPriorityPicker
+                                    v-model="item.priority"
+                                    :todo="isTodo"
+                                />
                             </div>
 
                             <input

@@ -77,7 +77,7 @@ class CreateWishlistRequest extends FormRequest
 
             // Ссылки на товар необязательны, не больше трёх; только http(s), чтобы
             // на общей странице нельзя было подставить javascript: и другие опасные схемы.
-            // У позиций списка дел нет ссылок, приоритета и стоимости.
+            // У позиций списка дел нет ссылок и стоимости.
             // У цели сбора ссылка одна и обязательна: см. AllowedFundUrl
             'items.*.urls' => $isFund
                 ? ['required', 'array', 'size:1']
@@ -88,9 +88,10 @@ class CreateWishlistRequest extends FormRequest
                 ? ['bail', 'required', 'string', 'max:2048', new AllowedFundUrl]
                 : ['nullable', 'string', 'max:2048', 'url:http,https'],
 
-            // Приоритет позиции (1–3) необязателен; у дел и целей сбора его нет
+            // Приоритет позиции (1–3) необязателен; у дела он означает важность,
+            // у целей сбора его нет
             'items.*.priority' => [
-                'prohibited_if:type,todo,fund',
+                'prohibited_if:type,fund',
                 'nullable',
                 Rule::enum(WishlistItemPriority::class),
             ],
