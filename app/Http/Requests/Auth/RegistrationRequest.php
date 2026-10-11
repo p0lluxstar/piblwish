@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 class RegistrationRequest extends FormRequest
@@ -12,23 +14,29 @@ class RegistrationRequest extends FormRequest
         return true;
     }
 
+    // Неподтверждённый аккаунт с этим email регистрация перезаписывает
+    // (AuthService::register), поэтому его email и логин не считаются занятыми
     public function rules(): array
     {
+        $pendingUserId = User::pendingVerification()
+            ->where('email', (string) $this->input('email'))
+            ->value('id');
+
         return [
             'username' => [
                 'required',
                 'string',
-                'min:6',
-                'max:50',
+                'min:3',
+                'max:30',
                 'alpha_dash',
-                'unique:users,username',
+                Rule::unique('users', 'username')->ignore($pendingUserId),
             ],
             'email' => [
                 'required',
                 'string',
                 'email',
                 'max:255',
-                'unique:users,email',
+                Rule::unique('users', 'email')->ignore($pendingUserId),
             ],
             'password' => [
                 'required',
@@ -43,7 +51,7 @@ class RegistrationRequest extends FormRequest
     {
         return [
             'username.required' => 'Логин обязателен',
-            'username.min' => 'Логин должен быть минимум :min символов',
+            'username.min' => 'Логин должен быть не короче :min символов',
             'username.max' => 'Логин не должен быть длиннее :max символов',
             'username.alpha_dash' => 'Логин может содержать только буквы, цифры, дефисы и подчеркивания',
             'username.unique' => 'Такой логин уже занят',

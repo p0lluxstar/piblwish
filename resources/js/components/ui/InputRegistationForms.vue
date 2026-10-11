@@ -12,6 +12,8 @@ interface Props {
     // Кнопка-глаз у поля пароля; у поля подтверждения её отключают и
     // связывают его с основным полем через v-model:revealed
     toggle?: boolean;
+    // Поле не прошло проверку: подсвечивается красной рамкой
+    invalid?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -20,6 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
     code: '',
     autocomplete: undefined,
     toggle: true,
+    invalid: false,
 });
 
 const emit = defineEmits<{
@@ -46,7 +49,11 @@ function updateValue(event: Event): void {
     <div class="field">
         <input
             class="input"
-            :class="{ 'input--with-toggle': hasToggle }"
+            :class="{
+                'input--with-toggle': hasToggle,
+                'input--invalid': invalid,
+            }"
+            :aria-invalid="invalid || undefined"
             :value="modelValue"
             :type="inputType"
             :placeholder="placeholder"
@@ -92,5 +99,15 @@ function updateValue(event: Event): void {
     border-color: var(--brand-violet, #8b5cf6);
     background: #ffffff;
     box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.14);
+}
+
+/* Цвет как у текста ошибки в FormErrorMessage */
+.input--invalid,
+.input--invalid:focus {
+    border-color: #d14343;
+}
+
+.input--invalid:focus {
+    box-shadow: 0 0 0 4px rgba(209, 67, 67, 0.14);
 }
 </style>

@@ -22,6 +22,7 @@ import {
 
 import { api } from '@/lib/api';
 
+import { useEscapeKey } from '../../composables/useEscapeKey';
 import { useItemReorder } from '../../composables/useItemReorder';
 import { FUND_PLATFORMS_TEXT } from '../../constants/fundHosts';
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
@@ -44,6 +45,7 @@ import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import ItemPriceInput from './ItemPriceInput.vue';
 import ItemPriorityPicker from './ItemPriorityPicker.vue';
 import TodoCheckedBy from './TodoCheckedBy.vue';
+import UnsavedChangesPrompt from './UnsavedChangesPrompt.vue';
 import WishlistColorPicker from './WishlistColorPicker.vue';
 import WishlistDueDateField from './WishlistDueDateField.vue';
 import WishlistGuestCheckToggle from './WishlistGuestCheckToggle.vue';
@@ -529,12 +531,13 @@ const prepareItems = (): WishlistItem[] | null => {
 // Запрос выполняет WishlistMain (мутация updateWishlist): там же состояние
 // загрузки для кнопки. После сохранения окно не закрывается, а получает
 // сохранённый список в props.wishlist
-const handleSubmit = (): void => {
+// Возвращает false, если форма не прошла проверку и ничего не отправлено
+const handleSubmit = (): boolean => {
     // Сохранять нечего: форма совпадает с сохранённым списком
-    if (!isDirty.value) return;
+    if (!isDirty.value) return false;
 
     if (isNote.value) {
-        if (isNoteEmpty.value) return;
+        if (isNoteEmpty.value) return false;
 
         emit('update', {
             id: props.wishlist.id,
@@ -542,18 +545,18 @@ const handleSubmit = (): void => {
             content: form.value.content,
         });
 
-        return;
+        return true;
     }
 
     // Название обязательно у списков желаний и дел: без него сервер список не примет
     if (!form.value.title.trim()) {
         isTitleMissing.value = true;
-        return;
+        return false;
     }
 
     const items = prepareItems();
 
-    if (!items) return;
+    if (!items) return false;
 
     emit('update', {
         id: props.wishlist.id,
@@ -572,6 +575,8 @@ const handleSubmit = (): void => {
             : {}),
         items,
     });
+
+    return true;
 };
 
 // Блокировка прокрутки при открытии модального окна
@@ -601,9 +606,79 @@ const closeModal = (): void => {
     emit('close');
 };
 
+// Крестик при несохранённых правках не закрывает окно сразу, а спрашивает
+// под заголовком, закрыть ли его без сохранения
+const isUnsavedPromptShown = ref(false);
+
+const requestClose = (): void => {
+    if (isDirty.value) {
+        isUnsavedPromptShown.value = true;
+
+        return;
+    }
+
+    closeModal();
+};
+
+// Правки вернули к сохранённому состоянию: спрашивать больше не о чем
+watch(isDirty, (dirty) => {
+    if (!dirty) isUnsavedPromptShown.value = false;
+});
+
+// Сохранение из вопроса: если форма не прошла проверку, вопрос убирается,
+// чтобы были видны подсвеченные поля. Обычное сохранение оставляет окно
+// открытым, а сохранение из вопроса после ответа сервера его закрывает:
+// пользователь уже собирался закрыть окно
+const isClosingAfterSave = ref(false);
+
+const saveFromPrompt = (): void => {
+    if (handleSubmit()) {
+        isClosingAfterSave.value = true;
+    } else {
+        isUnsavedPromptShown.value = false;
+    }
+};
+
+watch(
+    () => props.isPending,
+    (pending, wasPending) => {
+        if (pending || !wasPending || !isClosingAfterSave.value) return;
+
+        isClosingAfterSave.value = false;
+
+        if (!props.errorMessage) closeModal();
+    },
+);
+
+// Сервер не принял сохранение из вопроса: ошибка выводится над кнопкой
+// отправки внизу формы, поэтому вопрос убирается, а форма прокручивается к ней
+watch(
+    () => props.errorMessage,
+    (message) => {
+        if (!message || !isUnsavedPromptShown.value) return;
+
+        isUnsavedPromptShown.value = false;
+        nudgeUnsaved(modalEl.value, saveButtonEl.value);
+    },
+);
+
+// Esc действует как крестик, а при открытом вопросе о несохранённых правках
+// убирает вопрос и оставляет окно открытым. Вопрос убирается и при вводе в форму
+const overlayEl = useTemplateRef<HTMLElement>('overlay');
+
+useEscapeKey(overlayEl, () => {
+    if (isUnsavedPromptShown.value) {
+        isUnsavedPromptShown.value = false;
+
+        return;
+    }
+
+    requestClose();
+});
+
 // Окно закрывается кликом по фону, только если в форме нет несохранённых
-// правок (иначе — только крестиком), а нажатие и отпускание кнопки были
-// на фоне: выделение текста в поле, законченное за пределами окна, не считается
+// правок (иначе — только крестиком с подтверждением), а нажатие и отпускание
+// кнопки были на фоне: выделение текста в поле, законченное за пределами окна, не считается
 const isOverlayPressed = ref(false);
 
 const modalEl = useTemplateRef<HTMLElement>('modal');
@@ -629,6 +704,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 
 <template>
     <div
+        ref="overlay"
         class="modal-overlay"
         @mousedown.self="isOverlayPressed = true"
         @click="closeOnOverlayClick"
@@ -646,10 +722,22 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                     }}
                 </h2>
 
-                <button class="close-btn" @click="closeModal"></button>
+                <button class="close-btn" @click="requestClose"></button>
             </div>
 
-            <form @submit.prevent="handleSubmit">
+            <UnsavedChangesPrompt
+                v-if="isUnsavedPromptShown"
+                :can-save="!isNoteEmpty"
+                :is-pending="props.isPending"
+                @save="saveFromPrompt"
+                @discard="closeModal"
+                @dismiss="isUnsavedPromptShown = false"
+            />
+
+            <form
+                @submit.prevent="handleSubmit"
+                @input="isUnsavedPromptShown = false"
+            >
                 <div v-if="!isNote" class="form-group">
                     <label>Название списка</label>
 

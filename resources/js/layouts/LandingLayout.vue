@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Gift, ListChecks, StickyNote } from '@lucide/vue';
+import { BadgeRussianRuble, Gift, ListChecks, StickyNote } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import dashboardSlideImage from '../../images/slide-dashboard.jpg';
@@ -107,16 +107,32 @@ function resetImage(): void {
 
         <section class="right-panel">
             <div class="floating-card card-one">
-                <Gift class="floating-card-icon" :size="18" />
+                <Gift
+                    class="floating-card-icon floating-card-icon--gift"
+                    :size="18"
+                />
                 Подарки
             </div>
             <div class="floating-card card-two">
-                <StickyNote class="floating-card-icon" :size="18" />
+                <StickyNote
+                    class="floating-card-icon floating-card-icon--note"
+                    :size="18"
+                />
                 Заметки
             </div>
             <div class="floating-card card-three">
-                <ListChecks class="floating-card-icon" :size="18" />
+                <ListChecks
+                    class="floating-card-icon floating-card-icon--todo"
+                    :size="18"
+                />
                 Дела
+            </div>
+            <div class="floating-card card-four">
+                <BadgeRussianRuble
+                    class="floating-card-icon floating-card-icon--fund"
+                    :size="18"
+                />
+                Сборы
             </div>
             <div class="image-glow"></div>
 
@@ -447,21 +463,36 @@ function resetImage(): void {
     gap: 8px;
 }
 
-/* Значки одного цвета у всех плашек */
+/* Цвета значков совпадают с метками типа на карточках дашборда (WishlistCard) */
 .floating-card-icon {
     flex-shrink: 0;
-    color: var(--brand-violet, #8b5cf6);
+}
+
+.floating-card-icon--gift {
+    color: var(--brand-violet);
+}
+
+.floating-card-icon--todo {
+    color: #059669;
+}
+
+.floating-card-icon--note {
+    color: #b45309;
+}
+
+.floating-card-icon--fund {
+    color: #be185d;
 }
 
 .card-one {
-    top: 30%;
+    top: 24%;
     left: 13%;
     animation: float 4.5s ease-in-out infinite;
 }
 
 .card-two {
     right: 13%;
-    bottom: 24%;
+    bottom: 40%;
     animation: float 5.2s ease-in-out infinite reverse;
 }
 
@@ -469,6 +500,12 @@ function resetImage(): void {
     right: 21%;
     top: 16%;
     animation: float 5.8s ease-in-out infinite;
+}
+
+.card-four {
+    left: 20%;
+    bottom: 32%;
+    animation: float 5s ease-in-out infinite reverse;
 }
 
 @keyframes float {

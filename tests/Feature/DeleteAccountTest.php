@@ -68,7 +68,7 @@ class DeleteAccountTest extends TestCase
             'password' => 'password',
         ])
             ->assertStatus(403)
-            ->assertJsonPath('data.message', 'Аккаунт не подтверждён. Подтвердите email.');
+            ->assertJsonPath('data.message', 'Аккаунт не подтверждён. Мы отправили новый код на ваш email.');
 
         $this->assertGuest('web');
     }

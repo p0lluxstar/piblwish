@@ -5,7 +5,7 @@ import {
     useQueryClient,
 } from '@tanstack/vue-query';
 import type { AxiosError, AxiosResponse } from 'axios';
-import { computed, type ComputedRef, ref, watch } from 'vue';
+import { computed, type ComputedRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { api } from '@/lib/api';
@@ -22,23 +22,38 @@ import type {
 } from '@/types/auth';
 import type { AppBackground, User } from '@/types/user';
 
-export const useLogin = (): any => {
+type UseLoginReturn = UseMutationReturnType<
+    AxiosResponse<{ data: User }>,
+    AxiosError<ApiErrorResponse>,
+    LoginPayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+export const useLogin = (): UseLoginReturn => {
     const router = useRouter();
     const authStore = useAuthStore();
-    const errorMessage = ref<string | null>(null);
 
-    const mutation = useMutation({
-        mutationFn: (payload: LoginPayload) => api.post('/v1/login', payload),
+    const mutation = useMutation<
+        AxiosResponse<{ data: User }>,
+        AxiosError<ApiErrorResponse>,
+        LoginPayload
+    >({
+        mutationFn: (payload) => api.post('/v1/login', payload),
 
         onSuccess: (response) => {
             authStore.setUser(response.data.data);
             router.push('/dashboard');
         },
-
-        onError: (error: any): void => {
-            errorMessage.value = error?.response?.data?.data?.message;
-        },
     });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(
+            mutation.error.value,
+            'Не удалось войти. Попробуйте позже',
+        ),
+    );
 
     return {
         ...mutation,
@@ -46,19 +61,104 @@ export const useLogin = (): any => {
     };
 };
 
-export const useRegister = (): any => {
-    return useMutation({
-        mutationFn: (payload: RegisterPayload) =>
-            api.post('/v1/register', payload),
-    });
+type UseRegisterReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    RegisterPayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
 };
 
-export const useVerifyRegistration = () => {
-    return useMutation({
-        mutationFn: (payload: { email: string; code: string }) =>
-            api.post('/v1/verify-registration', payload),
+export const useRegister = (): UseRegisterReturn => {
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        RegisterPayload
+    >({
+        mutationFn: (payload) => api.post('/v1/register', payload),
     });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(
+            mutation.error.value,
+            'Не удалось зарегистрироваться. Попробуйте позже',
+        ),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
 };
+
+type VerifyRegistrationPayload = { email: string; code: string };
+
+type UseVerifyRegistrationReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    VerifyRegistrationPayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+export const useVerifyRegistration = (): UseVerifyRegistrationReturn => {
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        VerifyRegistrationPayload
+    >({
+        mutationFn: (payload) => api.post('/v1/verify-registration', payload),
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(
+            mutation.error.value,
+            'Не удалось подтвердить код. Попробуйте позже',
+        ),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type ResendVerificationCodePayload = { email: string };
+
+type UseResendVerificationCodeReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    ResendVerificationCodePayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+export const useResendVerificationCode =
+    (): UseResendVerificationCodeReturn => {
+        const mutation = useMutation<
+            AxiosResponse,
+            AxiosError<ApiErrorResponse>,
+            ResendVerificationCodePayload
+        >({
+            mutationFn: (payload) =>
+                api.post('/v1/verify-registration/resend', payload),
+        });
+
+        const errorMessage = computed((): string | null =>
+            getApiErrorMessage(
+                mutation.error.value,
+                'Не удалось отправить код. Попробуйте позже',
+            ),
+        );
+
+        return {
+            ...mutation,
+            errorMessage,
+        };
+    };
 
 export const useLogout = (): any => {
     const router = useRouter();

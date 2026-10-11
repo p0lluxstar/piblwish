@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegistrationRequest;
+use App\Http\Requests\Auth\ResendVerificationCodeRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\VerifyRegistrationCodeRequest;
 use App\Http\Resources\ApiResource;
@@ -41,6 +42,21 @@ class AuthController extends Controller
         );
 
         return new VerifyRegistrationCodeResource(null);
+    }
+
+    // Повторная отправка кода регистрации.
+    // Ответ одинаков для любого email, чтобы по нему нельзя было
+    // определить, зарегистрирован ли адрес
+    public function resendVerificationCode(
+        ResendVerificationCodeRequest $request
+    ): ApiResource {
+        $this->authService->resendVerificationCode(
+            $request->validated('email')
+        );
+
+        return new ApiResource([
+            'message' => 'Если аккаунт ожидает подтверждения, на него отправлен новый код',
+        ]);
     }
 
     // Вход пользователя

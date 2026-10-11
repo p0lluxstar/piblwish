@@ -1,11 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Middleware\RenewRememberCookie;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\SavedWishlistController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WishlistController;
-use App\Http\Controllers\Api\SavedWishlistController;
+use App\Http\Middleware\RenewRememberCookie;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,6 +33,8 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:registration');
     Route::post('/verify-registration', [AuthController::class, 'verifyRegistrationCode'])
         ->middleware('throttle:verify-code');
+    Route::post('/verify-registration/resend', [AuthController::class, 'resendVerificationCode'])
+        ->middleware('throttle:verify-code-resend');
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])
         ->middleware('throttle:password-reset-request');
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])
@@ -74,15 +76,15 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard', RenewReme
 
 /**
  * SPA Fallback
- * 
+ *
  * Все запросы, которые не попали под API или другие маршруты,
  * перенаправляются на главную страницу.
- * 
+ *
  * Это необходимо для работы клиентского роутинга (Vue Router / React Router):
  * - Пользователь может обновить страницу на любом URL
  * - Можно делиться ссылками на конкретные страницы
  * - SEO-боты получают HTML (если настроен SSR)
- * 
+ *
  * ВАЖНО: Этот маршрут должен быть ПОСЛЕДНИМ в файле routes/web.php!
  * Иначе он перехватит все запросы, включая API.
  *

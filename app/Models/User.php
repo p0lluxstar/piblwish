@@ -7,21 +7,23 @@ use App\Enums\AppBackground;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['username', 'email', 'password', 'is_active', 'email_verified_at', 'deactivated_at', 'background', 'show_friends_events', 'avatar_path'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens, HasUlids;
+    use HasApiTokens, HasFactory, HasUlids, Notifiable;
 
     /**
      * Get the attributes that should be cast.
@@ -38,6 +40,16 @@ class User extends Authenticatable
             'background' => AppBackground::class,
             'show_friends_events' => 'boolean',
         ];
+    }
+
+    // Аккаунты, которые зарегистрированы, но ещё не подтвердили email
+    // кодом из письма (и не удалены)
+    #[Scope]
+    protected function pendingVerification(Builder $query): void
+    {
+        $query->where('is_active', false)
+            ->whereNull('email_verified_at')
+            ->whereNull('deactivated_at');
     }
 
     public function verificationRegistrationCodes(): HasMany

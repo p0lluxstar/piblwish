@@ -2,6 +2,7 @@
 import { X } from '@lucide/vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
+import { useEscapeKey } from '../../composables/useEscapeKey';
 import { lockBodyScroll, unlockBodyScroll } from '../../lib/bodyScrollLock';
 import type { Wishlist, WishlistItem } from '../../types/wishlist';
 import WishlistCard from './WishlistCard.vue';
@@ -31,28 +32,15 @@ const closePreview = (): void => {
     emit('close');
 };
 
-// Esc закрывает только верхнее окно: поверх просмотра может быть открыто
-// подтверждение удаления
-const handleKeydown = (event: KeyboardEvent): void => {
-    if (event.key !== 'Escape') return;
-
-    const overlays = document.querySelectorAll('.modal-overlay');
-
-    if (overlays[overlays.length - 1] === overlayRef.value) {
-        closePreview();
-    }
-};
+// Esc закрывает просмотр, если поверх него не открыто подтверждение удаления
+useEscapeKey(overlayRef, closePreview);
 
 onMounted(() => {
     lockBodyScroll();
-    window.addEventListener('keydown', handleKeydown);
     dialogRef.value?.focus();
 });
 
-onUnmounted(() => {
-    window.removeEventListener('keydown', handleKeydown);
-    unlockBodyScroll();
-});
+onUnmounted(unlockBodyScroll);
 </script>
 
 <template>

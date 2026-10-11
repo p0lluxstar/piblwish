@@ -3,14 +3,18 @@ import { Check } from '@lucide/vue';
 import { reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
+import VerificationRegistrationForm from '@/components/registration/VerificationRegistrationForm.vue';
 import BackOnMainPage from '@/components/ui/BackOnMainPage.vue';
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import InputRegistationForms from '@/components/ui/InputRegistationForms.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import PrimaryButton from '@/components/ui/PrimaryButton.vue';
 import { useLogin } from '@/composables/useAuth';
+import { useFormErrors } from '@/composables/useFormErrors';
+import { validateLogin } from '@/lib/authValidation';
+import type { LoginPayload } from '@/types/auth';
 
-const form = reactive({
+const form = reactive<LoginPayload>({
     email: '',
     password: '',
     remember: true,
@@ -18,88 +22,144 @@ const form = reactive({
 
 const isPasswordVisible = ref(false);
 
+// Email не подтверждён: сервер отправил новый код, и вместо формы входа
+// показывается форма ввода кода
+const isVerifying = ref(false);
+
 // Перехватчик 401 переводит сюда с ?expired=1, когда сессия истекла
 const route = useRoute();
 const isSessionExpired = route.query.expired === '1';
 
-const { mutateAsync: login, isPending, isError, errorMessage } = useLogin();
+const loginMutation = useLogin();
+const { mutateAsync: login, isPending, errorMessage } = loginMutation;
+
+const { invalidField, message, validate } = useFormErrors({
+    form,
+    serverError: loginMutation.error,
+    serverMessage: errorMessage,
+    resetServerError: loginMutation.reset,
+});
 
 async function submitForm(): Promise<void> {
     // Открытый пароль не остаётся на экране после отправки
     isPasswordVisible.value = false;
+    // Убираем ошибку прошлой попытки входа, чтобы она не мешала новой
+    loginMutation.reset();
+
+    // С ошибкой проверки на клиенте запрос на сервер не отправляется
+    if (!validate(validateLogin(form))) return;
 
     try {
-        await login({
-            email: form.email,
-            password: form.password,
-            remember: form.remember,
-        });
+        await login({ ...form });
+    } catch (error) {
+        // Вход отвечает 403 только неподтверждённому аккаунту с верным паролем
+        if (loginMutation.error.value?.response?.status === 403) {
+            loginMutation.reset();
+            isVerifying.value = true;
+            return;
+        }
+
+        console.error(error);
+    }
+}
+
+// Email подтверждён: входим с теми же данными. Если вход не удался,
+// ошибка показывается в форме входа
+async function handleVerified(): Promise<void> {
+    isVerifying.value = false;
+
+    try {
+        await login({ ...form });
     } catch (error) {
         console.error(error);
     }
 }
+
+function cancelVerification(): void {
+    isVerifying.value = false;
+}
 </script>
 
 <template>
-    <div class="header">
-        <BackOnMainPage />
-
-        <p class="eyebrow">Вход</p>
-    </div>
-
-    <h2>Войдите в аккаунт</h2>
-
-    <p v-if="isSessionExpired" class="session-expired">
-        Сессия истекла. Войдите снова, чтобы продолжить.
-    </p>
-
-    <form class="auth-form" @submit.prevent="submitForm">
-        <InputRegistationForms
-            v-model="form.email"
-            type="email"
-            autocomplete="email"
-            placeholder="Email"
+    <template v-if="isVerifying">
+        <VerificationRegistrationForm
+            :email="form.email"
+            @success="handleVerified"
         />
 
-        <InputRegistationForms
-            v-model="form.password"
-            v-model:revealed="isPasswordVisible"
-            type="password"
-            autocomplete="current-password"
-            placeholder="Пароль"
-        />
+        <p class="auth-link">
+            <a href="#" @click.prevent="cancelVerification">
+                Вернуться ко входу
+            </a>
+        </p>
+    </template>
 
-        <label class="remember">
-            <input
-                v-model="form.remember"
-                type="checkbox"
-                class="remember-input"
+    <template v-else>
+        <div class="header">
+            <BackOnMainPage />
+
+            <p class="eyebrow">Вход</p>
+        </div>
+
+        <h2>Войдите в аккаунт</h2>
+
+        <p v-if="isSessionExpired" class="session-expired">
+            Сессия истекла. Войдите снова, чтобы продолжить.
+        </p>
+
+        <form class="auth-form" novalidate @submit.prevent="submitForm">
+            <InputRegistationForms
+                v-model="form.email"
+                :invalid="invalidField === 'email'"
+                type="email"
+                autocomplete="email"
+                placeholder="Email"
             />
 
-            <!-- Форма как у отметки дела в карточке списка дел, цвет фирменный фиолетовый -->
-            <span class="remember-box" aria-hidden="true">
-                <Check v-if="form.remember" :size="12" />
-            </span>
+            <InputRegistationForms
+                v-model="form.password"
+                v-model:revealed="isPasswordVisible"
+                :invalid="invalidField === 'password'"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Пароль"
+            />
 
-            Запомнить меня
-        </label>
+            <label class="remember">
+                <input
+                    v-model="form.remember"
+                    type="checkbox"
+                    class="remember-input"
+                />
 
-        <PrimaryButton :disabled="isPending">
-            <LoaderButtonSpinner v-if="isPending" />
-            <span v-else>Войти</span>
-        </PrimaryButton>
+                <!-- Форма как у отметки дела в карточке списка дел, цвет фирменный фиолетовый -->
+                <span class="remember-box" aria-hidden="true">
+                    <Check v-if="form.remember" :size="12" />
+                </span>
 
-        <FormErrorMessage :show="isError" :message="errorMessage" />
-    </form>
+                Запомнить меня
+            </label>
 
-    <p class="auth-link">
-        <router-link to="/forgot-password">Забыли пароль?</router-link>
-    </p>
+            <PrimaryButton :disabled="isPending">
+                <LoaderButtonSpinner v-if="isPending" />
+                <span v-else>Войти</span>
+            </PrimaryButton>
 
-    <p class="auth-link">
-        Нет аккаунта?
-        <router-link to="/registration">Зарегистрироваться</router-link>
-    </p>
+            <FormErrorMessage
+                :show="Boolean(message)"
+                :message="message ?? undefined"
+            />
+        </form>
+
+        <p class="auth-link">
+            <router-link to="/forgot-password">Забыли пароль?</router-link>
+        </p>
+
+        <p class="auth-link">
+            Нет аккаунта?
+            <router-link to="/registration">Зарегистрироваться</router-link>
+        </p>
+    </template>
 </template>
 
 <style scoped>

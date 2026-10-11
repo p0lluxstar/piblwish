@@ -2,55 +2,67 @@
 
 namespace App\Services\Auth;
 
+use App\Mail\PasswordChangedMail;
+use App\Mail\PasswordResetCodeMail;
+use App\Mail\VerificationCodeMail;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use App\Mail\PasswordChangedMail;
-use App\Mail\PasswordResetCodeMail;
-use App\Mail\VerificationCodeMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class AuthService
 {
     // Срок действия кода восстановления пароля
-    private const RESET_CODE_TTL_MINUTES = 10;
+    private const RESET_CODE_TTL_MINUTES = 2;
 
+    // Регистрация. Если email принадлежит аккаунту, который так и не
+    // подтвердили, он не создаётся заново, а получает новые логин и пароль:
+    // так регистрацию можно пройти повторно, а занять чужой адрес,
+    // не подтвердив его, нельзя
     public function register(array $data): User
     {
-        $user = User::create([
+        $attributes = [
             'username' => $data['username'],
-            'email' => $data['email'],
             'password' => $data['password'],
-        ]);
+        ];
 
-        $code = random_int(100000, 999999);
+        $user = User::pendingVerification()
+            ->where('email', $data['email'])
+            ->first();
 
-        Log::info("Код регистрации для {$user->email}: {$code}");
-
-        $user->verificationRegistrationCodes()->create([
-            'code_hash' => Hash::make($code),
-            'expires_at' => now()->addMinutes(2),
-        ]);
-
-        try {
-            Mail::to($user->email)
-                ->queue(new VerificationCodeMail((string) $code));
-
-            Log::info('Verification email queued', [
-                'email' => $user->email,
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Failed to queue verification email', [
-                'email' => $user->email,
-                'exception' => $e,
+        if ($user) {
+            $user->update($attributes);
+        } else {
+            $user = User::create([
+                ...$attributes,
+                'email' => $data['email'],
             ]);
         }
 
+        $this->sendVerificationCode($user);
+
         return $user;
+    }
+
+    // Повторная отправка кода подтверждения регистрации.
+    // Для несуществующего, уже подтверждённого или удалённого аккаунта письмо
+    // не отправляется, но ответ контроллера не отличается: по нему нельзя
+    // определить, зарегистрирован ли email.
+    public function resendVerificationCode(string $email): void
+    {
+        $user = User::pendingVerification()
+            ->where('email', $email)
+            ->first();
+
+        if (! $user) {
+            return;
+        }
+
+        $this->sendVerificationCode($user);
     }
 
     public function verifyRegistrationCode(array $data): void
@@ -102,11 +114,16 @@ class AuthService
             abort(401, 'Неверный email или пароль.');
         }
 
-        // Пароль верный, но email не подтверждён — входить нельзя
+        // Пароль верный, но email не подтверждён — входить нельзя.
+        // Новый код отправляется сразу: пароль уже проверен, поэтому это
+        // владелец аккаунта, и он может завершить регистрацию со страницы
+        // входа. Фронтенд по статусу 403 показывает форму ввода кода
         $user = $guard->getLastAttempted();
 
         if (! $user->is_active) {
-            abort(403, 'Аккаунт не подтверждён. Подтвердите email.');
+            $this->sendVerificationCode($user);
+
+            abort(403, 'Аккаунт не подтверждён. Мы отправили новый код на ваш email.');
         }
 
         $guard->login($user, $remember);
@@ -246,6 +263,36 @@ class AuthService
             ));
         } catch (\Throwable $e) {
             Log::error('Failed to queue password changed email', [
+                'email' => $user->email,
+                'exception' => $e,
+            ]);
+        }
+    }
+
+    // Создаёт новый код подтверждения регистрации и отправляет его письмом
+    private function sendVerificationCode(User $user): void
+    {
+        $code = random_int(100000, 999999);
+
+        Log::info("Код регистрации для {$user->email}: {$code}");
+
+        // Действует только последний код, поэтому прежние удаляются
+        $user->verificationRegistrationCodes()->delete();
+
+        $user->verificationRegistrationCodes()->create([
+            'code_hash' => Hash::make($code),
+            'expires_at' => now()->addMinutes(2),
+        ]);
+
+        try {
+            Mail::to($user->email)
+                ->queue(new VerificationCodeMail((string) $code));
+
+            Log::info('Verification email queued', [
+                'email' => $user->email,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to queue verification email', [
                 'email' => $user->email,
                 'exception' => $e,
             ]);

@@ -13,8 +13,16 @@ import {
     Trash2,
     X,
 } from '@lucide/vue';
-import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
+import {
+    computed,
+    onMounted,
+    onUnmounted,
+    ref,
+    useTemplateRef,
+    watch,
+} from 'vue';
 
+import { useEscapeKey } from '../../composables/useEscapeKey';
 import { useItemReorder } from '../../composables/useItemReorder';
 import { FUND_PLATFORMS_TEXT } from '../../constants/fundHosts';
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
@@ -36,6 +44,7 @@ import type {
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import ItemPriceInput from './ItemPriceInput.vue';
 import ItemPriorityPicker from './ItemPriorityPicker.vue';
+import UnsavedChangesPrompt from './UnsavedChangesPrompt.vue';
 import WishlistColorPicker from './WishlistColorPicker.vue';
 import WishlistDueDateField from './WishlistDueDateField.vue';
 import WishlistGuestCheckToggle from './WishlistGuestCheckToggle.vue';
@@ -280,10 +289,11 @@ const prepareItems = (): WishlistItem[] | null => {
         .map((item) => ({ ...item, urls: normalizeItemUrls(item.urls) }));
 };
 
-const handleSubmit = (): void => {
+// Возвращает false, если форма не прошла проверку и ничего не отправлено
+const handleSubmit = (): boolean => {
     // У заметки нет названия, позиций и режима сюрприза: сервер их не принимает
     if (isNote.value) {
-        if (isNoteEmpty.value) return;
+        if (isNoteEmpty.value) return false;
 
         emit('create', {
             type: 'note',
@@ -291,18 +301,18 @@ const handleSubmit = (): void => {
             content: form.value.content,
         });
 
-        return;
+        return true;
     }
 
     // Название обязательно у списков желаний и дел: без него сервер список не примет
     if (!form.value.title.trim()) {
         isTitleMissing.value = true;
-        return;
+        return false;
     }
 
     const items = prepareItems();
 
-    if (!items) return;
+    if (!items) return false;
 
     emit('create', {
         type: form.value.type,
@@ -320,6 +330,8 @@ const handleSubmit = (): void => {
             : {}),
         items,
     });
+
+    return true;
 };
 
 const disableBodyScroll = (): void => {
@@ -345,10 +357,66 @@ const closeModal = (): void => {
     emit('close');
 };
 
+// В форму что-то введено; на шаге выбора типа терять нечего
+const hasUnsavedChanges = computed(
+    () => step.value === 'form' && isDirty.value,
+);
+
+// Крестик при заполненной форме не закрывает окно сразу, а спрашивает
+// под заголовком, закрыть ли его без сохранения
+const isUnsavedPromptShown = ref(false);
+
+const requestClose = (): void => {
+    if (hasUnsavedChanges.value) {
+        isUnsavedPromptShown.value = true;
+
+        return;
+    }
+
+    closeModal();
+};
+
+// Форму очистили или вернулись к выбору типа: спрашивать больше не о чем
+watch(hasUnsavedChanges, (unsaved) => {
+    if (!unsaved) isUnsavedPromptShown.value = false;
+});
+
+// Сохранение из вопроса: если форма не прошла проверку, вопрос убирается,
+// чтобы были видны подсвеченные поля. При успехе окно закроет родитель
+const saveFromPrompt = (): void => {
+    if (!handleSubmit()) isUnsavedPromptShown.value = false;
+};
+
+// Сервер не принял сохранение из вопроса: ошибка выводится над кнопкой
+// отправки внизу формы, поэтому вопрос убирается, а форма прокручивается к ней
+watch(
+    () => props.errorMessage,
+    (message) => {
+        if (!message || !isUnsavedPromptShown.value) return;
+
+        isUnsavedPromptShown.value = false;
+        nudgeUnsaved(modalEl.value, submitButtonEl.value);
+    },
+);
+
+// Esc действует как крестик, а при открытом вопросе о несохранённых правках
+// убирает вопрос и оставляет окно открытым. Вопрос убирается и при вводе в форму
+const overlayEl = useTemplateRef<HTMLElement>('overlay');
+
+useEscapeKey(overlayEl, () => {
+    if (isUnsavedPromptShown.value) {
+        isUnsavedPromptShown.value = false;
+
+        return;
+    }
+
+    requestClose();
+});
+
 // Кликом по фону окно закрывается, пока в форму ничего не введено (в том числе
-// на шаге выбора типа); заполненную форму закрывает только крестик, а окно
-// вздрагивает и подсвечивает кнопку создания. Нажатие и отпускание кнопки
-// мыши должны быть на фоне, как в окне редактирования
+// на шаге выбора типа); заполненную форму закрывает только крестик
+// с подтверждением, а окно вздрагивает и подсвечивает кнопку создания. Нажатие
+// и отпускание кнопки мыши должны быть на фоне, как в окне редактирования
 const isOverlayPressed = ref(false);
 
 const modalEl = useTemplateRef<HTMLElement>('modal');
@@ -362,7 +430,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 
     if (!isOverlayClick) return;
 
-    if (step.value === 'form' && isDirty.value) {
+    if (hasUnsavedChanges.value) {
         nudgeUnsaved(modalEl.value, submitButtonEl.value);
 
         return;
@@ -374,6 +442,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 
 <template>
     <div
+        ref="overlay"
         class="modal-overlay"
         @mousedown.self="isOverlayPressed = true"
         @click="closeOnOverlayClick"
@@ -383,8 +452,18 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
             <div class="modal-header">
                 <h2>{{ modalTitle }}</h2>
 
-                <button class="close-btn" @click="closeModal"></button>
+                <button class="close-btn" @click="requestClose"></button>
             </div>
+
+            <UnsavedChangesPrompt
+                v-if="isUnsavedPromptShown"
+                save-label="Создать"
+                :can-save="!isNoteEmpty"
+                :is-pending="props.isPending"
+                @save="saveFromPrompt"
+                @discard="closeModal"
+                @dismiss="isUnsavedPromptShown = false"
+            />
 
             <!-- Первый шаг: выбор типа списка -->
             <div v-if="step === 'type'" class="type-choice">
@@ -461,7 +540,11 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                 </button>
             </div>
 
-            <form v-else @submit.prevent="handleSubmit">
+            <form
+                v-else
+                @submit.prevent="handleSubmit"
+                @input="isUnsavedPromptShown = false"
+            >
                 <button
                     v-if="!props.source"
                     class="back-btn"
