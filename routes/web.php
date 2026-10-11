@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Middleware\RenewRememberCookie;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WishlistController;
+use App\Http\Controllers\Api\SavedWishlistController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,19 +33,43 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:registration');
     Route::post('/verify-registration', [AuthController::class, 'verifyRegistrationCode'])
         ->middleware('throttle:verify-code');
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])
+        ->middleware('throttle:password-reset-request');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])
+        ->middleware('throttle:password-reset');
 });
 
 // Только для авторизованных пользователей (через Sanctum)
-Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard'])->group(function () {
+Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard', RenewRememberCookie::class])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/logout-all', [AuthController::class, 'logoutAllDevices']);
     Route::get('/user', [UserController::class, 'user']);
+    Route::patch('/user', [UserController::class, 'updateUser']);
     Route::delete('/user', [UserController::class, 'deleteAccount']);
+    Route::post('/user/avatar', [UserController::class, 'updateAvatar'])
+        ->middleware('throttle:avatar-upload');
+    Route::delete('/user/avatar', [UserController::class, 'deleteAvatar']);
     Route::put('/user/password', [UserController::class, 'changePassword'])
         ->middleware('throttle:password-change');
+    Route::post('/user/email', [UserController::class, 'requestEmailChange'])
+        ->middleware('throttle:email-change-request');
+    Route::post('/user/email/confirm', [UserController::class, 'confirmEmailChange'])
+        ->middleware('throttle:email-change-confirm');
     Route::get('/wishlists', [WishlistController::class, 'getUserWishlists']);
     Route::post('/wishlists', [WishlistController::class, 'createWishlist']);
     Route::patch('/wishlists/{id}', [WishlistController::class, 'updateWishlist']);
+    Route::get('/wishlists/{id}/selections', [WishlistController::class, 'getSelectedItems']);
+    Route::patch('/wishlists/{id}/items/{itemId}', [WishlistController::class, 'updateWishlistItem']);
+    Route::delete('/wishlists/{id}/items/{itemId}/selection', [WishlistController::class, 'clearItemSelection']);
+    // Выше /wishlists/{id}, иначе «archived» попадёт в {id}
+    Route::delete('/wishlists/archived', [WishlistController::class, 'deleteArchivedWishlists']);
     Route::delete('/wishlists/{id}', [WishlistController::class, 'deleteWishlist']);
+    Route::post('/wishlists/{id}/archive', [WishlistController::class, 'archiveWishlist']);
+    Route::delete('/wishlists/{id}/archive', [WishlistController::class, 'restoreWishlist']);
+    // Чужие списки, добавленные к себе с общей страницы; {id} — id самого списка
+    Route::get('/saved-wishlists', [SavedWishlistController::class, 'getSavedWishlists']);
+    Route::post('/saved-wishlists/{id}', [SavedWishlistController::class, 'saveWishlist']);
+    Route::delete('/saved-wishlists/{id}', [SavedWishlistController::class, 'removeSavedWishlist']);
 });
 
 /**

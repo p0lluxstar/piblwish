@@ -1,55 +1,22 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 
-import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
+import AppBackgroundPicker from '@/components/user/AppBackgroundPicker.vue';
+import EmailChangeSection from '@/components/user/EmailChangeSection.vue';
+import FriendsEventsToggle from '@/components/user/FriendsEventsToggle.vue';
+import LogoutAllDevicesSection from '@/components/user/LogoutAllDevicesSection.vue';
+import PasswordChangeSection from '@/components/user/PasswordChangeSection.vue';
+import ProfileSection from '@/components/user/ProfileSection.vue';
 
 const props = defineProps<{
-    isPending?: boolean;
     isDeletingAccount?: boolean;
-    passwordErrorMessage?: string | null;
-    isPasswordChanged?: boolean;
 }>();
 
 const emit = defineEmits<{
     close: [];
-    changePassword: [
-        payload: {
-            currentPassword: string;
-            newPassword: string;
-            newPasswordConfirmation: string;
-        },
-    ];
     deleteAccount: [];
 }>();
-
-type PasswordForm = {
-    currentPassword: string;
-    newPassword: string;
-    newPasswordConfirmation: string;
-};
-
-const defaultForm = (): PasswordForm => ({
-    currentPassword: '',
-    newPassword: '',
-    newPasswordConfirmation: '',
-});
-
-const form = ref(defaultForm());
-
-const handleSubmit = (): void => {
-    emit('changePassword', { ...form.value });
-};
-
-// После успешной смены пароля очищаем поля формы
-watch(
-    () => props.isPasswordChanged,
-    (isChanged) => {
-        if (isChanged) {
-            form.value = defaultForm();
-        }
-    },
-);
 
 // Показ подтверждения удаления аккаунта вместо кнопки «Удалить аккаунт»
 const isDeleteConfirmVisible = ref(false);
@@ -83,7 +50,6 @@ onUnmounted(() => {
 });
 
 const closeModal = (): void => {
-    form.value = defaultForm();
     hideDeleteConfirm();
     enableBodyScroll();
     emit('close');
@@ -100,61 +66,25 @@ const closeModal = (): void => {
                     <button class="close-btn" @click="closeModal"></button>
                 </div>
 
-                <form class="password-form" @submit.prevent="handleSubmit">
-                    <h3 class="section-title">Смена пароля</h3>
+                <ProfileSection />
 
-                    <div class="form-row">
-                        <input
-                            v-model="form.currentPassword"
-                            type="password"
-                            autocomplete="current-password"
-                            required
-                            placeholder="Текущий пароль"
-                        />
+                <section class="background-section">
+                    <h3 class="section-title">Фон приложения</h3>
 
-                        <input
-                            v-model="form.newPassword"
-                            type="password"
-                            autocomplete="new-password"
-                            placeholder="Новый пароль"
-                            required
-                        />
+                    <AppBackgroundPicker />
+                </section>
 
-                        <input
-                            v-model="form.newPasswordConfirmation"
-                            type="password"
-                            autocomplete="new-password"
-                            placeholder="Повторите новый пароль"
-                            required
-                        />
-                    </div>
+                <section class="background-section">
+                    <h3 class="section-title">Дашборд</h3>
 
-                    <FormErrorMessage
-                        class="form-message"
-                        :show="!!props.passwordErrorMessage"
-                        :message="props.passwordErrorMessage ?? undefined"
-                    />
+                    <FriendsEventsToggle />
+                </section>
 
-                    <p
-                        v-if="props.isPasswordChanged"
-                        class="form-message success-message"
-                    >
-                        Пароль изменён
-                    </p>
+                <EmailChangeSection />
 
-                    <button
-                        type="submit"
-                        :disabled="props.isPending"
-                        class="create-btn"
-                    >
-                        <LoaderButtonSpinner
-                            v-if="props.isPending"
-                            :size="18"
-                        />
+                <PasswordChangeSection />
 
-                        <span v-else>Сохранить</span>
-                    </button>
-                </form>
+                <LogoutAllDevicesSection />
 
                 <div class="danger-zone">
                     <button
@@ -206,57 +136,17 @@ const closeModal = (): void => {
 
 <style scoped lang="scss">
 @use '../../../scss/ui/wishlistModal.scss';
+@use '../../../scss/ui/accountSection.scss';
 
 .modal {
     max-width: 360px;
     padding: 24px;
 }
 
-.section-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--ink, #241533);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin: 0 0 12px;
-}
-
-.password-form {
-    .form-row {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-bottom: 14px;
-    }
-
-    input {
-        padding: 11px 14px;
-        border: 1.5px solid rgba(139, 92, 246, 0.15);
-        border-radius: 14px;
-        width: 100%;
-        font-size: 13px;
-        font-family: inherit;
-        background: #faf8ff;
-        transition: all 0.18s ease;
-
-        &:focus {
-            outline: none;
-            border-color: #8b5cf6;
-            background: #fff;
-            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
-        }
-    }
-}
-
-.form-message {
-    margin: 0 0 12px;
-    font-size: 13px;
-}
-
-.success-message {
-    color: #16a34a;
-    line-height: 1.4;
-    text-align: center;
+.background-section {
+    margin-bottom: 20px;
+    padding-bottom: 18px;
+    border-bottom: 1px dashed rgba(139, 92, 246, 0.2);
 }
 
 .danger-zone {
@@ -308,32 +198,6 @@ const closeModal = (): void => {
 .delete-confirm-actions {
     display: flex;
     gap: 12px;
-}
-
-.cancel-btn {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: rgba(139, 92, 246, 0.08);
-    border: none;
-    color: var(--ink, #241533);
-    border-radius: 18px;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: inherit;
-    flex: 1;
-    padding: 11px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover:not(:disabled) {
-        background: rgba(139, 92, 246, 0.14);
-    }
-
-    &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
 }
 
 .delete-btn {

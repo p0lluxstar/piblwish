@@ -1,33 +1,28 @@
 <script setup lang="ts">
-import { Gift, LayoutList, LogOut, Settings } from '@lucide/vue';
+import {
+    Bookmark,
+    CircleQuestionMark,
+    Gift,
+    LayoutList,
+    LogOut,
+    Settings,
+} from '@lucide/vue';
 import { computed, ref } from 'vue';
-import { useRoute } from 'vue-router';
 
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
+import UserAvatar from '@/components/ui/UserAvatar.vue';
 import UserSettingsModal from '@/components/user/UserSettingsModal.vue';
-import {
-    useChangePassword,
-    useDeleteAccount,
-    useLogout,
-} from '@/composables/useAuth';
+import { useDeleteAccount, useLogout } from '@/composables/useAuth';
+import { useMotivationalPhrase } from '@/composables/useMotivationalPhrase';
 import { useAuthStore } from '@/stores/auth';
 
 const auth = useAuthStore();
-const route = useRoute();
+const { phrase, longestPhrase } = useMotivationalPhrase();
 
-// Ссылка на свои списки нужна везде, кроме самого дашборда (например, на странице общего списка)
-const showMyListsLink = computed(() => route.name !== 'dashboard');
 const logoLink = computed(() => (auth.user ? '/dashboard' : '/'));
 const { mutate: logout, isPending } = useLogout();
 const { mutate: deleteAccount, isPending: isDeletingAccount } =
     useDeleteAccount();
-const {
-    mutate: changePassword,
-    isPending: isChangingPassword,
-    isSuccess: isPasswordChanged,
-    errorMessage: passwordErrorMessage,
-    reset: resetChangePassword,
-} = useChangePassword();
 
 const isSettingsModalOpen = ref(false);
 
@@ -37,20 +32,6 @@ const openSettingsModal = (): void => {
 
 const closeSettingsModal = (): void => {
     isSettingsModalOpen.value = false;
-    // При повторном открытии модалки не показываем результат прошлой попытки
-    resetChangePassword();
-};
-
-const handleChangePassword = (payload: {
-    currentPassword: string;
-    newPassword: string;
-    newPasswordConfirmation: string;
-}): void => {
-    changePassword({
-        current_password: payload.currentPassword,
-        password: payload.newPassword,
-        password_confirmation: payload.newPasswordConfirmation,
-    });
 };
 
 const handleDeleteAccount = (): void => {
@@ -60,33 +41,74 @@ const handleDeleteAccount = (): void => {
 
 <template>
     <header class="header">
-        <div class="container">
-            <!-- Авторизованный пользователь попадает на свои списки, гость — на главную -->
-            <router-link :to="logoLink" class="logo">
+        <div class="header-inner">
+            <!-- Авторизованный пользователь попадает на свои карточки, гость — на главную -->
+            <router-link :to="logoLink" class="logo" aria-label="PiblWish">
                 <div class="logo-icon">
                     <Gift :size="18" color="#fff" />
                     <span class="logo-spark">✦</span>
                 </div>
-                <span class="logo-title">PiblWish</span>
+                <span class="logo-text">
+                    <!-- На узком экране вместо полного названия — сокращение -->
+                    <span class="logo-title" aria-hidden="true">
+                        <span class="logo-title-full">PiblWish</span>
+                        <span class="logo-title-short">PW</span>
+                    </span>
+                    <!-- Фраза обращена к владельцу списков, поэтому гостю не показывается.
+                         Невидимая самая длинная фраза лежит в той же ячейке и задаёт
+                         ширину блока, поэтому при смене фразы он не меняет размер -->
+                    <span
+                        v-if="auth.user"
+                        class="logo-phrase-box"
+                        aria-hidden="true"
+                    >
+                        <span class="logo-phrase logo-phrase-sizer">
+                            {{ longestPhrase }}
+                        </span>
+                        <!-- Ключ пересоздаёт элемент при смене фразы, чтобы анимация срабатывала заново -->
+                        <span :key="phrase" class="logo-phrase">
+                            {{ phrase }}
+                        </span>
+                    </span>
+                </span>
             </router-link>
-            <div v-if="auth.user" class="user-info">
+            <nav class="header-nav">
+                <!-- Свои карточки есть только у авторизованного пользователя -->
                 <router-link
-                    v-if="showMyListsLink"
+                    v-if="auth.user"
                     to="/dashboard"
-                    class="my-lists-btn"
-                    aria-label="Мои списки"
+                    class="nav-link"
+                    aria-label="Мои карточки"
                 >
                     <LayoutList :size="16" />
-                    <span class="btn-text">Мои списки</span>
+                    <span class="btn-text">Мои карточки</span>
                 </router-link>
+                <!-- Чужие списки, добавленные к себе с общей страницы -->
+                <router-link
+                    v-if="auth.user"
+                    to="/saved"
+                    class="nav-link"
+                    aria-label="Чужие списки"
+                >
+                    <Bookmark :size="16" />
+                    <span class="btn-text">Чужие списки</span>
+                </router-link>
+                <router-link to="/help" class="nav-link" aria-label="Помощь">
+                    <CircleQuestionMark :size="16" />
+                    <span class="btn-text">Помощь</span>
+                </router-link>
+            </nav>
+            <div v-if="auth.user" class="user-info">
                 <div class="user-details">
                     <span class="user-username">{{ auth.user.username }}</span>
                     <span class="user-email">{{ auth.user.email }}</span>
                 </div>
                 <div class="avatar-wrapper">
-                    <div class="avatar">
-                        {{ auth.user?.username?.charAt(0).toUpperCase() }}
-                    </div>
+                    <UserAvatar
+                        class="avatar"
+                        :username="auth.user.username"
+                        :avatar-url="auth.user.avatarUrl"
+                    />
                     <button
                         class="settings-btn"
                         type="button"
@@ -130,12 +152,8 @@ const handleDeleteAccount = (): void => {
 
         <UserSettingsModal
             v-if="auth.user && isSettingsModalOpen"
-            :is-pending="isChangingPassword"
             :is-deleting-account="isDeletingAccount"
-            :password-error-message="passwordErrorMessage"
-            :is-password-changed="isPasswordChanged"
             @close="closeSettingsModal"
-            @change-password="handleChangePassword"
             @delete-account="handleDeleteAccount"
         />
     </header>
@@ -156,15 +174,21 @@ const handleDeleteAccount = (): void => {
     justify-content: center;
     align-items: center;
 }
-.container {
-    display: flex;
+/* Три колонки: логотип, меню и пользователь. Боковые колонки равной ширины,
+   поэтому меню стоит по центру шапки и не зависит от ширины соседей.
+   Класс не называется container: у одноимённого класса Tailwind max-width по
+   брейкпоинтам, и на ширине меньше 1280px содержимое шапки сжималось к центру */
+.header-inner {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     width: 1200px;
-    justify-content: space-between;
     align-items: center;
+    gap: 16px;
 }
 
 .logo {
     display: flex;
+    justify-self: start;
     align-items: center;
     gap: 12px;
     text-decoration: none;
@@ -172,12 +196,13 @@ const handleDeleteAccount = (): void => {
 .logo-icon {
     width: 38px;
     height: 38px;
-    border-radius: 14px;
+    border-radius: 10px;
     background: var(--logo-gradient);
     display: grid;
     place-items: center;
     font-size: 18px;
     position: relative;
+    flex-shrink: 0;
     box-shadow: var(--shadow-glow);
     transition: transform 0.25s ease;
 }
@@ -212,18 +237,109 @@ const handleDeleteAccount = (): void => {
     color: transparent;
     letter-spacing: -0.04em;
 }
-.user-info {
+.logo-title-short {
+    display: none;
+}
+/* Название и фраза под ним. В сетке у блока фразы с overflow: hidden нулевой минимальный
+   размер, поэтому при нехватке места блок сжимается до ширины названия, а фраза обрезается */
+.logo-text {
+    display: grid;
+    line-height: 1.2;
+}
+.logo-phrase-box {
+    display: grid;
+    overflow: hidden;
+}
+/* Текущая фраза и невидимая самая длинная лежат в одной ячейке */
+.logo-phrase-box > * {
+    grid-area: 1 / 1;
+}
+.logo-phrase-sizer {
+    visibility: hidden;
+}
+.logo-phrase {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--brand-pink);
+    animation: phrase-in 0.4s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+    .logo-phrase {
+        animation: none;
+    }
+}
+@keyframes phrase-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+/* Меню не сжимается: при нехватке места обрезаются имя и email,
+   а у логотипа фраза, но не название */
+.header-nav {
+    display: flex;
+    justify-self: center;
+    align-items: center;
+    gap: 4px;
+}
+.nav-link {
     display: flex;
     align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-decoration: none;
+    /* Без этого на ширине 768–1023px «Мои карточки» переносилось на две строки */
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+.nav-link:hover {
+    color: var(--brand-violet);
+    background: rgba(139, 92, 246, 0.08);
+}
+/* Ссылка на открытую страницу: заливка фирменным градиентом, чтобы отличаться от наведения */
+.nav-link.router-link-active {
+    color: #fff;
+    background: var(--brand-gradient);
+    box-shadow: var(--shadow-glow);
+}
+/* Блок занимает всю колонку и прижимает содержимое вправо: при justify-self: end
+   он не сжимался бы и длинный email заезжал бы на меню */
+.user-info {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
     gap: 14px;
+    min-width: 0;
     font-size: 14px;
     color: var(--ink);
 }
 
+/* Длинные имя и email обрезаются многоточием, а не сдвигают меню */
 .user-details {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
+    min-width: 0;
+}
+
+.user-username,
+.user-email {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .user-username {
@@ -239,13 +355,10 @@ const handleDeleteAccount = (): void => {
 }
 
 .avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+    width: 44px;
+    height: 44px;
     background: var(--brand-gradient);
-    display: grid;
-    place-items: center;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 700;
     color: #fff;
     box-shadow: var(--shadow-glow);
@@ -259,8 +372,8 @@ const handleDeleteAccount = (): void => {
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     border: 2px solid #fff;
     background: var(--brand-amber);
@@ -312,30 +425,10 @@ const handleDeleteAccount = (): void => {
     box-shadow: var(--shadow-glow);
     transform: translateY(-1px);
 }
-.my-lists-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    height: 36px;
-    padding: 6px 16px;
-    margin-right: 6px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--brand-violet);
-    background: rgba(139, 92, 246, 0.08);
-    text-decoration: none;
-    transition: all 0.2s ease;
-}
-.my-lists-btn:hover {
-    background: var(--brand-gradient);
-    color: #fff;
-    box-shadow: var(--shadow-glow);
-    transform: translateY(-1px);
-}
 
 .guest-actions {
     display: flex;
+    justify-content: flex-end;
     align-items: center;
     gap: 10px;
 }
@@ -369,31 +462,58 @@ const handleDeleteAccount = (): void => {
     filter: brightness(1.05);
 }
 
-/* Узкий экран: одна строка, имя и email скрыты, кнопки только с иконками */
+/* Планшет и уже: у ссылок навигации и кнопки «Выход» остаются только значки */
+@media (max-width: 767px) {
+    .header-nav {
+        gap: 0;
+    }
+    .nav-link,
+    .logout-btn {
+        width: 36px;
+        padding: 0;
+        justify-content: center;
+    }
+    .btn-text {
+        display: none;
+    }
+}
+
+/* Узкий экран: одна строка, имя и email скрыты */
 @media (max-width: 599px) {
     .header {
         height: 60px;
         padding: 0 16px;
     }
-    .container {
+    .header-inner {
         width: 100%;
+        gap: 8px;
     }
     .user-info {
         gap: 10px;
     }
-    .user-details,
-    .btn-text {
+    .user-details {
         display: none;
     }
-    .logout-btn,
-    .my-lists-btn {
-        width: 36px;
-        padding: 0;
-        justify-content: center;
+    .avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 15px;
     }
-    .my-lists-btn {
-        margin-right: 0;
+    /* На узком экране вместо полного названия — сокращение PW */
+    .logo {
+        gap: 8px;
     }
+    .logo-title-full {
+        display: none;
+    }
+    .logo-title-short {
+        display: inline;
+    }
+    /* Под сокращением PW фразе не хватает места */
+    .logo-phrase-box {
+        display: none;
+    }
+
     .guest-actions {
         gap: 8px;
     }

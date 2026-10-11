@@ -58,6 +58,21 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(20)->by($request->ip()),
         ]);
 
+        // Запрос кода восстановления: каждая попытка может отправить письмо.
+        // Лимит по email защищает владельца адреса от потока писем
+        RateLimiter::for('password-reset-request', fn (Request $request): array => [
+            Limit::perMinute(1)->by(mb_strtolower((string) $request->input('email'))),
+            Limit::perMinute(3)->by($request->ip()),
+            Limit::perHour(20)->by($request->ip()),
+        ]);
+
+        // Установка пароля по коду: перебор 6-значного кода для одного email.
+        // Код действует 10 минут, поэтому на один код приходится не больше 50 попыток
+        RateLimiter::for('password-reset', fn (Request $request): array => [
+            Limit::perMinute(5)->by(mb_strtolower((string) $request->input('email'))),
+            Limit::perMinute(20)->by($request->ip()),
+        ]);
+
         // Расшаренные списки: чтение допускается чаще, чем отметка позиций
         RateLimiter::for('shared-read', fn (Request $request): Limit => Limit::perMinute(60)->by($byUserOrIp($request)));
         RateLimiter::for('shared-write', fn (Request $request): Limit => Limit::perMinute(10)->by($byUserOrIp($request)));
@@ -65,8 +80,28 @@ class AppServiceProvider extends ServiceProvider
         // Дашборд: маршруты под auth:sanctum
         RateLimiter::for('dashboard', fn (Request $request): Limit => Limit::perMinute(60)->by($byUserOrIp($request)));
 
+        // Загрузка фотографии: каждый запрос декодирует изображение и пишет файл на диск
+        RateLimiter::for('avatar-upload', fn (Request $request): array => [
+            Limit::perMinute(10)->by($byUserOrIp($request)),
+            Limit::perHour(30)->by($byUserOrIp($request)),
+        ]);
+
         // Смена пароля: подбор текущего пароля из захваченной сессии
         RateLimiter::for('password-change', fn (Request $request): array => [
+            Limit::perMinute(5)->by($byUserOrIp($request)),
+            Limit::perHour(20)->by($byUserOrIp($request)),
+        ]);
+
+        // Запрос кода смены email: каждый запрос проверяет текущий пароль
+        // и отправляет письмо на указанный пользователем адрес. Ошибки
+        // валидации тоже учитываются, поэтому в минуту допускается три запроса
+        RateLimiter::for('email-change-request', fn (Request $request): array => [
+            Limit::perMinute(3)->by($byUserOrIp($request)),
+            Limit::perHour(10)->by($byUserOrIp($request)),
+        ]);
+
+        // Подтверждение нового email: подбор кода
+        RateLimiter::for('email-change-confirm', fn (Request $request): array => [
             Limit::perMinute(5)->by($byUserOrIp($request)),
             Limit::perHour(20)->by($byUserOrIp($request)),
         ]);

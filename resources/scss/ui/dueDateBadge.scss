@@ -1,0 +1,38 @@
+// Плашка «Осталось 5 дней» на карточках списков (lib/dueDate.ts, DueDateTone).
+// Используется в WishlistCard и SavedWishlistCard
+
+// Плашка счётчика: спокойная фиолетовая, жёлтая за 3 дня до срока,
+// зелёная в день события или срока, красная после срока списка дел
+.card-due {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: normal;
+    white-space: nowrap;
+    color: #7c3aed;
+    background: rgba(139, 92, 246, 0.1);
+
+    svg {
+        flex-shrink: 0;
+    }
+}
+
+.card-due--soon {
+    color: #b45309;
+    background: rgba(245, 158, 11, 0.14);
+}
+
+.card-due--today {
+    color: #047857;
+    background: rgba(16, 185, 129, 0.14);
+}
+
+.card-due--overdue {
+    color: #be123c;
+    background: rgba(244, 63, 94, 0.12);
+}

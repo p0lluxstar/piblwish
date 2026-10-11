@@ -41,6 +41,29 @@ Route::prefix('v1')->group(function () {
         '/shared-wishlists/{wishlist}/items',
         [SharedWishlistController::class, 'updateSharedWishlistItems']
     )->middleware('throttle:shared-write');
+
+    // Отметка дел гостем в списке дел; снять отметку может только владелец
+    Route::post(
+        '/shared-wishlists/{wishlist}/items/check',
+        [SharedWishlistController::class, 'checkTodoItems']
+    )->middleware('throttle:shared-write');
+
+    // Брони гостя: POST, а не GET, чтобы токены не попадали в адрес и логи сервера
+    Route::post(
+        '/shared-wishlists/{wishlist}/reservations/lookup',
+        [SharedWishlistController::class, 'getReservations']
+    )->middleware('throttle:shared-read');
+
+    Route::post(
+        '/shared-wishlists/{wishlist}/reservations/cancel',
+        [SharedWishlistController::class, 'cancelReservation']
+    )->middleware('throttle:shared-write');
+
+    // Совместный подарок на позицию своей брони; токен передаётся в теле запроса
+    Route::put(
+        '/shared-wishlists/{wishlist}/items/{item}/joint-gift',
+        [SharedWishlistController::class, 'updateJointGift']
+    )->middleware('throttle:shared-write');
 });
 
 // Только для авторизованных пользователей (через Sanctum)

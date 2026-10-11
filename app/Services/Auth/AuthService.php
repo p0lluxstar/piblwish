@@ -5,13 +5,20 @@ namespace App\Services\Auth;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use App\Mail\PasswordChangedMail;
+use App\Mail\PasswordResetCodeMail;
 use App\Mail\VerificationCodeMail;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class AuthService
 {
+    // Срок действия кода восстановления пароля
+    private const RESET_CODE_TTL_MINUTES = 10;
+
     public function register(array $data): User
     {
         $user = User::create([
@@ -79,8 +86,11 @@ class AuthService
         $user->verificationRegistrationCodes()->delete();
     }
 
+    // При $remember Laravel ставит долгоживущую cookie remember_web_*:
+    // по ней вход восстанавливается после истечения сессии (SESSION_LIFETIME)
     public function login(
         array $credentials,
+        bool $remember,
         Request $request
     ): User {
         // Деактивированные (удалённые) аккаунты не могут войти
@@ -99,19 +109,155 @@ class AuthService
             abort(403, 'Аккаунт не подтверждён. Подтвердите email.');
         }
 
-        $guard->login($user);
+        $guard->login($user, $remember);
 
         $request->session()->regenerate();
 
         return $request->user();
     }
 
+    // Выход только на текущем устройстве: cookie «Запомнить меня» этого
+    // устройства удаляется, а remember_token не меняется, поэтому вход
+    // на других устройствах сохраняется
     public function logout(Request $request): void
     {
-        Auth::guard('web')->logout();
+        Auth::guard('web')->logoutCurrentDevice();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
+    }
+
+    // Выход на всех устройствах, включая текущее: удаляются все сессии
+    // и Sanctum-токены пользователя, а новый remember_token делает
+    // недействительными cookie «Запомнить меня»
+    public function logoutAllDevices(Request $request): void
+    {
+        $user = $request->user();
+
+        DB::transaction(function () use ($user): void {
+            DB::table('sessions')
+                ->where('user_id', $user->getKey())
+                ->delete();
+
+            $user->setRememberToken(Str::random(60));
+            $user->save();
+
+            $user->tokens()->delete();
+        });
+
+        // Удаляет cookie «Запомнить меня» текущего устройства
+        Auth::guard('web')->logoutCurrentDevice();
+
+        $request->session()->invalidate();
+
+        $request->session()->regenerateToken();
+    }
+
+    // Отправка кода восстановления пароля.
+    // Для несуществующего, неподтверждённого или удалённого аккаунта письмо
+    // не отправляется, но ответ контроллера не отличается: по нему нельзя
+    // определить, зарегистрирован ли email.
+    public function sendPasswordResetCode(string $email): void
+    {
+        $user = $this->findUserForPasswordReset($email);
+
+        if (! $user) {
+            return;
+        }
+
+        $code = random_int(100000, 999999);
+
+        if (app()->isLocal()) {
+            Log::info("Код восстановления пароля для {$user->email}: {$code}");
+        }
+
+        // Первичный ключ таблицы — email, поэтому новый код заменяет предыдущий
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            [
+                'token' => Hash::make((string) $code),
+                'created_at' => now(),
+            ],
+        );
+
+        try {
+            Mail::to($user->email)->queue(new PasswordResetCodeMail(
+                username: $user->username,
+                code: (string) $code,
+                expiresInMinutes: self::RESET_CODE_TTL_MINUTES,
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed to queue password reset email', [
+                'email' => $user->email,
+                'exception' => $e,
+            ]);
+        }
+    }
+
+    // Установка нового пароля по коду из письма.
+    // Все сессии и токены пользователя завершаются: если пароль восстанавливают
+    // после взлома, доступ злоумышленника прекращается.
+    public function resetPassword(array $data, Request $request): void
+    {
+        $user = $this->findUserForPasswordReset($data['email']);
+
+        $reset = $user
+            ? DB::table('password_reset_tokens')->where('email', $user->email)->first()
+            : null;
+
+        // Причина отказа не уточняется, чтобы не раскрывать наличие аккаунта
+        $isValid = $reset
+            && now()->subMinutes(self::RESET_CODE_TTL_MINUTES)->lt($reset->created_at)
+            && Hash::check($data['code'], $reset->token);
+
+        if (! $isValid) {
+            abort(400, 'Неверный или просроченный код');
+        }
+
+        DB::transaction(function () use ($user, $data): void {
+            // Хеширование выполняет каст 'password' => 'hashed' в модели User
+            $user->update([
+                'password' => $data['password'],
+            ]);
+
+            DB::table('password_reset_tokens')
+                ->where('email', $user->email)
+                ->delete();
+
+            DB::table('sessions')
+                ->where('user_id', $user->getKey())
+                ->delete();
+
+            // Новый remember_token делает недействительными cookie «Запомнить меня»:
+            // иначе по ним вход восстановился бы без удалённых сессий
+            $user->setRememberToken(Str::random(60));
+            $user->save();
+
+            $user->tokens()->delete();
+        });
+
+        // Ошибка постановки письма в очередь не отменяет уже выполненную смену пароля
+        try {
+            Mail::to($user->email)->queue(new PasswordChangedMail(
+                username: $user->username,
+                changedAt: now()->timezone('Europe/Moscow')->format('d.m.Y H:i').' (МСК)',
+                ipAddress: $request->ip(),
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed to queue password changed email', [
+                'email' => $user->email,
+                'exception' => $e,
+            ]);
+        }
+    }
+
+    // Восстановить пароль можно только у подтверждённого и не удалённого аккаунта
+    private function findUserForPasswordReset(string $email): ?User
+    {
+        return User::where('email', $email)
+            ->where('is_active', true)
+            ->whereNull('deactivated_at')
+            ->first();
     }
 }

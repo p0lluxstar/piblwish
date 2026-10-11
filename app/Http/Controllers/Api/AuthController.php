@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegistrationRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\VerifyRegistrationCodeRequest;
 use App\Http\Resources\ApiResource;
 use App\Http\Resources\Auth\RegistrationResource;
@@ -46,11 +48,41 @@ class AuthController extends Controller
         LoginRequest $request
     ): UserResource {
         $user = $this->authService->login(
-            $request->validated(),
+            $request->safe()->only(['email', 'password']),
+            $request->boolean('remember'),
             $request
         );
 
         return new UserResource($user);
+    }
+
+    // Запрос кода восстановления пароля.
+    // Ответ одинаков для любого email, чтобы по нему нельзя было
+    // определить, зарегистрирован ли адрес
+    public function forgotPassword(
+        ForgotPasswordRequest $request
+    ): ApiResource {
+        $this->authService->sendPasswordResetCode(
+            $request->validated('email')
+        );
+
+        return new ApiResource([
+            'message' => 'Если аккаунт с таким email существует, на него отправлен код восстановления',
+        ]);
+    }
+
+    // Установка нового пароля по коду из письма
+    public function resetPassword(
+        ResetPasswordRequest $request
+    ): ApiResource {
+        $this->authService->resetPassword(
+            $request->validated(),
+            $request
+        );
+
+        return new ApiResource([
+            'message' => 'Пароль изменён',
+        ]);
     }
 
     // Выход пользователя
@@ -61,6 +93,16 @@ class AuthController extends Controller
 
         return new ApiResource([
             'message' => 'Выход выполнен',
+        ]);
+    }
+
+    public function logoutAllDevices(
+        Request $request
+    ): ApiResource {
+        $this->authService->logoutAllDevices($request);
+
+        return new ApiResource([
+            'message' => 'Выход выполнен на всех устройствах',
         ]);
     }
 }

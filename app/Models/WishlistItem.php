@@ -2,16 +2,23 @@
 
 namespace App\Models;
 
+use App\Enums\WishlistItemPriority;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'wishlist_id',
     'description',
-    'url',
+    'urls',
+    'priority',
+    'price',
     'is_selected',
+    'checked_by_guest',
+    'checked_by_name',
+    'reservation_id',
     'position',
 ])]
 class WishlistItem extends Model
@@ -21,13 +28,30 @@ class WishlistItem extends Model
     protected function casts(): array
     {
         return [
+            // Ссылки на товар (до трёх) или null, если их нет
+            'urls' => 'array',
             'is_selected' => 'boolean',
+            'checked_by_guest' => 'boolean',
             'position' => 'integer',
+            'priority' => WishlistItemPriority::class,
+            'price' => 'integer',
         ];
     }
 
     public function wishlist(): BelongsTo
     {
         return $this->belongsTo(Wishlist::class);
+    }
+
+    // Бронь гостя; null, если позицию отметил владелец или её выбрали до появления броней
+    public function reservation(): BelongsTo
+    {
+        return $this->belongsTo(WishlistReservation::class, 'reservation_id');
+    }
+
+    // Совместный подарок, который предложил выбравший позицию гость; null, если его нет
+    public function jointGift(): HasOne
+    {
+        return $this->hasOne(WishlistJointGift::class, 'item_id');
     }
 }

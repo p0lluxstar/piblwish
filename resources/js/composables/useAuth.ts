@@ -13,9 +13,14 @@ import { useAuthStore } from '@/stores/auth';
 import type { ApiErrorResponse } from '@/types/api';
 import type {
     ChangePasswordPayload,
+    ConfirmEmailChangePayload,
+    ForgotPasswordPayload,
     LoginPayload,
     RegisterPayload,
+    RequestEmailChangePayload,
+    ResetPasswordPayload,
 } from '@/types/auth';
+import type { AppBackground, User } from '@/types/user';
 
 export const useLogin = (): any => {
     const router = useRouter();
@@ -91,6 +96,29 @@ export const useDeleteAccount = (): UseMutationReturnType<
     });
 };
 
+// Выход на всех устройствах, включая текущее
+export const useLogoutAllDevices = (): UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    void,
+    unknown
+> => {
+    const router = useRouter();
+    const authStore = useAuthStore();
+    const queryClient = useQueryClient();
+
+    return useMutation<AxiosResponse, AxiosError<ApiErrorResponse>, void>({
+        mutationFn: () => api.post('/v1/logout-all'),
+
+        onSuccess: () => {
+            authStore.setUser(null);
+            // Сбрасываем кэш, чтобы данные аккаунта не остались в памяти
+            queryClient.clear();
+            router.push('/');
+        },
+    });
+};
+
 type UseChangePasswordReturn = UseMutationReturnType<
     AxiosResponse,
     AxiosError<ApiErrorResponse>,
@@ -109,18 +137,236 @@ export const useChangePassword = (): UseChangePasswordReturn => {
         mutationFn: (payload) => api.put('/v1/user/password', payload),
     });
 
-    // Для ошибки валидации показываем первую ошибку по полю,
-    // иначе — общее сообщение сервера
-    const errorMessage = computed((): string | null => {
-        const data = mutation.error.value?.response?.data?.data;
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось сменить пароль'),
+    );
 
-        if (!mutation.error.value) {
-            return null;
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type UseRequestEmailChangeReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    RequestEmailChangePayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Первый шаг смены email: код уходит на новый адрес
+export const useRequestEmailChange = (): UseRequestEmailChangeReturn => {
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        RequestEmailChangePayload
+    >({
+        mutationFn: (payload) => api.post('/v1/user/email', payload),
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось отправить код'),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type UseConfirmEmailChangeReturn = UseMutationReturnType<
+    AxiosResponse<{ data: User }>,
+    AxiosError<ApiErrorResponse>,
+    ConfirmEmailChangePayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Второй шаг смены email: сервер возвращает пользователя с новым адресом
+export const useConfirmEmailChange = (): UseConfirmEmailChangeReturn => {
+    const authStore = useAuthStore();
+    const queryClient = useQueryClient();
+
+    const mutation = useMutation<
+        AxiosResponse<{ data: User }>,
+        AxiosError<ApiErrorResponse>,
+        ConfirmEmailChangePayload
+    >({
+        mutationFn: (payload) => api.post('/v1/user/email/confirm', payload),
+
+        onSuccess: (response) => {
+            const user = response.data.data;
+
+            authStore.setUser(user);
+            queryClient.setQueryData(['user'], user);
+        },
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось сменить email'),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type UseUpdateBackgroundReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    AppBackground,
+    { previous: AppBackground | undefined }
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Смена фона приложения. Фон меняется сразу, до ответа сервера;
+// при ошибке возвращается прежний
+export const useUpdateBackground = (): UseUpdateBackgroundReturn => {
+    const authStore = useAuthStore();
+
+    const setBackground = (background: AppBackground): void => {
+        if (authStore.user) {
+            authStore.setUser({ ...authStore.user, background });
+        }
+    };
+
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        AppBackground,
+        { previous: AppBackground | undefined }
+    >({
+        mutationFn: (background) => api.patch('/v1/user', { background }),
+
+        onMutate: (background) => {
+            const previous = authStore.user?.background;
+            setBackground(background);
+
+            return { previous };
+        },
+
+        onError: (_error, background, context) => {
+            // Если пользователь уже выбрал другой фон, ошибка прежнего запроса его не сбрасывает
+            if (
+                context?.previous &&
+                authStore.user?.background === background
+            ) {
+                setBackground(context.previous);
+            }
+        },
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось сменить фон'),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type UseUpdateShowFriendsEventsReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    boolean,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Показ строки «Скоро у друзей» в дашборде. Переключатель меняется сразу,
+// до ответа сервера; при ошибке возвращается прежнее значение
+export const useUpdateShowFriendsEvents =
+    (): UseUpdateShowFriendsEventsReturn => {
+        const authStore = useAuthStore();
+
+        const setValue = (showFriendsEvents: boolean): void => {
+            if (authStore.user) {
+                authStore.setUser({ ...authStore.user, showFriendsEvents });
+            }
+        };
+
+        const mutation = useMutation<
+            AxiosResponse,
+            AxiosError<ApiErrorResponse>,
+            boolean
+        >({
+            mutationFn: (showFriendsEvents) =>
+                api.patch('/v1/user', { showFriendsEvents }),
+
+            onMutate: (showFriendsEvents) => {
+                setValue(showFriendsEvents);
+            },
+
+            // Значение после ошибки противоположно отправленному. Если пользователь
+            // уже переключил ещё раз, состояние и так совпадает с этим значением
+            onError: (_error, showFriendsEvents) => {
+                if (authStore.user?.showFriendsEvents === showFriendsEvents) {
+                    setValue(!showFriendsEvents);
+                }
+            },
+        });
+
+        const errorMessage = computed((): string | null =>
+            getApiErrorMessage(
+                mutation.error.value,
+                'Не удалось сохранить настройку',
+            ),
+        );
+
+        return {
+            ...mutation,
+            errorMessage,
+        };
+    };
+
+type UseUploadAvatarReturn = UseMutationReturnType<
+    AxiosResponse<{ data: User }>,
+    AxiosError<ApiErrorResponse>,
+    Blob,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Загрузка фотографии пользователя: отправляется уже кадрированное изображение.
+// Сервер перекодирует его в WebP 256×256 и возвращает пользователя с новым avatarUrl
+export const useUploadAvatar = (): UseUploadAvatarReturn => {
+    const authStore = useAuthStore();
+
+    const mutation = useMutation<
+        AxiosResponse<{ data: User }>,
+        AxiosError<ApiErrorResponse>,
+        Blob
+    >({
+        mutationFn: (image) => {
+            const formData = new FormData();
+            formData.append('avatar', image, 'avatar.jpg');
+
+            return api.post('/v1/user/avatar', formData);
+        },
+
+        onSuccess: (response) => {
+            authStore.setUser(response.data.data);
+        },
+    });
+
+    const errorMessage = computed((): string | null => {
+        // 413 отдаёт nginx, если файл больше client_max_body_size; ответ не JSON
+        if (mutation.error.value?.response?.status === 413) {
+            return 'Файл слишком большой';
         }
 
-        const firstFieldError = Object.values(data?.errors ?? {})[0]?.[0];
-
-        return firstFieldError ?? data?.message ?? 'Не удалось сменить пароль';
+        return getApiErrorMessage(
+            mutation.error.value,
+            'Не удалось загрузить фото. Попробуйте позже',
+        );
     });
 
     return {
@@ -128,6 +374,118 @@ export const useChangePassword = (): UseChangePasswordReturn => {
         errorMessage,
     };
 };
+
+type UseDeleteAvatarReturn = UseMutationReturnType<
+    AxiosResponse<{ data: User }>,
+    AxiosError<ApiErrorResponse>,
+    void,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Удаление фотографии пользователя: вместо неё снова показывается первая буква имени
+export const useDeleteAvatar = (): UseDeleteAvatarReturn => {
+    const authStore = useAuthStore();
+
+    const mutation = useMutation<
+        AxiosResponse<{ data: User }>,
+        AxiosError<ApiErrorResponse>,
+        void
+    >({
+        mutationFn: () => api.delete('/v1/user/avatar'),
+
+        onSuccess: (response) => {
+            authStore.setUser(response.data.data);
+        },
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось удалить фото'),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type UseForgotPasswordReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    ForgotPasswordPayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+export const useForgotPassword = (): UseForgotPasswordReturn => {
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        ForgotPasswordPayload
+    >({
+        mutationFn: (payload) => api.post('/v1/forgot-password', payload),
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось отправить код'),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type UseResetPasswordReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    ResetPasswordPayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+export const useResetPassword = (): UseResetPasswordReturn => {
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        ResetPasswordPayload
+    >({
+        mutationFn: (payload) => api.post('/v1/reset-password', payload),
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(mutation.error.value, 'Не удалось сменить пароль'),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+// Для ошибки валидации возвращает первую ошибку по полю,
+// иначе — общее сообщение сервера
+function getApiErrorMessage(
+    error: AxiosError<ApiErrorResponse> | null,
+    fallback: string,
+): string | null {
+    if (!error) {
+        return null;
+    }
+
+    // Для 429 обработчик исключений отдаёт английский текст фреймворка
+    if (error.response?.status === 429) {
+        return 'Слишком много попыток. Подождите минуту и попробуйте снова';
+    }
+
+    const data = error.response?.data?.data;
+    const firstFieldError = Object.values(data?.errors ?? {})[0]?.[0];
+
+    return firstFieldError ?? data?.message ?? fallback;
+}
 
 export const useUser = (): any => {
     const authStore = useAuthStore();

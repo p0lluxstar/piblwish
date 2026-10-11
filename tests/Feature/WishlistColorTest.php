@@ -9,8 +9,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Цвет фона списка: поле color в /v1/wishlists.
- * На странице общего списка цвет не используется, и API его не отдаёт.
+ * Цвет фона списка: поле color в /v1/wishlists и в ответе общей страницы,
+ * где им окрашена карточка списка.
  *
  * В БД и в API хранится ключ цвета из App\Enums\WishlistColor,
  * по умолчанию white.
@@ -132,5 +132,14 @@ class WishlistColorTest extends TestCase
             ->getJson('/v1/wishlists')
             ->assertOk()
             ->assertJsonPath('data.0.color', 'lemon');
+    }
+
+    public function test_color_is_returned_on_shared_page(): void
+    {
+        $wishlist = $this->createWishlist(User::factory()->create(), WishlistColor::Mint);
+
+        $this->getJson("/api/v1/shared-wishlists/{$wishlist->id}")
+            ->assertOk()
+            ->assertJsonPath('data.color', 'mint');
     }
 }

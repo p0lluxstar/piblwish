@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\SharedWishlist\CancelReservationRequest;
+use App\Http\Requests\SharedWishlist\CheckSharedTodoItemsRequest;
+use App\Http\Requests\SharedWishlist\GetReservationsRequest;
+use App\Http\Requests\SharedWishlist\UpdateJointGiftRequest;
+use App\Http\Requests\SharedWishlist\UpdateSharedWishlistItemsRequest;
 use App\Http\Resources\SharedWishlist\SharedWishlistResource;
 use App\Services\SharedWishlist\SharedWishlistService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use App\Http\Requests\Wishlist\UpdateWishlistRequest;
-use App\Http\Requests\SharedWishlist\UpdateSharedWishlistItemsRequest;
 
 class SharedWishlistController extends Controller
 {
@@ -31,7 +35,7 @@ class SharedWishlistController extends Controller
         return new SharedWishlistResource($wishlist);
     }
 
-    // Обновить выбранные элементы в списке желаний
+    // Обновить выбранные элементы в списке желаний; в ответе токен брони для отмены выбора
     public function updateSharedWishlistItems(
         UpdateSharedWishlistItemsRequest $request,
         string $wishlistId
@@ -41,11 +45,83 @@ class SharedWishlistController extends Controller
             'wishlist_id' => $wishlistId
         ]);
 
-        $wishlist = $this->sharedWishlistService->updateSharedWishlistItems(
+        $validated = $request->validated();
+
+        $result = $this->sharedWishlistService->updateSharedWishlistItems(
             $wishlistId,
-            $request->validated()['item_ids']
+            $validated['item_ids'],
+            $validated['joint_gifts'] ?? []
+        );
+
+        return (new SharedWishlistResource($result['wishlist']))
+            ->withReservation($result['reservation']);
+    }
+
+    // Отметить дела выполненными в списке дел, где владелец разрешил это гостям
+    public function checkTodoItems(
+        CheckSharedTodoItemsRequest $request,
+        string $wishlistId
+    ): SharedWishlistResource {
+        $validated = $request->validated();
+
+        $wishlist = $this->sharedWishlistService->checkTodoItems(
+            $wishlistId,
+            $validated['item_ids'],
+            $validated['name'] ?? null
         );
 
         return new SharedWishlistResource($wishlist);
+    }
+
+    // Позиции броней гостя по токенам из его браузера или из ссылки для отмены
+    public function getReservations(
+        GetReservationsRequest $request,
+        string $wishlistId
+    ): JsonResponse {
+        $reservations = $this->sharedWishlistService->getReservations(
+            $wishlistId,
+            $request->validated()['tokens']
+        );
+
+        return response()->json([
+            'success' => true,
+            'statusCode' => 200,
+            'data' => $reservations,
+        ]);
+    }
+
+    // Изменить, добавить или убрать совместный подарок на позицию своей брони
+    public function updateJointGift(
+        UpdateJointGiftRequest $request,
+        string $wishlistId,
+        string $itemId
+    ): SharedWishlistResource {
+        $validated = $request->validated();
+
+        $wishlist = $this->sharedWishlistService->updateJointGift(
+            $wishlistId,
+            $itemId,
+            $validated['token'],
+            $validated['joint_gift']
+        );
+
+        return new SharedWishlistResource($wishlist);
+    }
+
+    // Отменить выбор позиций брони
+    public function cancelReservation(
+        CancelReservationRequest $request,
+        string $wishlistId
+    ): SharedWishlistResource {
+        $validated = $request->validated();
+
+        $result = $this->sharedWishlistService->cancelReservation(
+            $wishlistId,
+            $validated['token'],
+            $validated['item_ids']
+        );
+
+        return (new SharedWishlistResource($result['wishlist']))
+            ->withReservation($result['reservation']);
     }
 }

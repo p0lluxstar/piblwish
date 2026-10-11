@@ -5,18 +5,42 @@
 // компонент берёт её как фон: background: var(--wishlist-bg, <прежний фон>).
 // Для white переменная не задаётся, поэтому список выглядит как раньше.
 // Новый цвет нужно добавить и сюда, и в enum, и в тип WishlistColor.
+//
+// glow — насыщенный оттенок того же цвета для тени карточки (--wishlist-glow):
+// сам фон слишком бледный, тень такого цвета была бы почти не видна.
+
+@use 'sass:map';
 
 $wishlist-colors: (
-    lavender: #f3eeff,
-    pink: #fdeef6,
-    peach: #fff1e8,
-    lemon: #fffae0,
-    mint: #e9f9f1,
-    sky: #dbeafe,
+    lavender: (
+        bg: #f3eeff,
+        glow: #8b5cf6,
+    ),
+    pink: (
+        bg: #fdeef6,
+        glow: #ec4899,
+    ),
+    peach: (
+        bg: #fff1e8,
+        glow: #f97316,
+    ),
+    lemon: (
+        bg: #fffae0,
+        glow: #ca8a04,
+    ),
+    mint: (
+        bg: #e9f9f1,
+        glow: #10b981,
+    ),
+    sky: (
+        bg: #dbeafe,
+        glow: #3b82f6,
+    ),
 );
 
 @each $name, $color in $wishlist-colors {
     .wishlist-color--#{$name} {
-        --wishlist-bg: #{$color};
+        --wishlist-bg: #{map.get($color, bg)};
+        --wishlist-glow: #{map.get($color, glow)};
     }
 }

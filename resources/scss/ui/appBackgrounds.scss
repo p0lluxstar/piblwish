@@ -1,0 +1,102 @@
+// Фоны приложения.
+//
+// Ключи совпадают с App\Enums\AppBackground на бэкенде.
+// Класс .app-bg--<ключ> задаёт переменные:
+//   --app-bg       — основной градиент страницы;
+//   --app-glow-1…3 — цвета трёх размытых пятен поверх градиента;
+//   --app-glow-opacity — непрозрачность пятен, если обычная (0.35) мала
+//     для этого фона (необязательный ключ glow-opacity);
+//   --app-preview-glow-1, 2 — цвета пятен только в превью выбора фона, если
+//     цвета пятен страницы там слишком темны (ключи preview-glow-1, 2);
+//   --app-ink, --app-ink-soft, --app-accent — цвета текста, который лежит
+//     прямо на фоне (заголовки страниц, шапка общего списка). Нужны только
+//     тёмному фону (ключи ink, ink-soft, accent в карте); сейчас все фоны
+//     светлые, и компоненты берут обычные --ink, --ink-soft и фирменный
+//     фиолетовый: color: var(--app-ink, var(--ink)).
+// Карточки, окна, шапка и подвал сайта светлые при любом фоне.
+// Их использует DashboardLayout и превью в выборе фона.
+// Новый фон нужно добавить и сюда, и в enum, и в тип AppBackground.
+//
+// blossom — прежний фон, mist — нейтральный серо-голубой, stone — серый,
+// cobalt — то же, что stone, но с синим оттенком
+
+@use 'sass:map';
+
+$app-backgrounds: (
+    blossom: (
+        bg: linear-gradient(160deg, #f7f4ff 0%, #fff0f6 45%, #fffaf0 100%),
+        glow-1: #a78bfa,
+        glow-2: #f9a8d4,
+        glow-3: #fde68a,
+    ),
+    ocean: (
+        bg: linear-gradient(160deg, #eef4ff 0%, #ebf8ff 45%, #f0fdfa 100%),
+        glow-1: #93c5fd,
+        glow-2: #67e8f9,
+        glow-3: #a5b4fc,
+    ),
+    mint: (
+        bg: linear-gradient(160deg, #effcf6 0%, #f0fdf4 45%, #fefce8 100%),
+        glow-1: #6ee7b7,
+        glow-2: #a7f3d0,
+        glow-3: #fde68a,
+    ),
+    sand: (
+        bg: linear-gradient(160deg, #fffaf0 0%, #fff4e8 45%, #faf6f1 100%),
+        glow-1: #fdba74,
+        glow-2: #fcd34d,
+        glow-3: #e7d3c1,
+    ),
+    mist: (
+        bg: linear-gradient(160deg, #f8fafc 0%, #f1f5f9 50%, #f5f7fb 100%),
+        glow-1: #cbd5e1,
+        glow-2: #c7d2fe,
+        glow-3: #e2e8f0,
+    ),
+    stone: (
+        bg: linear-gradient(160deg, #e9eaec 0%, #e2e3e6 50%, #ebebec 100%),
+        // Пятна намного темнее фона и плотнее, чем у остальных фонов:
+        // серые пятна на сером при обычной непрозрачности почти не видны
+        glow-1: #475569,
+        glow-2: #57534e,
+        glow-3: #6b7280,
+        glow-opacity: 0.5,
+        // В превью пятна выводятся без прозрачности, тёмные там слишком тяжёлые
+        preview-glow-1: #b4bac3,
+        preview-glow-2: #c2bdb8,
+    ),
+    // Как stone, но с синим оттенком вместо серого
+    cobalt: (
+            bg: linear-gradient(160deg, #e6ebf4 0%, #dde4f0 50%, #e8ecf4 100%),
+            glow-1: #2f4f8f,
+            glow-2: #3b5b9a,
+            glow-3: #5a76a8,
+            glow-opacity: 0.5,
+            preview-glow-1: #a9bbdb,
+            preview-glow-2: #b6c5e0,
+        ),
+);
+
+@each $name, $values in $app-backgrounds {
+    .app-bg--#{$name} {
+        --app-bg: #{map.get($values, bg)};
+        --app-glow-1: #{map.get($values, glow-1)};
+        --app-glow-2: #{map.get($values, glow-2)};
+        --app-glow-3: #{map.get($values, glow-3)};
+
+        @if map.has-key($values, glow-opacity) {
+            --app-glow-opacity: #{map.get($values, glow-opacity)};
+        }
+
+        @if map.has-key($values, preview-glow-1) {
+            --app-preview-glow-1: #{map.get($values, preview-glow-1)};
+            --app-preview-glow-2: #{map.get($values, preview-glow-2)};
+        }
+
+        @if map.has-key($values, ink) {
+            --app-ink: #{map.get($values, ink)};
+            --app-ink-soft: #{map.get($values, ink-soft)};
+            --app-accent: #{map.get($values, accent)};
+        }
+    }
+}

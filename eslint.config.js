@@ -47,7 +47,9 @@ export default [
             ],
             '@typescript-eslint/explicit-function-return-type': 'error',
 
-            'no-undef': 'error',
+            // Необъявленные имена проверяет TypeScript (vue-tsc), он знает все
+            // глобальные объекты браузера; правило ESLint давало ложные срабатывания
+            'no-undef': 'off',
             'no-console':
                 process.env.NODE_ENV === 'production' ? 'warn' : 'warn',
             'no-debugger':

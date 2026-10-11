@@ -1,26 +1,246 @@
 <script setup lang="ts">
-import { Check, ExternalLink, FileEdit, Gift, Link, Trash2 } from '@lucide/vue';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import {
+    Archive,
+    ArchiveRestore,
+    BadgeRussianRuble,
+    Calendar,
+    Check,
+    CopyPlus,
+    ExternalLink,
+    EyeOff,
+    FileEdit,
+    Gift,
+    Hourglass,
+    Link,
+    ListChecks,
+    PartyPopper,
+    StickyNote,
+    Target,
+    Trash2,
+    Users,
+} from '@lucide/vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
+import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
+import { copyToClipboard } from '../../lib/clipboard';
+import {
+    dueDateTitle,
+    formatDueDate,
+    getDueDateStatus,
+} from '../../lib/dueDate';
+import { getFundPlatform } from '../../lib/fundUrl';
+import { formatPrice } from '../../lib/itemPrice';
 import { getItemUrlHost } from '../../lib/itemUrl';
-import type { Wishlist } from '../../types/wishlist';
+import { getSharedWishlistUrl } from '../../lib/sharedLink';
+import type { Wishlist, WishlistItem } from '../../types/wishlist';
+import ItemPriorityHearts from './ItemPriorityHearts.vue';
+import TodoCheckedBy from './TodoCheckedBy.vue';
 
 const props = defineProps<{
     wishlist: Wishlist;
+    // Крупная карточка в окне просмотра (WishlistCardPreview): позиции и текст
+    // заметки выводятся целиком, без прокрутки внутри карточки
+    expanded?: boolean;
 }>();
 
 const emit = defineEmits<{
     edit: [wishlist: Wishlist];
+    duplicate: [wishlist: Wishlist];
     delete: [wishlist: Wishlist];
+    archive: [wishlist: Wishlist];
+    restore: [wishlist: Wishlist];
+    toggleItem: [wishlist: Wishlist, item: WishlistItem];
+    updateContent: [wishlist: Wishlist, content: string];
+    expand: [wishlist: Wishlist];
 }>();
+
+// Клик по этим элементам выполняет их действие и не открывает окно просмотра
+const INTERACTIVE_SELECTOR =
+    'a, button, input, textarea, label, [role="alertdialog"]';
+
+// Карточка в дашборде открывается в окне просмотра кликом по свободному месту.
+// Если пользователь выделял текст мышью, окно не открывается
+const handleCardClick = (event: MouseEvent): void => {
+    if (props.expanded) return;
+
+    const target = event.target as HTMLElement | null;
+
+    if (target?.closest(INTERACTIVE_SELECTOR)) return;
+    if (window.getSelection()?.toString()) return;
+
+    emit('expand', props.wishlist);
+};
+
+// Список дел: выполненные дела зачёркнуты, ссылка для просмотра — по выбору владельца
+const isTodo = computed(() => props.wishlist.type === 'todo');
+
+// Заметка: вместо названия и позиций текст, нет ссылки для гостей и прогресса
+const isNote = computed(() => props.wishlist.type === 'note');
+
+// Сбор: у целей ссылка на сбор и целевая сумма, гости ничего не отмечают
+const isFund = computed(() => props.wishlist.type === 'fund');
+
+// Список желаний: позиции выбирают гости по ссылке
+const isGift = computed(() => !isTodo.value && !isNote.value && !isFund.value);
+
+// Список в архиве: только просмотр, восстановление, дубликат и удаление
+const isArchived = computed(() => Boolean(props.wishlist.archivedAt));
+
+// Ссылка для гостей: у списков желаний и дел — если доступ включён, у заметки её нет.
+// Архивный список по ссылке не открывается, хотя настройка доступа сохраняется
+const hasShareLink = computed(
+    () =>
+        !isNote.value && !isArchived.value && Boolean(props.wishlist.isShared),
+);
+
+// Свои отметки владелец видит подписью «Вы», если в списке есть и отметки гостей
+// или гости могут их поставить. Отметки гостей подписываются их именами всегда,
+// даже после закрытия доступа, поэтому и «Вы» остаётся рядом с ними. В личном списке,
+// где все отметки собственные, подпись у каждого дела была бы лишней
+const ownCheckLabel = computed(() => {
+    const guestsCanCheck =
+        props.wishlist.isShared && props.wishlist.guestsCanCheck;
+    const hasGuestChecks = props.wishlist.items.some(
+        (item) => item.checkedBy?.guest,
+    );
+
+    return guestsCanCheck || hasGuestChecks ? 'Вы' : null;
+});
+
+// Подсказка значка общего списка дел
+const sharedLabel = computed(() =>
+    props.wishlist.guestsCanCheck
+        ? 'Общий список: открыт по ссылке, гости отмечают дела'
+        : 'Общий список: открыт по ссылке для просмотра',
+);
+
+// «список» или «заметку» в подписях кнопок
+const subject = computed(() => (isNote.value ? 'заметку' : 'список'));
 
 const editCard = (): void => {
     emit('edit', props.wishlist);
 };
 
+const duplicateCard = (): void => {
+    emit('duplicate', props.wishlist);
+};
+
 const deleteCard = (): void => {
     emit('delete', props.wishlist);
 };
+
+const archiveCard = (): void => {
+    emit('archive', props.wishlist);
+};
+
+const restoreCard = (): void => {
+    emit('restore', props.wishlist);
+};
+
+// Дело, отметку гостя с которого владелец собирается снять: под ним показано подтверждение
+const uncheckConfirmItemId = ref<string | null>(null);
+const cardItemsRef = ref<HTMLElement | null>(null);
+
+const isUncheckConfirmShown = (item: WishlistItem): boolean =>
+    item.id !== undefined &&
+    item.id === uncheckConfirmItemId.value &&
+    Boolean(item.isSelected && item.checkedBy?.guest);
+
+// Отметить дело выполненным или снять отметку без режима редактирования.
+// Снятие отметки гостя стирает, кто отметил дело, и вернуть это нельзя,
+// поэтому сначала спрашивается подтверждение
+const toggleItem = (item: WishlistItem): void => {
+    if (isArchived.value) return;
+
+    if (item.isSelected && item.checkedBy?.guest && item.id) {
+        uncheckConfirmItemId.value =
+            uncheckConfirmItemId.value === item.id ? null : item.id;
+
+        // У последних дел подтверждение может оказаться ниже видимой части
+        // прокручиваемого списка
+        void nextTick(() => {
+            cardItemsRef.value
+                ?.querySelector('.uncheck-confirm')
+                ?.scrollIntoView({ block: 'nearest' });
+        });
+
+        return;
+    }
+
+    uncheckConfirmItemId.value = null;
+    emit('toggleItem', props.wishlist, item);
+};
+
+const confirmUncheck = (item: WishlistItem): void => {
+    uncheckConfirmItemId.value = null;
+    emit('toggleItem', props.wishlist, item);
+};
+
+const uncheckConfirmText = (item: WishlistItem): string => {
+    const name = item.checkedBy?.name;
+
+    return name ? `Снять отметку гостя «${name}»?` : 'Снять отметку гостя?';
+};
+
+// Через сколько миллисекунд после последнего ввода сохраняется текст заметки
+const NOTE_SAVE_DELAY = 800;
+
+// Текст заметки редактируется прямо на карточке. Черновик отделён от данных
+// списка: пока поле в фокусе, обновление кэша не перезаписывает набранный текст
+const noteDraft = ref(props.wishlist.content ?? '');
+const isNoteFocused = ref(false);
+let noteSaveTimer: number | null = null;
+
+watch(
+    () => props.wishlist.content,
+    (content) => {
+        if (!isNoteFocused.value) {
+            noteDraft.value = content ?? '';
+        }
+    },
+);
+
+const clearNoteSaveTimer = (): void => {
+    if (noteSaveTimer) {
+        window.clearTimeout(noteSaveTimer);
+        noteSaveTimer = null;
+    }
+};
+
+// Пустую заметку сервер не принимает, неизменённый текст сохранять незачем
+const saveNote = (): void => {
+    clearNoteSaveTimer();
+
+    if (
+        isArchived.value ||
+        !noteDraft.value.trim() ||
+        noteDraft.value === props.wishlist.content
+    ) {
+        return;
+    }
+
+    emit('updateContent', props.wishlist, noteDraft.value);
+};
+
+const scheduleNoteSave = (): void => {
+    clearNoteSaveTimer();
+    noteSaveTimer = window.setTimeout(saveNote, NOTE_SAVE_DELAY);
+};
+
+// При уходе из поля текст сохраняется сразу. Стёртый целиком текст
+// восстанавливается: заметка удаляется кнопкой с корзиной
+const finishNoteEditing = (): void => {
+    isNoteFocused.value = false;
+    saveNote();
+
+    if (!noteDraft.value.trim()) {
+        noteDraft.value = props.wishlist.content ?? '';
+    }
+};
+
+// Карточка может исчезнуть до истечения задержки (фильтр, переход на другую
+// страницу): набранный текст сохраняется сразу
+onBeforeUnmount(saveNote);
 
 // Сколько миллисекунд показывать результат копирования
 const COPY_FEEDBACK_DURATION = 2000;
@@ -42,41 +262,6 @@ const showCopyFeedback = (status: 'copied' | 'error'): void => {
     }, COPY_FEEDBACK_DURATION);
 };
 
-// Запасной способ копирования для небезопасного контекста (HTTP), где Clipboard API недоступен
-const copyWithFallback = (text: string): boolean => {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    textarea.style.top = '0';
-    textarea.setAttribute('aria-hidden', 'true');
-
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-
-    try {
-        return document.execCommand('copy');
-    } catch {
-        return false;
-    } finally {
-        document.body.removeChild(textarea);
-    }
-};
-
-const copyToClipboard = async (text: string): Promise<boolean> => {
-    if (window.navigator.clipboard && window.isSecureContext) {
-        try {
-            await window.navigator.clipboard.writeText(text);
-            return true;
-        } catch {
-            // Пробуем запасной способ ниже
-        }
-    }
-
-    return copyWithFallback(text);
-};
-
 const copyLink = async (): Promise<void> => {
     const id = String(props.wishlist.id ?? '');
 
@@ -85,10 +270,9 @@ const copyLink = async (): Promise<void> => {
         return;
     }
 
-    const appUrl = import.meta.env.VITE_API_URL || window.location.origin;
-    const fullUrl = `${appUrl}/shared-wishlists/${id}`;
-
-    const isCopied = await copyToClipboard(fullUrl);
+    const isCopied = await copyToClipboard(
+        getSharedWishlistUrl(id, props.wishlist.type),
+    );
 
     showCopyFeedback(isCopied ? 'copied' : 'error');
 };
@@ -99,127 +283,487 @@ onBeforeUnmount(() => {
     }
 });
 
+const selectedCount = computed(
+    () => props.wishlist.items.filter((item) => item.isSelected).length,
+);
+
+// Целые проценты: без округления 1 из 3 выводилось как 33.333…%
 const progress = computed(() => {
-    const items = props.wishlist.items;
+    const total = props.wishlist.items.length;
 
-    if (!items.length) return 0;
+    if (!total) return 0;
 
-    const selected = items.filter((item) => item.isSelected).length;
-
-    return (selected / items.length) * 100;
+    return Math.round((selectedCount.value / total) * 100);
 });
+
+// «2 из 5»: сколько подарков выбрали гости или сколько дел выполнено
+const progressLabel = computed(
+    () => `${selectedCount.value} из ${props.wishlist.items.length}`,
+);
+
+// Первые три буквы месяца. Intl с month: 'short' даёт «сент.» и «мая»
+// с точкой и разной длиной, поэтому сокращения заданы явно
+const SHORT_MONTHS = [
+    'янв',
+    'фев',
+    'мар',
+    'апр',
+    'май',
+    'июн',
+    'июл',
+    'авг',
+    'сен',
+    'окт',
+    'ноя',
+    'дек',
+];
+
+// «12 сен 2026»: дата на карточке, рядом со значком
+const formatShortDate = (value: string): string => {
+    const date = new Date(value);
+
+    return `${date.getDate()} ${SHORT_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+};
+
+// «12 сентября 2026 г.»: дата в подсказке и для экранных дикторов
+const formatFullDate = (value: string): string =>
+    new Date(value).toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
+
+const createdAtDate = computed(() =>
+    props.wishlist.createdAt ? formatShortDate(props.wishlist.createdAt) : '',
+);
 
 // «Создан 12 сентября 2026 г.»
-const createdAtLabel = computed(() => {
-    if (!props.wishlist.createdAt) return '';
+const createdAtLabel = computed(() =>
+    props.wishlist.createdAt
+        ? `${isNote.value ? 'Создана' : 'Создан'} ${formatFullDate(props.wishlist.createdAt)}`
+        : '',
+);
 
-    const formatted = new Date(props.wishlist.createdAt).toLocaleDateString(
-        'ru-RU',
-        { day: 'numeric', month: 'long', year: 'numeric' },
-    );
+// Сколько осталось до срока списка дел или до события списка желаний.
+// У выполненного списка дел счётчика нет, иначе он числился бы просроченным.
+// В архиве вместо счётчика выводится дата переноса
+const dueStatus = computed(() => {
+    const { type, dueDate, items } = props.wishlist;
 
-    return `Создан ${formatted}`;
+    if (!dueDate || isNote.value || isArchived.value) return null;
+
+    const isCompleted =
+        items.length > 0 && items.every((item) => item.isSelected);
+
+    return getDueDateStatus(type ?? 'gift', dueDate, isCompleted);
 });
+
+// «10 окт 2026»: когда список перенесён в архив
+const archivedAtDate = computed(() =>
+    props.wishlist.archivedAt ? formatShortDate(props.wishlist.archivedAt) : '',
+);
+
+// «В архиве с 10 октября 2026 г.»
+const archivedAtLabel = computed(() =>
+    props.wishlist.archivedAt
+        ? `В архиве с ${formatFullDate(props.wishlist.archivedAt)}`
+        : '',
+);
+
+// «Сделать до 31 декабря 2026 г.»: подсказка и подпись для экранных дикторов
+const dueDateLabel = computed(() =>
+    props.wishlist.dueDate
+        ? `${dueDateTitle(props.wishlist.type ?? 'gift')}: ${formatDueDate(props.wishlist.dueDate)}`
+        : '',
+);
 </script>
 
 <template>
-    <div :class="['card', `wishlist-color--${wishlist.color}`]">
-        <div class="card-actions">
-            <button class="card-actions-btn" @click="editCard">
-                <FileEdit :size="14" />
-            </button>
-            <div class="copy-action">
-                <button
-                    :class="[
-                        'card-actions-btn',
-                        {
-                            'card-actions-btn--success':
-                                copyStatus === 'copied',
-                        },
-                    ]"
-                    type="button"
-                    aria-label="Скопировать ссылку на список"
-                    @click="copyLink"
-                >
-                    <Check v-if="copyStatus === 'copied'" :size="14" />
-                    <Link v-else :size="14" />
-                </button>
-
-                <Transition name="copy-tooltip">
-                    <span
-                        v-if="copyStatus !== 'idle'"
-                        :class="[
-                            'copy-tooltip',
-                            { 'copy-tooltip--error': copyStatus === 'error' },
-                        ]"
-                        role="status"
-                    >
-                        {{
-                            copyStatus === 'copied'
-                                ? 'Ссылка скопирована'
-                                : 'Не удалось скопировать'
-                        }}
-                    </span>
-                </Transition>
-            </div>
-            <button class="card-actions-btn" @click="deleteCard">
-                <Trash2 :size="14" />
-            </button>
+    <div
+        :class="[
+            'card',
+            `wishlist-color--${wishlist.color}`,
+            {
+                'card--todo': isTodo,
+                'card--expanded': expanded,
+                'card--expandable': !expanded,
+            },
+        ]"
+        @click="handleCardClick"
+    >
+        <!-- Крупный бледный значок типа по центру карточки: тип различается
+             по форме с первого взгляда. Цвет берётся из цвета списка, а не из
+             бейджика, чтобы не спорить с выбранным фоном -->
+        <div class="card-watermark" aria-hidden="true">
+            <StickyNote v-if="isNote" :size="100" :stroke-width="1.5" />
+            <ListChecks v-else-if="isTodo" :size="100" :stroke-width="1.5" />
+            <BadgeRussianRuble
+                v-else-if="isFund"
+                :size="100"
+                :stroke-width="1.5"
+            />
+            <Gift v-else :size="100" :stroke-width="1.5" />
         </div>
-        <div class="card-header">
+
+        <!-- Метки слева и кнопки справа в одном ряду: в узкой карточке
+             кнопки переносятся на следующую строку, а не накрывают метки -->
+        <div class="card-top">
+            <!-- Тип списка виден сразу, даже у пустой карточки: цвет фона выбирает
+             пользователь, поэтому тип им не обозначается. Значки те же, что
+             на шаге выбора типа при создании -->
+            <div class="card-badges">
+                <span v-if="isNote" class="card-type card-type--note">
+                    <StickyNote :size="12" />
+                    Заметка
+                </span>
+                <span v-else-if="isFund" class="card-type card-type--fund">
+                    <BadgeRussianRuble :size="12" />
+                    Сбор
+                </span>
+                <span
+                    v-else
+                    :class="[
+                        'card-type',
+                        isTodo ? 'card-type--todo' : 'card-type--gift',
+                    ]"
+                >
+                    <ListChecks v-if="isTodo" :size="12" />
+                    <Gift v-else :size="12" />
+                    {{ isTodo ? 'Дела' : 'Желания' }}
+                </span>
+
+                <!-- Режим сюрприза: выбор гостей скрыт от владельца -->
+                <span
+                    v-if="wishlist.hideSelections"
+                    class="card-surprise"
+                    role="img"
+                    aria-label="Режим сюрприза: выбор гостей скрыт"
+                    title="Режим сюрприза: выбор гостей скрыт"
+                >
+                    <EyeOff :size="14" />
+                </span>
+
+                <!-- Список дел открыт по ссылке. Значок не ссылки, а людей: значок
+                 ссылки уже у кнопки копирования в углу карточки -->
+                <span
+                    v-if="isTodo && wishlist.isShared && !isArchived"
+                    class="card-shared"
+                    role="img"
+                    :aria-label="sharedLabel"
+                    :title="sharedLabel"
+                >
+                    <Users :size="14" />
+                </span>
+
+                <!-- Список желаний или сбор скрыт от гостей. Значок ставится
+                 у закрытого, а не у открытого: по умолчанию они открыты по ссылке.
+                 Значок — ссылка кнопки копирования, перечёркнутая линией в CSS -->
+                <span
+                    v-if="
+                        (isGift || isFund) && !wishlist.isShared && !isArchived
+                    "
+                    class="card-hidden"
+                    role="img"
+                    aria-label="Скрыт от гостей: ссылка не открывается"
+                    title="Скрыт от гостей: ссылка не открывается"
+                >
+                    <Link :size="14" />
+                </span>
+            </div>
+
+            <div class="card-actions">
+                <!-- Архивный список не редактируется: сначала его нужно восстановить -->
+                <button
+                    v-if="isArchived"
+                    class="card-actions-btn"
+                    type="button"
+                    :aria-label="`Восстановить ${subject} из архива`"
+                    title="Восстановить из архива"
+                    @click="restoreCard"
+                >
+                    <ArchiveRestore :size="14" />
+                </button>
+                <button
+                    v-else
+                    class="card-actions-btn"
+                    type="button"
+                    :aria-label="`Редактировать ${subject}`"
+                    title="Редактировать"
+                    @click="editCard"
+                >
+                    <FileEdit :size="14" />
+                </button>
+                <button
+                    class="card-actions-btn"
+                    type="button"
+                    :aria-label="`Сделать дубликат: ${subject}`"
+                    title="Сделать дубликат"
+                    @click="duplicateCard"
+                >
+                    <CopyPlus :size="14" />
+                </button>
+                <!-- Заметка и список дел без доступа по ссылке видны только владельцу -->
+                <div v-if="hasShareLink" class="copy-action">
+                    <button
+                        :class="[
+                            'card-actions-btn',
+                            {
+                                'card-actions-btn--success':
+                                    copyStatus === 'copied',
+                            },
+                        ]"
+                        type="button"
+                        aria-label="Скопировать ссылку на список"
+                        @click="copyLink"
+                    >
+                        <Check v-if="copyStatus === 'copied'" :size="14" />
+                        <Link v-else :size="14" />
+                    </button>
+
+                    <Transition name="copy-tooltip">
+                        <span
+                            v-if="copyStatus !== 'idle'"
+                            :class="[
+                                'copy-tooltip',
+                                {
+                                    'copy-tooltip--error':
+                                        copyStatus === 'error',
+                                },
+                            ]"
+                            role="status"
+                        >
+                            {{
+                                copyStatus === 'copied'
+                                    ? 'Ссылка скопирована'
+                                    : 'Не удалось скопировать'
+                            }}
+                        </span>
+                    </Transition>
+                </div>
+                <button
+                    v-if="!isArchived"
+                    class="card-actions-btn"
+                    type="button"
+                    :aria-label="`Перенести ${subject} в архив`"
+                    title="В архив"
+                    @click="archiveCard"
+                >
+                    <Archive :size="14" />
+                </button>
+                <button
+                    class="card-actions-btn"
+                    type="button"
+                    :aria-label="`Удалить ${subject}`"
+                    title="Удалить"
+                    @click="deleteCard"
+                >
+                    <Trash2 :size="14" />
+                </button>
+            </div>
+        </div>
+
+        <!-- Заметка: текст редактируется прямо на карточке и сохраняется
+             через NOTE_SAVE_DELAY после ввода или при уходе из поля -->
+        <textarea
+            v-if="isNote"
+            v-model="noteDraft"
+            class="note-text"
+            rows="3"
+            :maxlength="NOTE_CONTENT_MAX_LENGTH"
+            :readonly="isArchived"
+            aria-label="Текст заметки"
+            @focus="isNoteFocused = true"
+            @input="scheduleNoteSave"
+            @blur="finishNoteEditing"
+        ></textarea>
+
+        <div v-else class="card-header">
             <span class="card-title">
                 {{ wishlist.title }}
             </span>
         </div>
 
-        <div
-            v-for="(item, itemIndex) in wishlist.items"
-            :key="itemIndex"
-            :class="['item', { 'item--reserved': item.isSelected }]"
-        >
-            <!-- Позицию выбрал гость: вместо чекбокса значок подарка -->
-            <span
-                v-if="item.isSelected"
-                class="reserved-icon"
-                role="img"
-                aria-label="Забронировано"
-                title="Забронировано"
+        <!-- Длинный список прокручивается внутри карточки, как текст заметки,
+             а не растягивает весь ряд -->
+        <div v-if="!isNote" ref="cardItemsRef" class="card-items">
+            <div
+                v-for="(item, itemIndex) in wishlist.items"
+                :key="itemIndex"
+                :class="[
+                    'item',
+                    {
+                        'item--reserved': isGift && item.isSelected,
+                        'item--done': isTodo && item.isSelected,
+                        'item--confirming': isUncheckConfirmShown(item),
+                    },
+                ]"
             >
-                <Gift :size="11" />
-            </span>
+                <!-- Дело отмечается прямо с карточки: выполненное — белая галочка
+                 на зелёном фоне, в тон прогрессу списка дел -->
+                <button
+                    v-if="isTodo"
+                    type="button"
+                    role="checkbox"
+                    :aria-checked="Boolean(item.isSelected)"
+                    :aria-label="`${item.isSelected ? 'Снять отметку' : 'Отметить выполненным'}: ${item.label}`"
+                    :title="
+                        item.isSelected
+                            ? 'Снять отметку'
+                            : 'Отметить выполненным'
+                    "
+                    :class="[
+                        'todo-toggle',
+                        item.isSelected ? 'reserved-icon' : 'checkbox-custom',
+                    ]"
+                    :disabled="isArchived"
+                    @click="toggleItem(item)"
+                >
+                    <Check v-if="item.isSelected" :size="12" />
+                </button>
 
-            <label v-else class="checkbox-wrapper-disabled">
-                <input
-                    type="checkbox"
-                    v-model="item.isSelected"
-                    disabled
-                    class="checkbox-input"
-                />
+                <!-- Цель сбора: гости её не отмечают, поэтому вместо чекбокса значок цели -->
+                <span v-else-if="isFund" class="item-bullet" aria-hidden="true">
+                    <Target :size="11" />
+                </span>
 
-                <span class="checkbox-custom"></span>
-            </label>
+                <!-- Позицию выбрал гость: вместо чекбокса значок подарка -->
+                <span
+                    v-else-if="item.isSelected"
+                    class="reserved-icon"
+                    role="img"
+                    aria-label="Забронировано"
+                    title="Забронировано"
+                >
+                    <Gift :size="11" />
+                </span>
 
-            <span class="item-label">
-                {{ item.label }}
-            </span>
+                <!-- Режим сюрприза: выбор скрыт, значок подарка на фиолетовом фоне вместо чекбокса -->
+                <span
+                    v-else-if="wishlist.hideSelections"
+                    class="item-bullet"
+                    aria-hidden="true"
+                >
+                    <Gift :size="11" />
+                </span>
 
-            <a
-                v-if="item.url"
-                :href="item.url"
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                class="item-link"
-                :title="getItemUrlHost(item.url)"
-                :aria-label="`Ссылка на товар: ${getItemUrlHost(item.url)}`"
-            >
-                <ExternalLink :size="13" />
-            </a>
+                <label v-else class="checkbox-wrapper-disabled">
+                    <input
+                        type="checkbox"
+                        v-model="item.isSelected"
+                        disabled
+                        class="checkbox-input"
+                    />
+
+                    <span class="checkbox-custom"></span>
+                </label>
+
+                <!-- Справа от выполненного дела — кто его отметил: имя гостя или «Вы» -->
+                <span class="item-text">
+                    <span class="item-label">
+                        {{ item.label }}
+                    </span>
+                    <TodoCheckedBy
+                        v-if="isTodo"
+                        :checked-by="item.checkedBy"
+                        :owner-name="ownCheckLabel"
+                        :is-own="
+                            ownCheckLabel !== null &&
+                            item.checkedBy?.guest === false
+                        "
+                    />
+                </span>
+
+                <!-- Приоритет, цена и ссылки — узкой колонкой справа от названия,
+                 каждое на своей строке: в одну строку они сильно сужали название -->
+                <div
+                    v-if="
+                        item.priority || item.price != null || item.urls?.length
+                    "
+                    class="item-meta"
+                >
+                    <ItemPriorityHearts
+                        v-if="item.priority"
+                        :priority="item.priority"
+                        :muted="item.isSelected"
+                    />
+
+                    <!-- Стоимость 0 ₽ тоже выводится: null — не указана.
+                         У цели сбора это целевая сумма -->
+                    <span
+                        v-if="item.price != null"
+                        class="item-price"
+                        :title="isFund ? 'Целевая сумма' : undefined"
+                    >
+                        {{ formatPrice(item.price) }}
+                    </span>
+
+                    <!-- Ссылки значками в одну строку: их до трёх, у цели сбора одна -->
+                    <span v-if="item.urls?.length" class="item-links">
+                        <a
+                            v-for="(url, urlIndex) in item.urls"
+                            :key="urlIndex"
+                            :href="url"
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                            class="item-link"
+                            :title="
+                                isFund
+                                    ? `Сбор: ${getFundPlatform(url) ?? getItemUrlHost(url)}`
+                                    : getItemUrlHost(url)
+                            "
+                            :aria-label="
+                                isFund
+                                    ? `Ссылка на сбор: ${getFundPlatform(url) ?? getItemUrlHost(url)}`
+                                    : `Ссылка на товар: ${getItemUrlHost(url)}`
+                            "
+                        >
+                            <ExternalLink :size="13" />
+                        </a>
+                    </span>
+                </div>
+
+                <!-- Подтверждение снятия отметки гостя: отдельной строкой под делом -->
+                <div
+                    v-if="isUncheckConfirmShown(item)"
+                    class="uncheck-confirm"
+                    role="alertdialog"
+                    :aria-label="uncheckConfirmText(item)"
+                >
+                    <span class="uncheck-confirm-text">
+                        {{ uncheckConfirmText(item) }}
+                    </span>
+                    <span class="uncheck-confirm-actions">
+                        <button
+                            type="button"
+                            class="uncheck-confirm-btn"
+                            @click="uncheckConfirmItemId = null"
+                        >
+                            Отмена
+                        </button>
+                        <button
+                            type="button"
+                            class="uncheck-confirm-btn uncheck-confirm-btn--danger"
+                            @click="confirmUncheck(item)"
+                        >
+                            Снять
+                        </button>
+                    </span>
+                </div>
+            </div>
         </div>
 
         <!-- Прижат к низу карточки, даже если в ней мало позиций -->
         <div class="card-footer">
-            <div class="card-progress-container">
-                <span class="progress-percent">{{ progress }}%</span>
+            <!-- У сбора прогресса нет: переводы идут на сторонней платформе,
+                 и сервис не знает, сколько собрано -->
+            <div
+                v-if="!isNote && !isFund && !wishlist.hideSelections"
+                class="card-progress-container"
+            >
+                <div class="card-progress-info">
+                    <span class="progress-label">{{ progressLabel }}</span>
+                    <span class="progress-percent">{{ progress }}%</span>
+                </div>
                 <div class="card-progress">
                     <div
                         class="card-progress-fill"
@@ -228,19 +772,58 @@ const createdAtLabel = computed(() => {
                 </div>
             </div>
 
-            <time
-                v-if="createdAtLabel"
-                class="card-created-at"
-                :datetime="wishlist.createdAt"
+            <div
+                v-if="createdAtDate || dueStatus || archivedAtDate"
+                class="card-dates"
             >
-                {{ createdAtLabel }}
-            </time>
+                <time
+                    v-if="createdAtDate"
+                    class="card-created-at"
+                    :datetime="wishlist.createdAt"
+                    :title="createdAtLabel"
+                >
+                    <!-- Значок рисуется цветом текста (currentColor). Экранный диктор
+                         читает полную дату из подписи, а не сокращение месяца -->
+                    <Calendar :size="12" aria-hidden="true" />
+                    <span class="sr-only">{{ createdAtLabel }}</span>
+                    <span aria-hidden="true">{{ createdAtDate }}</span>
+                </time>
+
+                <!-- Счётчик до даты списка; сама дата — в подсказке -->
+                <time
+                    v-if="dueStatus"
+                    :class="['card-due', `card-due--${dueStatus.tone}`]"
+                    :datetime="wishlist.dueDate ?? undefined"
+                    :title="dueDateLabel"
+                >
+                    <Hourglass
+                        v-if="isTodo || isFund"
+                        :size="12"
+                        aria-hidden="true"
+                    />
+                    <PartyPopper v-else :size="12" aria-hidden="true" />
+                    <span class="sr-only">{{ dueDateLabel }}.</span>
+                    {{ dueStatus.text }}
+                </time>
+
+                <time
+                    v-if="archivedAtDate"
+                    class="card-archived-at"
+                    :datetime="wishlist.archivedAt ?? undefined"
+                    :title="archivedAtLabel"
+                >
+                    <Archive :size="12" aria-hidden="true" />
+                    <span class="sr-only">{{ archivedAtLabel }}</span>
+                    <span aria-hidden="true">{{ archivedAtDate }}</span>
+                </time>
+            </div>
         </div>
     </div>
 </template>
 
 <style scoped lang="scss">
 @use '../../../scss/ui/checkboxCard.scss';
+@use '../../../scss/ui/dueDateBadge.scss';
 @use '../../../scss/ui/wishlistColors.scss';
 
 .card {
@@ -255,23 +838,68 @@ const createdAtLabel = computed(() => {
     border: 1px solid var(--surface-border);
     border-radius: var(--radius-lg);
     padding: 20px;
-    box-shadow: 0 8px 24px -14px rgba(139, 92, 246, 0.25);
+    // Тень в тон цвету списка; без цвета (white) — нейтральная серо-голубая
+    box-shadow: 0 8px 24px -14px
+        color-mix(in srgb, var(--wishlist-glow, #64748b) 25%, transparent);
     transition:
         transform 0.25s ease,
         box-shadow 0.25s ease;
+    // Свой контекст наложения: значок с z-index: -1 ложится поверх фона
+    // карточки, но под её содержимое
+    isolation: isolate;
 }
 
 .card:hover {
     transform: translateY(-6px) scale(1.015);
-    box-shadow: var(--shadow-glow-lg);
+    box-shadow: 0 22px 48px -16px
+        color-mix(in srgb, var(--wishlist-glow, #64748b) 40%, transparent);
+}
+
+// Слой на всю карточку центрирует значок; значок не перехватывает клики
+.card-watermark {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+
+    svg {
+        color: var(--wishlist-glow, #64748b);
+        opacity: 0.04;
+        transform: rotate(-15deg);
+        transition: transform 0.35s ease;
+    }
+}
+
+.card:hover .card-watermark svg {
+    transform: rotate(-11deg);
+}
+
+.card--expanded:hover .card-watermark svg {
+    transform: rotate(-15deg);
+}
+
+// Окно просмотра открывается кликом по карточке
+.card--expandable {
+    cursor: pointer;
+}
+
+.card-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    // Ряд ближе к краям карточки, чем её содержимое: отступы 10px сверху и 12px по бокам
+    margin: -10px -8px 0;
 }
 
 .card-actions {
-    position: absolute;
     display: flex;
     gap: 6px;
-    top: 10px;
-    right: 12px;
+    // Справа и в своей строке, если ряд перенёсся
+    margin-left: auto;
     font-size: 10px;
     color: #b3b3b3;
 
@@ -333,8 +961,8 @@ const createdAtLabel = computed(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 10px;
-    margin-bottom: 16px;
+    margin-top: 4px;
+    margin-bottom: 10px;
 }
 
 .card-title {
@@ -343,11 +971,53 @@ const createdAtLabel = computed(() => {
     color: var(--ink);
 }
 
+// Высота позиций и текста заметки, после которой появляется полоса прокрутки
+$card-content-max-height: 150px;
+
+// Тонкая полоса прокрутки в фирменных цветах, как у модалки (wishlistModal.scss).
+// В Chrome 121+ стандартные scrollbar-width и scrollbar-color отключают
+// ::-webkit-scrollbar, поэтому они заданы только для браузеров без него (Firefox)
+@mixin card-scrollbar {
+    @supports not selector(::-webkit-scrollbar) {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(139, 92, 246, 0.35) transparent;
+    }
+
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: rgba(139, 92, 246, 0.3);
+
+        &:hover {
+            background: linear-gradient(180deg, #8b5cf6, #ec4899);
+        }
+    }
+}
+
+// Позиции списка: та же высота, что у текста заметки. Полоса прокрутки
+// вынесена в правый отступ карточки и не наезжает на цену и ссылку
+.card-items {
+    max-height: $card-content-max-height;
+    overflow-y: auto;
+    margin-right: -12px;
+    padding-right: 12px;
+    @include card-scrollbar;
+}
+
+// Значок слева и название по центру позиции по вертикали: колонка справа
+// (до трёх строк) бывает выше названия
 .item {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 7px 0;
+    padding: 5px 0;
     border-bottom: 1px solid rgba(139, 92, 246, 0.1);
     user-select: none;
 }
@@ -361,24 +1031,97 @@ const createdAtLabel = computed(() => {
     padding-top: 0;
 }
 
-.item-label {
+// Приоритет, цена и ссылка справа от названия, каждое на своей строке,
+// прижаты к правому краю. Строки высотой со значок слева (19px):
+// первая строка колонки на одном уровне с первой строкой названия
+.item-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+
+    > * {
+        min-height: 19px;
+        align-items: center;
+    }
+
+    .item-price {
+        line-height: 19px;
+    }
+
+    // Значок ссылки — вровень с правым краем сердец и цены, а не с краем своей кнопки
+    .item-links {
+        display: flex;
+        margin-right: -4px;
+    }
+
+    .item-link {
+        height: 19px;
+    }
+}
+
+// Название слева, имя того, кто отметил дело (TodoCheckedBy), справа в той же строке
+.item-text {
+    display: flex;
     flex: 1;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+
+    .item-label {
+        flex: 1;
+    }
+}
+
+.item-label {
     min-width: 0;
     font-size: 13px;
+    // Чуть плотнее обычного текста: название важнее цены рядом с ним.
+    // На Windows 10 у Segoe UI нет начертания 500, там текст остаётся обычным
+    font-weight: 500;
     color: var(--ink);
     transition: color 0.15s;
     line-height: 1.35;
     overflow-wrap: anywhere;
 }
 
+.item-price {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b5b7b;
+    white-space: nowrap;
+}
+
+// Выполненное дело: серый зачёркнутый текст, без фона забронированного подарка
+.item.item--done .item-label {
+    color: #94a3b8;
+    text-decoration: line-through;
+}
+
 /* Забронированная позиция: строка с лёгким розовым фоном.
    Отрицательный отступ сохраняет выравнивание значка с чекбоксами соседних строк */
 .item.item--reserved {
     margin: 2px -8px;
-    padding: 7px 8px;
+    padding: 5px 8px;
     border-bottom-color: transparent;
     border-radius: 10px;
     background: rgba(236, 72, 153, 0.06);
+
+    // Серые текст, цена и ссылка в тон значку подарка и сердечкам, как на общей странице
+    .item-label,
+    .item-price {
+        color: #94a3b8;
+    }
+
+    .item-link {
+        color: #94a3b8;
+
+        &:hover {
+            color: #64748b;
+            background: rgba(148, 163, 184, 0.22);
+        }
+    }
 }
 
 .item-link {
@@ -404,8 +1147,221 @@ const createdAtLabel = computed(() => {
     width: 19px;
     height: 19px;
     border-radius: 7px;
+    // Фирменный градиент, как у отмеченного чекбокса на общей странице
     background: var(--brand-gradient);
     color: #fff;
+}
+
+// Отметка дела кликабельна в обоих состояниях: повторный клик снимает отметку
+.todo-toggle {
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover:not(:disabled) {
+        transform: scale(1.08);
+    }
+
+    // Архивный список дел только для просмотра
+    &:disabled {
+        cursor: default;
+    }
+
+    // Выполненное дело: форма значка выбранного подарка, но зелёный градиент,
+    // как у полосы прогресса списка дел
+    &.reserved-icon {
+        background: linear-gradient(135deg, #6ee7b7, #10b981);
+    }
+
+    &.checkbox-custom {
+        border-color: rgba(16, 185, 129, 0.45);
+
+        &:hover {
+            border-color: #10b981;
+        }
+    }
+}
+
+// Подтверждение снятия отметки гостя переносится на отдельную строку под делом
+.item.item--confirming {
+    flex-wrap: wrap;
+}
+
+.uncheck-confirm {
+    display: flex;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 10px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.07);
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--ink);
+}
+
+.uncheck-confirm-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.uncheck-confirm-actions {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.uncheck-confirm-btn {
+    padding: 3px 10px;
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-radius: 7px;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover {
+        border-color: rgba(139, 92, 246, 0.5);
+    }
+}
+
+.uncheck-confirm-btn--danger {
+    border-color: transparent;
+    background: #ef4444;
+    color: #fff;
+
+    &:hover {
+        border-color: transparent;
+        background: #dc2626;
+    }
+}
+
+// Та же форма, что у значка выбранного подарка, но в фиолетовых тонах режима сюрприза
+.item-bullet {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 19px;
+    height: 19px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #ddd6fe, #8b5cf6);
+    color: #fff;
+}
+
+.card-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.card-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.card-type--gift {
+    background: rgba(139, 92, 246, 0.12);
+    color: var(--brand-violet);
+}
+
+.card-type--todo {
+    background: rgba(16, 185, 129, 0.14);
+    color: #059669;
+}
+
+.card-type--note {
+    background: rgba(245, 158, 11, 0.16);
+    color: #b45309;
+}
+
+.card-type--fund {
+    background: rgba(236, 72, 153, 0.13);
+    color: #be185d;
+}
+
+// Поле без рамки и фона выглядит как обычный текст карточки. Высота растёт
+// вместе с текстом (field-sizing), длинный текст прокручивается внутри
+// карточки, а не растягивает весь ряд
+.note-text {
+    display: block;
+    width: 100%;
+    // Отступ под метками типа
+    margin: 1px 0 0;
+    padding: 0;
+    max-height: $card-content-max-height;
+    overflow-y: auto;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    // Шрифт «от руки» без наклона, как надпись маркером на бумажном стикере
+    font-family: 'Shantell Sans Variable', cursive;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--ink);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    resize: none;
+    field-sizing: content;
+    cursor: text;
+    @include card-scrollbar;
+
+    &:focus {
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
+    }
+
+    // Заметка в архиве только для просмотра: поле не подсвечивается
+    &:read-only {
+        cursor: inherit;
+
+        &:focus {
+            box-shadow: none;
+        }
+    }
+}
+
+.card-surprise,
+.card-shared,
+.card-hidden {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    color: var(--brand-violet);
+}
+
+// В тон метке «Дела»
+.card-shared {
+    color: #059669;
+}
+
+.card-hidden {
+    position: relative;
+
+    // Косая черта поверх значка ссылки; толщина близка к линиям значка
+    // (stroke 2 из 24 при размере 14px — около 1.2px)
+    &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 18px;
+        height: 1.25px;
+        background: currentColor;
+        border-radius: 1px;
+        transform: translate(-50%, -50%) rotate(45deg);
+    }
 }
 
 .card-footer {
@@ -428,20 +1384,130 @@ const createdAtLabel = computed(() => {
     transition: width 0.3s ease;
 }
 
+.card-progress-info {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.progress-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
 .progress-percent {
-    display: inline-block;
-    width: 100%;
     font-size: 11px;
     font-weight: 700;
     color: var(--brand-violet);
-    min-width: 45px;
-    text-align: right;
 }
 
-.card-created-at {
-    display: block;
+// Прогресс списка дел — зелёный, списка желаний — фирменный градиент
+.card--todo {
+    .progress-percent {
+        color: #059669;
+    }
+
+    .card-progress {
+        background: rgba(16, 185, 129, 0.12);
+    }
+
+    .card-progress-fill {
+        background: linear-gradient(135deg, #6ee7b7, #10b981);
+    }
+}
+
+// Дата создания слева, счётчик до даты списка справа
+.card-dates {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 10px;
     margin-top: 10px;
+}
+
+.card-created-at,
+.card-archived-at {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     font-size: 11px;
+    line-height: normal;
     color: #baa7c7;
+
+    // Flex выравнивает значок по центру строки, в которую входит место под
+    // выносные элементы букв (у, р), поэтому сами цифры и буквы даты стоят
+    // ниже этого центра. Сдвиг опускает значок на их уровень
+    svg {
+        flex-shrink: 0;
+        transform: translateY(1px);
+    }
+}
+
+// Карточка в окне просмотра: крупнее, без подъёма при наведении и без прокрутки
+// внутри; длинное содержимое прокручивает само окно
+.card--expanded {
+    min-height: 280px;
+    padding: 28px;
+    // Края карточки задаёт подложка окна. Рамка рядом с полосой прокрутки окна
+    // выглядела бы лишней линией справа
+    border: none;
+
+    &:hover {
+        transform: none;
+        box-shadow: 0 8px 24px -14px
+            color-mix(in srgb, var(--wishlist-glow, #64748b) 25%, transparent);
+    }
+
+    // Отступы ряда 14px сверху и 18px слева. Справа от кнопок — крестик
+    // окна просмотра, поэтому ряд заканчивается в 52px от края
+    .card-top {
+        margin: -14px 24px 0 -10px;
+    }
+
+    .card-header {
+        margin-top: 16px;
+        margin-bottom: 14px;
+    }
+
+    .card-title {
+        font-size: 20px;
+        line-height: 1.3;
+    }
+
+    .card-items,
+    .note-text {
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    // Только по вертикали: у забронированной позиции свой отступ по горизонтали
+    .item {
+        padding-block: 8px;
+
+        &:first-of-type:not(.item--reserved) {
+            padding-top: 0;
+        }
+
+        &:last-child:not(.item--reserved) {
+            padding-bottom: 0;
+        }
+    }
+
+    .item-label {
+        font-size: 15px;
+    }
+
+    .item-price {
+        font-size: 13px;
+    }
+
+    .note-text {
+        margin-top: 14px;
+        font-size: 16px;
+        line-height: 1.4;
+    }
 }
 </style>

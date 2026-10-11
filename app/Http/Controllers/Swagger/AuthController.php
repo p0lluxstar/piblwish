@@ -67,7 +67,7 @@ use OpenApi\Attributes as OA;
 )]
 
 #[OA\Post(
-    path: '/api/login',
+    path: '/v1/login',
     summary: 'Авторизация',
     tags: ['Auth'],
     requestBody: new OA\RequestBody(
@@ -84,6 +84,12 @@ use OpenApi\Attributes as OA;
                     property: 'password',
                     type: 'string',
                     example: 'password123'
+                ),
+                new OA\Property(
+                    property: 'remember',
+                    type: 'boolean',
+                    description: 'Запомнить вход: cookie remember_web_* восстанавливает его после истечения сессии',
+                    example: true
                 ),
             ]
         )
@@ -105,6 +111,93 @@ use OpenApi\Attributes as OA;
 )]
 
 #[OA\Post(
+    path: '/v1/forgot-password',
+    summary: 'Запрос кода восстановления пароля',
+    description: 'Код отправляется только подтверждённому и не удалённому аккаунту. Ответ одинаков для любого email.',
+    tags: ['Auth'],
+    requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['email'],
+            properties: [
+                new OA\Property(
+                    property: 'email',
+                    type: 'string',
+                    example: 'test@example.com'
+                ),
+            ]
+        )
+    ),
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Запрос принят'
+        ),
+        new OA\Response(
+            response: 422,
+            description: 'Ошибка валидации'
+        ),
+        new OA\Response(
+            response: 429,
+            description: 'Слишком частые запросы (не чаще одного в минуту для email)'
+        ),
+    ]
+)]
+
+#[OA\Post(
+    path: '/v1/reset-password',
+    summary: 'Установка нового пароля по коду',
+    description: 'Код действует 10 минут. После смены пароля все сессии и токены пользователя завершаются.',
+    tags: ['Auth'],
+    requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['email', 'code', 'password', 'password_confirmation'],
+            properties: [
+                new OA\Property(
+                    property: 'email',
+                    type: 'string',
+                    example: 'test@example.com'
+                ),
+                new OA\Property(
+                    property: 'code',
+                    type: 'string',
+                    example: '123456'
+                ),
+                new OA\Property(
+                    property: 'password',
+                    type: 'string',
+                    example: 'new-password'
+                ),
+                new OA\Property(
+                    property: 'password_confirmation',
+                    type: 'string',
+                    example: 'new-password'
+                ),
+            ]
+        )
+    ),
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Пароль изменён'
+        ),
+        new OA\Response(
+            response: 400,
+            description: 'Неверный или просроченный код'
+        ),
+        new OA\Response(
+            response: 422,
+            description: 'Ошибка валидации'
+        ),
+        new OA\Response(
+            response: 429,
+            description: 'Слишком много попыток'
+        ),
+    ]
+)]
+
+#[OA\Post(
     path: '/api/logout',
     summary: 'Выход из системы',
     tags: ['Auth'],
@@ -113,6 +206,24 @@ use OpenApi\Attributes as OA;
         new OA\Response(
             response: 200,
             description: 'Выход выполнен'
+        ),
+        new OA\Response(
+            response: 401,
+            description: 'Не авторизован'
+        ),
+    ]
+)]
+
+#[OA\Post(
+    path: '/v1/logout-all',
+    summary: 'Выход на всех устройствах',
+    description: 'Завершает все сессии пользователя, включая текущую, удаляет его Sanctum-токены и делает недействительными cookie «Запомнить меня» на всех устройствах.',
+    tags: ['Auth'],
+    security: [['bearerAuth' => []]],
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Выход выполнен на всех устройствах'
         ),
         new OA\Response(
             response: 401,

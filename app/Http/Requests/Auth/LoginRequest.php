@@ -25,6 +25,12 @@ class LoginRequest extends FormRequest
                 'string',
                 'min:6'
             ],
+
+            // «Запомнить меня»: вход сохраняется после истечения сессии
+            'remember' => [
+                'sometimes',
+                'boolean',
+            ],
         ];
     }
 
@@ -34,6 +40,7 @@ class LoginRequest extends FormRequest
             'email.required' => 'Email обязателен',
             'email.email' => 'Неверный email',
             'password.required' => 'Пароль обязателен',
+            'remember.boolean' => 'Неверное значение «Запомнить меня»',
         ];
     }
 }
