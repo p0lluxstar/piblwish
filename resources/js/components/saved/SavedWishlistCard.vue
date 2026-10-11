@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-    BadgeRussianRuble,
+    CreditCardCheck,
     Gift,
     Hourglass,
     ListChecks,
@@ -91,7 +91,7 @@ const confirmRemove = (): void => {
                 v-if="wishlist.available && isFund"
                 class="card-type card-type--fund"
             >
-                <BadgeRussianRuble :size="12" />
+                <CreditCardCheck :size="12" />
                 Сбор
             </span>
             <span

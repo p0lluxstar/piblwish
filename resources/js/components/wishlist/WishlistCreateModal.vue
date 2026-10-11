@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import {
     ArrowLeft,
-    BadgeRussianRuble,
     Check,
     ChevronDown,
     ChevronUp,
+    CreditCardCheck,
     Gift,
     Link,
     ListChecks,
@@ -26,6 +26,7 @@ import { useEscapeKey } from '../../composables/useEscapeKey';
 import { useItemReorder } from '../../composables/useItemReorder';
 import { FUND_PLATFORMS_TEXT } from '../../constants/fundHosts';
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
+import { lockBodyScroll, unlockBodyScroll } from '../../lib/bodyScrollLock';
 import { daysUntil } from '../../lib/dueDate';
 import { getFundPlatformOfInput, getFundUrlError } from '../../lib/fundUrl';
 import {
@@ -334,26 +335,13 @@ const handleSubmit = (): boolean => {
     return true;
 };
 
-const disableBodyScroll = (): void => {
-    document.body.classList.add('modal-open');
-};
+onMounted(lockBodyScroll);
 
-const enableBodyScroll = (): void => {
-    document.body.classList.remove('modal-open');
-};
-
-onMounted(() => {
-    disableBodyScroll();
-});
-
-onUnmounted(() => {
-    enableBodyScroll();
-});
+onUnmounted(unlockBodyScroll);
 
 const closeModal = (): void => {
     form.value = defaultForm();
     urlErrors.value = [];
-    enableBodyScroll();
     emit('close');
 };
 
@@ -509,7 +497,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                     @click="chooseType('fund')"
                 >
                     <span class="type-option-icon">
-                        <BadgeRussianRuble :size="22" />
+                        <CreditCardCheck :size="22" />
                     </span>
 
                     <span class="type-option-text">

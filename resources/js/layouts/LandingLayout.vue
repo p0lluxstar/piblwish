@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BadgeRussianRuble, Gift, ListChecks, StickyNote } from '@lucide/vue';
+import { CreditCardCheck, Gift, ListChecks, StickyNote } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import dashboardSlideImage from '../../images/slide-dashboard.jpg';
@@ -128,7 +128,7 @@ function resetImage(): void {
                 Дела
             </div>
             <div class="floating-card card-four">
-                <BadgeRussianRuble
+                <CreditCardCheck
                     class="floating-card-icon floating-card-icon--fund"
                     :size="18"
                 />

@@ -11,6 +11,7 @@ import ProfileSection from '@/components/user/ProfileSection.vue';
 import ReminderDaysPicker from '@/components/user/ReminderDaysPicker.vue';
 import UserSettingToggle from '@/components/user/UserSettingToggle.vue';
 import UserStatsSection from '@/components/user/UserStatsSection.vue';
+import { lockBodyScroll, unlockBodyScroll } from '@/lib/bodyScrollLock';
 
 const props = defineProps<{
     isDeletingAccount?: boolean;
@@ -36,25 +37,12 @@ const handleDeleteAccount = (): void => {
     emit('deleteAccount');
 };
 
-const disableBodyScroll = (): void => {
-    document.body.classList.add('modal-open');
-};
+onMounted(lockBodyScroll);
 
-const enableBodyScroll = (): void => {
-    document.body.classList.remove('modal-open');
-};
-
-onMounted(() => {
-    disableBodyScroll();
-});
-
-onUnmounted(() => {
-    enableBodyScroll();
-});
+onUnmounted(unlockBodyScroll);
 
 const closeModal = (): void => {
     hideDeleteConfirm();
-    enableBodyScroll();
     emit('close');
 };
 </script>

@@ -11,28 +11,30 @@
 
 @use 'sass:map';
 
+// Ключи в кавычках: lavender и pink — названия цветов CSS, и без кавычек
+// Sass считал бы их цветами, а не строками для имени класса
 $wishlist-colors: (
-    lavender: (
+    'lavender': (
         bg: #f3eeff,
         glow: #8b5cf6,
     ),
-    pink: (
+    'pink': (
         bg: #fdeef6,
         glow: #ec4899,
     ),
-    peach: (
+    'peach': (
         bg: #fff1e8,
         glow: #f97316,
     ),
-    lemon: (
+    'lemon': (
         bg: #fffae0,
         glow: #ca8a04,
     ),
-    mint: (
+    'mint': (
         bg: #e9f9f1,
         glow: #10b981,
     ),
-    sky: (
+    'sky': (
         bg: #dbeafe,
         glow: #3b82f6,
     ),

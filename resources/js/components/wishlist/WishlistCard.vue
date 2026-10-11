@@ -2,10 +2,10 @@
 import {
     Archive,
     ArchiveRestore,
-    BadgeRussianRuble,
     Calendar,
     Check,
     CopyPlus,
+    CreditCardCheck,
     ExternalLink,
     Eye,
     FileEdit,
@@ -14,12 +14,18 @@ import {
     Link,
     ListChecks,
     PartyPopper,
-    Sparkles,
     StickyNote,
     Trash2,
     Users,
 } from '@lucide/vue';
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    watch,
+} from 'vue';
 
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
 import { copyToClipboard } from '../../lib/clipboard';
@@ -238,6 +244,34 @@ const finishNoteEditing = (): void => {
     }
 };
 
+// Текст заметки не помещается и продолжается ниже видимой части поля:
+// низ поля затухает. В развёрнутой карточке высота поля не ограничена,
+// поэтому затухания там нет
+const noteTextRef = ref<HTMLTextAreaElement | null>(null);
+const isNoteClipped = ref(false);
+
+const updateNoteFade = (): void => {
+    const el = noteTextRef.value;
+
+    isNoteClipped.value =
+        el !== null && el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+};
+
+// Ширина карточки меняется вместе с сеткой, а с ней и число строк текста
+let noteResizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+    if (!noteTextRef.value) return;
+
+    updateNoteFade();
+    noteResizeObserver = new ResizeObserver(updateNoteFade);
+    noteResizeObserver.observe(noteTextRef.value);
+});
+
+watch(noteDraft, () => void nextTick(updateNoteFade));
+
+onBeforeUnmount(() => noteResizeObserver?.disconnect());
+
 // Карточка может исчезнуть до истечения задержки (фильтр, переход на другую
 // страницу): набранный текст сохраняется сразу
 onBeforeUnmount(saveNote);
@@ -397,7 +431,7 @@ const dueDateLabel = computed(() =>
         <div class="card-watermark" aria-hidden="true">
             <StickyNote v-if="isNote" :size="100" :stroke-width="1.5" />
             <ListChecks v-else-if="isTodo" :size="100" :stroke-width="1.5" />
-            <BadgeRussianRuble
+            <CreditCardCheck
                 v-else-if="isFund"
                 :size="100"
                 :stroke-width="1.5"
@@ -417,7 +451,7 @@ const dueDateLabel = computed(() =>
                     Заметка
                 </span>
                 <span v-else-if="isFund" class="card-type card-type--fund">
-                    <BadgeRussianRuble :size="12" />
+                    <CreditCardCheck :size="12" />
                     Сбор
                 </span>
                 <span
@@ -568,8 +602,10 @@ const dueDateLabel = computed(() =>
              через NOTE_SAVE_DELAY после ввода или при уходе из поля -->
         <textarea
             v-if="isNote"
+            ref="noteTextRef"
             v-model="noteDraft"
             class="note-text"
+            :class="{ 'note-text--clipped': isNoteClipped }"
             rows="3"
             :maxlength="NOTE_CONTENT_MAX_LENGTH"
             :readonly="isArchived"
@@ -577,16 +613,20 @@ const dueDateLabel = computed(() =>
             @focus="isNoteFocused = true"
             @input="scheduleNoteSave"
             @blur="finishNoteEditing"
+            @scroll="updateNoteFade"
         ></textarea>
 
         <div v-else class="card-header">
-            <span class="card-title">
+            <span
+                class="card-title"
+                :title="expanded ? undefined : (wishlist.title ?? undefined)"
+            >
                 {{ wishlist.title }}
             </span>
         </div>
 
         <!-- Длинный список прокручивается внутри карточки, как текст заметки,
-             а не растягивает весь ряд -->
+             а не растягивает её -->
         <div v-if="!isNote" ref="cardItemsRef" class="card-items">
             <div
                 v-for="(item, itemIndex) in wishlist.items"
@@ -629,7 +669,7 @@ const dueDateLabel = computed(() =>
                     class="item-bullet item-bullet--fund"
                     aria-hidden="true"
                 >
-                    <Sparkles :size="11" />
+                    <CreditCardCheck :size="11" />
                 </span>
 
                 <!-- Позицию выбрал гость: вместо чекбокса значок подарка -->
@@ -654,8 +694,8 @@ const dueDateLabel = computed(() =>
 
                 <label v-else class="checkbox-wrapper-disabled">
                     <input
-                        type="checkbox"
                         v-model="item.isSelected"
+                        type="checkbox"
                         disabled
                         class="checkbox-input"
                     />
@@ -665,7 +705,12 @@ const dueDateLabel = computed(() =>
 
                 <!-- Справа от выполненного дела — кто его отметил: имя гостя или «Вы» -->
                 <span class="item-text">
-                    <span class="item-label">
+                    <!-- В карточке дашборда название обрезается до двух строк,
+                         полный текст — в подсказке и в развёрнутой карточке -->
+                    <span
+                        class="item-label"
+                        :title="expanded ? undefined : item.label"
+                    >
                         {{ item.label }}
                     </span>
                     <TodoCheckedBy
@@ -676,6 +721,7 @@ const dueDateLabel = computed(() =>
                             ownCheckLabel !== null &&
                             item.checkedBy?.guest === false
                         "
+                        :truncate="!expanded"
                     />
                 </span>
 
@@ -832,11 +878,16 @@ const dueDateLabel = computed(() =>
 @use '../../../scss/ui/dueDateBadge.scss';
 @use '../../../scss/ui/wishlistColors.scss';
 
+// Высота карточки в сетке, одинаковая у всех карточек. Позиции и текст
+// заметки занимают место между шапкой и низом карточки и прокручиваются внутри
+$card-height: 280px;
+
 .card {
     position: relative;
-    // Колонка, чтобы .card-footer прижимался к низу; высоту карточек в ряду выравнивает grid
+    // Колонка, чтобы содержимое занимало свободное место, а .card-footer прижимался к низу
     display: flex;
     flex-direction: column;
+    height: $card-height;
     // Цвет списка; без него (white) — прежний полупрозрачный белый фон
     background: var(--wishlist-bg, var(--surface));
     backdrop-filter: blur(10px);
@@ -971,14 +1022,19 @@ const dueDateLabel = computed(() =>
     margin-bottom: 10px;
 }
 
+// Не больше двух строк: длинное название отнимало бы место у позиций.
+// Полное название — в подсказке и в развёрнутой карточке
 .card-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
     font-size: 15px;
     font-weight: 700;
     color: var(--ink);
 }
-
-// Высота позиций и текста заметки, после которой появляется полоса прокрутки
-$card-content-max-height: 150px;
 
 // Тонкая полоса прокрутки в фирменных цветах, как у модалки (wishlistModal.scss).
 // В Chrome 121+ стандартные scrollbar-width и scrollbar-color отключают
@@ -1007,10 +1063,11 @@ $card-content-max-height: 150px;
     }
 }
 
-// Позиции списка: та же высота, что у текста заметки. Полоса прокрутки
+// Позиции списка занимают свободное место карточки. Полоса прокрутки
 // вынесена в правый отступ карточки и не наезжает на цену и ссылку
 .card-items {
-    max-height: $card-content-max-height;
+    flex: 1 1 0;
+    min-height: 0;
     overflow-y: auto;
     margin-right: -12px;
     padding-right: 12px;
@@ -1089,6 +1146,12 @@ $card-content-max-height: 150px;
     transition: color 0.15s;
     line-height: 1.35;
     overflow-wrap: anywhere;
+    // Длинное название не занимает всю высоту карточки: не больше двух строк
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
 }
 
 .item-price {
@@ -1310,7 +1373,9 @@ $card-content-max-height: 150px;
     // Отступ под метками типа
     margin: 1px 0 0;
     padding: 0;
-    max-height: $card-content-max-height;
+    // Текст заметки занимает свободное место карточки
+    flex: 1 1 0;
+    min-height: 0;
     overflow-y: auto;
     border: none;
     border-radius: 6px;
@@ -1331,6 +1396,22 @@ $card-content-max-height: 150px;
     &:focus {
         outline: none;
         box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
+    }
+
+    // Текст продолжается ниже: последние строки плавно затухают. Второй слой
+    // маски оставляет непрозрачной полосу прокрутки справа. В фокусе затухания
+    // нет: маска обрезала бы рамку фокуса, а набираемый текст должен быть виден
+    &.note-text--clipped:not(:focus) {
+        mask-image:
+            linear-gradient(to bottom, #000 calc(100% - 32px), transparent),
+            linear-gradient(#000, #000);
+        mask-size:
+            calc(100% - 8px) 100%,
+            8px 100%;
+        mask-position:
+            left top,
+            right top;
+        mask-repeat: no-repeat;
     }
 
     // Заметка в архиве только для просмотра: поле не подсвечивается
@@ -1461,6 +1542,7 @@ $card-content-max-height: 150px;
 // Карточка в окне просмотра: крупнее, без подъёма при наведении и без прокрутки
 // внутри; длинное содержимое прокручивает само окно
 .card--expanded {
+    height: auto;
     min-height: 280px;
     padding: 28px;
     // Края карточки задаёт подложка окна. Рамка рядом с полосой прокрутки окна
@@ -1487,11 +1569,14 @@ $card-content-max-height: 150px;
     .card-title {
         font-size: 20px;
         line-height: 1.3;
+        -webkit-line-clamp: unset;
+        line-clamp: unset;
     }
 
+    // Высота по содержимому: длинное содержимое прокручивает само окно
     .card-items,
     .note-text {
-        max-height: none;
+        flex: none;
         overflow-y: visible;
     }
 
@@ -1510,6 +1595,8 @@ $card-content-max-height: 150px;
 
     .item-label {
         font-size: 15px;
+        -webkit-line-clamp: unset;
+        line-clamp: unset;
     }
 
     .item-price {

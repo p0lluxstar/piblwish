@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BadgeRussianRuble, Gift, ListChecks, StickyNote } from '@lucide/vue';
+import { CreditCardCheck, Gift, ListChecks, StickyNote } from '@lucide/vue';
 import { type Component, computed } from 'vue';
 
 import { useAuthStore } from '@/stores/auth';
@@ -14,7 +14,7 @@ const TYPES: { type: WishlistType; label: string; icon: Component }[] = [
     { type: 'gift', label: 'Желания', icon: Gift },
     { type: 'todo', label: 'Дела', icon: ListChecks },
     { type: 'note', label: 'Заметки', icon: StickyNote },
-    { type: 'fund', label: 'Сборы', icon: BadgeRussianRuble },
+    { type: 'fund', label: 'Сборы', icon: CreditCardCheck },
 ];
 
 const items = computed(() =>

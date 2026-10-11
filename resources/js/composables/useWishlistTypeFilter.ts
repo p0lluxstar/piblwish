@@ -1,5 +1,5 @@
 import {
-    BadgeRussianRuble,
+    CreditCardCheck,
     Gift,
     LayoutList,
     ListChecks,
@@ -30,7 +30,7 @@ const TYPE_FILTER_OPTIONS: Omit<WishlistTypeFilterOption, 'count'>[] = [
     { value: 'all', label: 'Все', icon: LayoutList },
     { value: 'gift', label: 'Желания', icon: Gift },
     { value: 'todo', label: 'Дела', icon: ListChecks },
-    { value: 'fund', label: 'Сборы', icon: BadgeRussianRuble },
+    { value: 'fund', label: 'Сборы', icon: CreditCardCheck },
     { value: 'note', label: 'Заметки', icon: StickyNote },
 ];
 

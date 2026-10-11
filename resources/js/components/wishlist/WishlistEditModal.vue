@@ -26,6 +26,7 @@ import { useEscapeKey } from '../../composables/useEscapeKey';
 import { useItemReorder } from '../../composables/useItemReorder';
 import { FUND_PLATFORMS_TEXT } from '../../constants/fundHosts';
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
+import { lockBodyScroll, unlockBodyScroll } from '../../lib/bodyScrollLock';
 import { getFundPlatformOfInput, getFundUrlError } from '../../lib/fundUrl';
 import {
     getItemUrlErrors,
@@ -579,30 +580,19 @@ const handleSubmit = (): boolean => {
     return true;
 };
 
-// Блокировка прокрутки при открытии модального окна
-const disableBodyScroll = (): void => {
-    document.body.classList.add('modal-open');
-};
-
-const enableBodyScroll = (): void => {
-    document.body.classList.remove('modal-open');
-};
-
 onMounted(() => {
-    disableBodyScroll();
+    // Блокировка прокрутки страницы под окном
+    lockBodyScroll();
 
     // Выбор гостей есть только у списка желаний
     if (isGift.value) void loadSelections(false);
 });
 
-onUnmounted(() => {
-    enableBodyScroll();
-});
+onUnmounted(unlockBodyScroll);
 
 const closeModal = (): void => {
     form.value = defaultForm();
     urlErrors.value = [];
-    enableBodyScroll();
     emit('close');
 };
 
@@ -873,10 +863,9 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                                 'wishlist-item',
                                 {
                                     'wishlist-item--todo': isTodo || isFund,
+                                    'wishlist-item--task': isTodo,
                                     'wishlist-item--done':
                                         isTodo && item.isSelected,
-                                    'wishlist-item--checked-by':
-                                        showCheckedByRow,
                                 },
                             ]"
                         >
@@ -884,8 +873,8 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                              Повторный клик снимает отметку -->
                             <label v-if="isTodo" class="checkbox-wrapper">
                                 <input
-                                    type="checkbox"
                                     v-model="item.isSelected"
+                                    type="checkbox"
                                     class="checkbox-input"
                                     :aria-label="
                                         item.isSelected
@@ -1078,30 +1067,32 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                                     {{ itemMessages[item.id].text }}
                                 </p>
 
-                                <!-- Кто отметил дело — над полем, у правого края -->
-                                <TodoCheckedBy
-                                    v-if="showCheckedByRow"
-                                    class="item-checked-by"
-                                    :checked-by="formCheckedBy(item)"
-                                    :owner-name="ownCheckLabel"
-                                    :is-own="
-                                        ownCheckLabel !== null &&
-                                        formCheckedBy(item)?.guest === false
-                                    "
-                                    empty-label="Не выполнено"
-                                />
+                                <div class="item-label-field">
+                                    <input
+                                        v-model="item.label"
+                                        type="text"
+                                        :placeholder="
+                                            isTodo
+                                                ? 'Например: Купить продукты'
+                                                : isFund
+                                                  ? 'Например: На машину'
+                                                  : 'Например: Книга'
+                                        "
+                                    />
 
-                                <input
-                                    v-model="item.label"
-                                    type="text"
-                                    :placeholder="
-                                        isTodo
-                                            ? 'Например: Купить продукты'
-                                            : isFund
-                                              ? 'Например: На машину'
-                                              : 'Например: Книга'
-                                    "
-                                />
+                                    <!-- Кто отметил дело — внутри поля, у нижнего правого края -->
+                                    <TodoCheckedBy
+                                        v-if="showCheckedByRow"
+                                        class="item-checked-by"
+                                        :checked-by="formCheckedBy(item)"
+                                        :owner-name="ownCheckLabel"
+                                        :is-own="
+                                            ownCheckLabel !== null &&
+                                            formCheckedBy(item)?.guest === false
+                                        "
+                                        empty-label="Не выполнено"
+                                    />
+                                </div>
 
                                 <!-- Цель сбора: одна обязательная ссылка на сбор и целевая сумма.
                                      Платформа определяется по ссылке и показывается под полем -->
@@ -1350,11 +1341,26 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 @use '../../../scss/ui/wishlistModal.scss';
 @use '../../../scss/ui/wishlistColors.scss';
 
-// Подпись «кто отметил» над полем дела, у правого края; ближе к полю,
-// чем остальные поля позиции друг к другу
+// Поле названия позиции; подпись «кто отметил» лежит внутри поля
+// у нижнего правого края и не увеличивает высоту строки
+.item-label-field {
+    position: relative;
+    display: flex;
+}
+
+// Дела стоят плотнее остальных позиций: у них нет полей под названием.
+// Класс wishlist-item--todo есть и у целей сбора, поэтому дело отмечено отдельно
+.wishlist-item.wishlist-item--task {
+    margin-bottom: 5px;
+}
+
+// Клики проходят сквозь подпись в поле
 .item-checked-by {
-    align-self: flex-end;
-    margin-bottom: -3px;
+    position: absolute;
+    right: 14px;
+    bottom: 2px;
+    max-width: calc(100% - 28px);
+    pointer-events: none;
 }
 
 // Превью цвета списка; для white — прежний белый фон модалки
@@ -1373,13 +1379,6 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 .wishlist-item > .selection-mark {
     flex-shrink: 0;
     margin-top: calc(var(--item-label-offset) + 12px);
-}
-
-// Подпись «кто отметил» над полем дела (строка 11px × 1.3 и промежуток 6px − 3px)
-// сдвигает поле вниз на 17px: галочка, стрелки и корзина сдвигаются вместе с ним.
-// Смещение --item-label-offset задано в wishlistModal.scss, у дела оно равно 0
-.wishlist-item.wishlist-item--checked-by {
-    --item-label-offset: 17px;
 }
 
 // Вместо галочки из checkboxCard.scss — значок на градиенте, как в карточке

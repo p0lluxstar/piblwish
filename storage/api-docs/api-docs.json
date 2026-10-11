@@ -550,6 +550,11 @@
                                                     "format": "date",
                                                     "nullable": true
                                                 },
+                                                "createdAt": {
+                                                    "description": "Дата создания списка",
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
                                                 "username": {
                                                     "type": "string",
                                                     "nullable": true

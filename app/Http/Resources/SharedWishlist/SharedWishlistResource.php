@@ -3,7 +3,6 @@
 namespace App\Http\Resources\SharedWishlist;
 
 use App\Http\Resources\ApiResource;
-
 use App\Http\Resources\Wishlist\WishlistItemResource;
 
 class SharedWishlistResource extends ApiResource
@@ -34,6 +33,8 @@ class SharedWishlistResource extends ApiResource
             'guestNameRequired' => $this->guestsCanCheck() && $this->guest_name_required,
             // Срок списка дел или дата события списка желаний (Y-m-d) либо null
             'dueDate' => $this->due_date?->toDateString(),
+            // Дата создания списка, как на карточке владельца в дашборде
+            'createdAt' => $this->created_at?->toIso8601String(),
             'username' => $this->whenLoaded('user') ? $this->user->username : null,
             // Фотография владельца или null — тогда показывается первая буква имени
             'avatarUrl' => $this->relationLoaded('user') ? $this->user->avatarUrl() : null,

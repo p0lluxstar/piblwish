@@ -1,7 +1,15 @@
+// Скрытый чекбокс позиционируется от обёртки. Без этого его координаты
+// считались от ближайшего позиционированного предка (в модалке — оверлея)
+// без учёта прокрутки окна, и фокус при клике прокручивал оверлей к нему
 .checkbox-wrapper {
+    position: relative;
     display: inline-flex;
     align-items: center;
     cursor: pointer;
+}
+
+.checkbox-wrapper-disabled {
+    position: relative;
 }
 
 .checkbox-wrapper-disabled .checkbox-custom {
@@ -15,6 +23,8 @@
 
 .checkbox-input {
     position: absolute;
+    top: 0;
+    left: 0;
     opacity: 0;
     pointer-events: none;
 }

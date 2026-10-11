@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
+import { lockBodyScroll, unlockBodyScroll } from '../../lib/bodyScrollLock';
+
 // Наибольшая длина имени, совпадает с CheckSharedTodoItemsRequest
 const NAME_MAX_LENGTH = 50;
 
@@ -37,22 +39,12 @@ const confirm = (): void => {
     emit('confirm', trimmedName.value);
 };
 
-const disableBodyScroll = (): void => {
-    document.body.classList.add('modal-open');
-};
-
-const enableBodyScroll = (): void => {
-    document.body.classList.remove('modal-open');
-};
-
 onMounted(() => {
-    disableBodyScroll();
+    lockBodyScroll();
     input.value?.focus();
 });
 
-onUnmounted(() => {
-    enableBodyScroll();
-});
+onUnmounted(unlockBodyScroll);
 </script>
 
 <template>

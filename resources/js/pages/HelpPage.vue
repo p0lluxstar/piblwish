@@ -2,10 +2,10 @@
 import {
     Archive,
     ArchiveRestore,
-    BadgeRussianRuble,
     BellRing,
     Copy,
     CopyPlus,
+    CreditCardCheck,
     EyeOff,
     FileEdit,
     Gift,
@@ -36,7 +36,7 @@ const SECTIONS: HelpSection[] = [
     { id: 'start', title: 'Регистрация и вход', icon: UserPlus },
     { id: 'create', title: 'Создание списка', icon: ListPlus },
     { id: 'todo', title: 'Список дел', icon: ListChecks },
-    { id: 'fund', title: 'Сбор', icon: BadgeRussianRuble },
+    { id: 'fund', title: 'Сбор', icon: CreditCardCheck },
     { id: 'note', title: 'Заметка', icon: StickyNote },
     { id: 'manage', title: 'Мои карточки', icon: FileEdit },
     { id: 'archive', title: 'Архив', icon: Archive },
@@ -324,7 +324,7 @@ const FAQ: FaqItem[] = [
             <section id="fund" class="card">
                 <h2 class="card-title">
                     <span class="card-icon">
-                        <BadgeRussianRuble :size="16" />
+                        <CreditCardCheck :size="16" />
                     </span>
                     Сбор
                 </h2>

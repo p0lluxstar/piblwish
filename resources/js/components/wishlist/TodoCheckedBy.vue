@@ -13,18 +13,27 @@ const props = defineProps<{
     // выводится без значка; не задан — подпись не выводится вовсе
     emptyLabel?: string;
     // Дело отметил тот, кто смотрит список (гость на общей странице или владелец
-    // на своей карточке): вместо имени «Вы», выделенное цветом
+    // на своей карточке): вместо имени «Вы», выделенное цветом; если гость
+    // вводил имя, оно выводится рядом в скобках
     isOwn?: boolean;
+    // Имя в одну строку с многоточием (карточка в дашборде); полное имя —
+    // в подсказке. Не задано — длинное имя переносится
+    truncate?: boolean;
 }>();
 
 const name = computed(() =>
     props.isOwn ? 'Вы' : checkedByName(props.checkedBy, props.ownerName),
 );
 
+// Имя, под которым гость отметил дело; у отметок владельца его нет
+const ownGuestName = computed(() =>
+    props.isOwn ? (props.checkedBy?.name ?? null) : null,
+);
+
 const fullLabel = computed(() => {
     if (!props.isOwn) return `Отметил(а): ${name.value}`;
 
-    const guestName = props.checkedBy?.name;
+    const guestName = ownGuestName.value;
 
     return guestName ? `Отметили вы (как ${guestName})` : 'Отметили вы';
 });
@@ -36,12 +45,20 @@ const fullLabel = computed(() => {
     <span
         v-if="name"
         class="todo-checked-by"
-        :class="{ 'todo-checked-by--own': isOwn }"
+        :class="{
+            'todo-checked-by--own': isOwn,
+            'todo-checked-by--truncate': truncate,
+        }"
         :title="fullLabel"
         :aria-label="fullLabel"
     >
         <UserRound :size="11" class="todo-checked-by-icon" aria-hidden="true" />
-        <span aria-hidden="true">{{ name }}</span>
+        <span class="todo-checked-by-name" aria-hidden="true">
+            {{ name }}
+            <span v-if="ownGuestName" class="todo-checked-by-guest-name">
+                ({{ ownGuestName }})
+            </span>
+        </span>
     </span>
     <span v-else-if="emptyLabel" class="todo-checked-by">
         {{ emptyLabel }}
@@ -50,11 +67,11 @@ const fullLabel = computed(() => {
 
 <style scoped lang="scss">
 // Колонка справа от названия дела: не шире 45% строки, длинное имя
-// переносится внутри неё, а не сужает название
+// переносится внутри неё, а не сужает название. Значок и имя идут одним
+// строчным потоком, поэтому при переносе значок остаётся перед первым словом,
+// а не у левого края колонки
 .todo-checked-by {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 3px;
+    display: inline-block;
     flex-shrink: 0;
     max-width: 45%;
     font-size: 11px;
@@ -72,9 +89,38 @@ const fullLabel = computed(() => {
     color: #059669;
 }
 
-// Значок выровнен по первой строке имени
+// Введённое гостем имя рядом с «Вы» — обычным начертанием, чтобы «Вы»
+// оставалось главным
+.todo-checked-by-guest-name {
+    font-weight: 400;
+}
+
+// Значок перед именем, по середине строки текста. Tailwind (preflight) делает
+// svg блочным, поэтому строчный вид задан явно
 .todo-checked-by-icon {
-    flex-shrink: 0;
-    align-self: center;
+    display: inline-block;
+    margin-right: 3px;
+    vertical-align: -1px;
+}
+
+// Имя не переносится, а обрезается многоточием по ширине колонки:
+// для этого значок и имя — отдельные элементы flex-строки
+.todo-checked-by--truncate {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+
+    // Промежуток до имени здесь даёт gap
+    .todo-checked-by-icon {
+        flex-shrink: 0;
+        margin-right: 0;
+    }
+
+    .todo-checked-by-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 }
 </style>

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import {
+    Calendar,
     Check,
     Copy,
+    CreditCardCheck,
     ExternalLink,
     Gift,
+    Hourglass,
+    PartyPopper,
     RefreshCw,
-    Sparkles,
     Users,
     X,
 } from '@lucide/vue';
@@ -584,47 +587,89 @@ const allSelected = computed(() => {
     return items.length > 0 && items.every((item) => item.isSelected);
 });
 
-// «Выполнено 2 из 5» под заголовком списка дел
-const todoProgressLabel = computed(() => {
-    const items = wishlist.value?.items ?? [];
-    const done = items.filter((item) => item.isSelected).length;
+// Число выполненных дел для прогресса над кнопкой
+const todoDoneCount = computed(
+    () =>
+        (wishlist.value?.items ?? []).filter((item) => item.isSelected).length,
+);
 
-    return `Выполнено ${done} из ${items.length}`;
+// «2 из 5», как на карточке в дашборде
+const todoProgressLabel = computed(
+    () => `${todoDoneCount.value} из ${wishlist.value?.items.length ?? 0}`,
+);
+
+// Целые проценты, как на карточке в дашборде
+const todoProgress = computed(() => {
+    const total = wishlist.value?.items.length ?? 0;
+
+    if (!total) return 0;
+
+    return Math.round((todoDoneCount.value / total) * 100);
 });
 
-// «Сделать до 31 декабря 2026 г. · осталось 5 дней» или
-// «Дата события: 31 декабря 2026 г. · через 12 дней». После события
-// списка желаний строка не показывается, а у выполненного списка дел
-// остаётся только дата
-const dueDateLine = computed(() => {
+// Сколько осталось до срока списка дел или до события списка желаний, как
+// на карточке в дашборде. У выполненного списка дел и после события списка
+// желаний счётчика нет
+const dueStatus = computed(() => {
     const dueDate = wishlist.value?.dueDate;
 
-    if (!dueDate) return '';
+    if (!dueDate) return null;
 
-    const type = wishlist.value?.type ?? 'gift';
-    const status = getDueDateStatus(type, dueDate, allSelected.value);
-
-    if (!status && type !== 'todo') return '';
-
-    // «Сделать до 31 декабря», «Сбор до 31 декабря», «Дата события: 31 декабря»
-    const title = dueDateTitle(type);
-    const date = formatDueDate(dueDate);
-    const line = type === 'gift' ? `${title}: ${date}` : `${title} ${date}`;
-
-    if (!status) return line;
-
-    return `${line} · ${status.text.charAt(0).toLowerCase()}${status.text.slice(1)}`;
-});
-
-// Срок списка дел прошёл, а дела не выполнены: строка выделяется красным
-const isDueDateOverdue = computed(() => {
-    const dueDate = wishlist.value?.dueDate;
-
-    if (!dueDate || !isTodo.value) return false;
-
-    return (
-        getDueDateStatus('todo', dueDate, allSelected.value)?.tone === 'overdue'
+    return getDueDateStatus(
+        wishlist.value?.type ?? 'gift',
+        dueDate,
+        allSelected.value,
     );
+});
+
+// «Сделать до: 31 декабря 2026 г.»: подсказка и подпись для экранных дикторов
+const dueDateLabel = computed(() => {
+    const dueDate = wishlist.value?.dueDate;
+
+    return dueDate
+        ? `${dueDateTitle(wishlist.value?.type ?? 'gift')}: ${formatDueDate(dueDate)}`
+        : '';
+});
+
+// Первые три буквы месяца, как на карточке в дашборде: Intl с month: 'short'
+// даёт «сент.» и «мая» с точкой и разной длиной
+const SHORT_MONTHS = [
+    'янв',
+    'фев',
+    'мар',
+    'апр',
+    'май',
+    'июн',
+    'июл',
+    'авг',
+    'сен',
+    'окт',
+    'ноя',
+    'дек',
+];
+
+// «12 сен 2026»: дата создания внизу карточки
+const createdAtDate = computed(() => {
+    const createdAt = wishlist.value?.createdAt;
+
+    if (!createdAt) return '';
+
+    const date = new Date(createdAt);
+
+    return `${date.getDate()} ${SHORT_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+});
+
+// «Создан 12 сентября 2026 г.»: подсказка и подпись для экранных дикторов
+const createdAtLabel = computed(() => {
+    const createdAt = wishlist.value?.createdAt;
+
+    return createdAt
+        ? `Создан ${new Date(createdAt).toLocaleDateString('ru-RU', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+          })}`
+        : '';
 });
 
 // Порядок позиций: заданный владельцем, по приоритету (сначала «очень хочу»)
@@ -764,23 +809,8 @@ onMounted(getWishlist);
                     </h1>
                 </div>
 
-                <p v-if="isTodo" class="intro-note">
-                    {{ allSelected ? 'Все дела выполнены' : todoProgressLabel }}
-                </p>
-
-                <p v-else-if="isGift && allSelected" class="intro-note">
+                <p v-if="isGift && allSelected" class="intro-note">
                     Все подарки из этого списка уже выбраны
-                </p>
-
-                <p
-                    v-if="dueDateLine"
-                    :class="[
-                        'intro-note',
-                        'intro-due-date',
-                        { 'intro-due-date--overdue': isDueDateOverdue },
-                    ]"
-                >
-                    {{ dueDateLine }}
                 </p>
 
                 <!-- Вошедший пользователь добавляет чужой список в раздел «Чужие списки» -->
@@ -906,7 +936,7 @@ onMounted(getWishlist);
                          Перевод выполняется там, поэтому выбирать здесь нечего -->
                     <div v-if="isFund" class="item item--fund">
                         <span class="fund-icon" aria-hidden="true">
-                            <Sparkles :size="12" />
+                            <CreditCardCheck :size="12" />
                         </span>
 
                         <span class="fund-text">
@@ -1276,6 +1306,66 @@ onMounted(getWishlist);
                     }}). Наш сервис денег не получает и не хранит реквизиты.
                 </p>
 
+                <!-- Прогресс списка дел над кнопкой: подпись, проценты и полоска,
+                     как на карточке в дашборде -->
+                <div
+                    v-if="isTodo && wishlist.items.length"
+                    class="todo-progress"
+                >
+                    <div class="todo-progress-info">
+                        <span class="todo-progress-label">
+                            {{ todoProgressLabel }}
+                        </span>
+                        <span class="todo-progress-percent">
+                            {{ todoProgress }}%
+                        </span>
+                    </div>
+                    <div
+                        class="todo-progress-bar"
+                        role="progressbar"
+                        :aria-valuenow="todoProgress"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        :aria-label="`Выполнено ${todoProgressLabel}`"
+                    >
+                        <div
+                            class="todo-progress-fill"
+                            :style="{ width: `${todoProgress}%` }"
+                        ></div>
+                    </div>
+                </div>
+
+                <!-- Дата создания слева, счётчик до даты списка справа, как на
+                     карточке в дашборде; сама дата списка — в подсказке -->
+                <div v-if="createdAtDate || dueStatus" class="card-dates">
+                    <time
+                        v-if="createdAtDate"
+                        class="card-created-at"
+                        :datetime="wishlist.createdAt"
+                        :title="createdAtLabel"
+                    >
+                        <Calendar :size="12" aria-hidden="true" />
+                        <span class="sr-only">{{ createdAtLabel }}</span>
+                        <span aria-hidden="true">{{ createdAtDate }}</span>
+                    </time>
+
+                    <time
+                        v-if="dueStatus"
+                        :class="['card-due', `card-due--${dueStatus.tone}`]"
+                        :datetime="wishlist.dueDate ?? undefined"
+                        :title="dueDateLabel"
+                    >
+                        <Hourglass
+                            v-if="isTodo || isFund"
+                            :size="12"
+                            aria-hidden="true"
+                        />
+                        <PartyPopper v-else :size="12" aria-hidden="true" />
+                        <span class="sr-only">{{ dueDateLabel }}.</span>
+                        {{ dueStatus.text }}
+                    </time>
+                </div>
+
                 <button
                     v-if="(isGift || canCheckTodo) && !allSelected"
                     type="button"
@@ -1298,7 +1388,6 @@ onMounted(getWishlist);
                 >
                     Вы отмечаете как
                     <b>{{ guestName }}</b>
-                    ·
                     <button
                         type="button"
                         class="guest-name-change"
@@ -1330,6 +1419,7 @@ onMounted(getWishlist);
 <style scoped lang="scss">
 @use '../../../scss/ui/checkboxCard.scss';
 @use '../../../scss/ui/createButton.scss';
+@use '../../../scss/ui/dueDateBadge.scss';
 @use '../../../scss/ui/wishlistColors.scss';
 
 .wishlist-view {
@@ -1404,12 +1494,68 @@ onMounted(getWishlist);
     color: var(--app-ink-soft, var(--ink-soft, #6b5878));
 }
 
-.intro-due-date {
-    font-weight: 600;
+// Дата создания слева, счётчик до даты списка справа — как на карточке в дашборде
+.card-dates {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 10px;
+    margin-top: 12px;
 }
 
-.intro-due-date--overdue {
-    color: #be123c;
+.card-created-at {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    line-height: normal;
+    color: #baa7c7;
+
+    // Значок опущен на уровень цифр даты, как в WishlistCard
+    svg {
+        flex-shrink: 0;
+        transform: translateY(1px);
+    }
+}
+
+// Прогресс списка дел над кнопкой — как у списка дел на карточке в дашборде
+.todo-progress {
+    margin-top: 16px;
+}
+
+.todo-progress-info {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.todo-progress-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+.todo-progress-percent {
+    font-size: 11px;
+    font-weight: 700;
+    color: #059669;
+}
+
+.todo-progress-bar {
+    width: 100%;
+    height: 5px;
+    background: rgba(16, 185, 129, 0.12);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.todo-progress-fill {
+    height: 100%;
+    background: linear-gradient(135deg, #6ee7b7, #10b981);
+    border-radius: 999px;
+    transition: width 0.3s ease;
 }
 
 .loader,
@@ -1585,7 +1731,9 @@ onMounted(getWishlist);
     }
 }
 
+// Промежуток после имени: пробел между <b> и кнопкой Vue при сборке убирает
 .guest-name-change {
+    margin-left: 4px;
     padding: 0;
     border: none;
     background: none;
