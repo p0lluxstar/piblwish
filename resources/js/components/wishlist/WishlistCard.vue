@@ -7,15 +7,15 @@ import {
     Check,
     CopyPlus,
     ExternalLink,
-    EyeOff,
+    Eye,
     FileEdit,
     Gift,
     Hourglass,
     Link,
     ListChecks,
     PartyPopper,
+    Sparkles,
     StickyNote,
-    Target,
     Trash2,
     Users,
 } from '@lucide/vue';
@@ -432,15 +432,17 @@ const dueDateLabel = computed(() =>
                     {{ isTodo ? 'Дела' : 'Желания' }}
                 </span>
 
-                <!-- Режим сюрприза: выбор гостей скрыт от владельца -->
+                <!-- Режим сюрприза выключен: владелец видит выбор гостей. Значок
+                 ставится у выключенного, а не у включённого: у нового списка
+                 желаний режим включён по умолчанию -->
                 <span
-                    v-if="wishlist.hideSelections"
-                    class="card-surprise"
+                    v-if="isGift && !wishlist.hideSelections"
+                    class="card-selections-visible"
                     role="img"
-                    aria-label="Режим сюрприза: выбор гостей скрыт"
-                    title="Режим сюрприза: выбор гостей скрыт"
+                    aria-label="Режим сюрприза выключен: выбор гостей виден"
+                    title="Режим сюрприза выключен: выбор гостей виден"
                 >
-                    <EyeOff :size="14" />
+                    <Eye :size="14" />
                 </span>
 
                 <!-- Список дел открыт по ссылке. Значок не ссылки, а людей: значок
@@ -621,9 +623,13 @@ const dueDateLabel = computed(() =>
                     <Check v-if="item.isSelected" :size="12" />
                 </button>
 
-                <!-- Цель сбора: гости её не отмечают, поэтому вместо чекбокса значок цели -->
-                <span v-else-if="isFund" class="item-bullet" aria-hidden="true">
-                    <Target :size="11" />
+                <!-- Цель сбора: гости её не отмечают, поэтому вместо чекбокса значок -->
+                <span
+                    v-else-if="isFund"
+                    class="item-bullet item-bullet--fund"
+                    aria-hidden="true"
+                >
+                    <Sparkles :size="11" />
                 </span>
 
                 <!-- Позицию выбрал гость: вместо чекбокса значок подарка -->
@@ -1251,6 +1257,12 @@ $card-content-max-height: 150px;
     color: #fff;
 }
 
+// В тон метке «Сбор», чтобы цель не путалась с выбранным подарком;
+// фон насыщенный, чтобы на нём был виден белый значок
+.item-bullet--fund {
+    background: linear-gradient(135deg, #fbcfe8, #ec4899);
+}
+
 .card-badges {
     display: flex;
     align-items: center;
@@ -1331,7 +1343,7 @@ $card-content-max-height: 150px;
     }
 }
 
-.card-surprise,
+.card-selections-visible,
 .card-shared,
 .card-hidden {
     display: grid;

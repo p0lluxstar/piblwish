@@ -2,6 +2,7 @@
 import { ArrowDown, ArrowUp, FunnelX } from '@lucide/vue';
 import { computed } from 'vue';
 
+import CardSearchInput from '@/components/ui/CardSearchInput.vue';
 import type {
     WishlistSortField,
     WishlistSortState,
@@ -11,10 +12,14 @@ import type {
     WishlistTypeFilterOption,
 } from '@/composables/useWishlistTypeFilter';
 
-// Панель над карточками: фильтр по типу и сортировка. Используется в дашборде,
-// архиве и разделе «Чужие списки»; в слот выводятся кнопки раздела справа.
-// Кнопка «Сбросить» видна, когда выбран тип или сортировка не по умолчанию
+// Панель над карточками: поиск (лупа в начале, по клику раскрывается поле),
+// фильтр по типу и сортировка. Используется в дашборде, архиве и разделе
+// «Чужие списки»; в слот выводятся кнопки раздела справа. Кнопка «Сбросить»
+// видна, когда введён запрос, выбран тип или сортировка не по умолчанию
 const props = defineProps<{
+    search: string;
+    showSearch: boolean;
+    searchPlaceholder: string;
     typeOptions: WishlistTypeFilterOption[];
     activeType: WishlistTypeFilter;
     showTypeFilter: boolean;
@@ -25,13 +30,17 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+    (e: 'update:search', value: string): void;
     (e: 'update:type', value: WishlistTypeFilter): void;
     (e: 'sort', field: WishlistSortField): void;
     (e: 'reset'): void;
 }>();
 
 const canReset = computed(
-    () => props.activeType !== 'all' || !props.isDefaultSort,
+    () =>
+        (props.showSearch && props.search.trim() !== '') ||
+        props.activeType !== 'all' ||
+        !props.isDefaultSort,
 );
 
 // Подпись для экранных дикторов: поле и текущее направление сортировки
@@ -44,6 +53,14 @@ const sortAriaLabel = (field: WishlistSortField, label: string): string => {
 
 <template>
     <div class="sort-bar">
+        <CardSearchInput
+            v-if="showSearch"
+            class="card-search"
+            :model-value="search"
+            :placeholder="searchPlaceholder"
+            @update:model-value="emit('update:search', $event)"
+        />
+
         <div
             v-if="showTypeFilter"
             class="sort-group"
@@ -99,8 +116,8 @@ const sortAriaLabel = (field: WishlistSortField, label: string): string => {
             <button
                 v-if="canReset"
                 class="reset-btn"
-                aria-label="Сбросить фильтр и сортировку"
-                title="Сбросить фильтр и сортировку"
+                aria-label="Сбросить поиск, фильтр и сортировку"
+                title="Сбросить поиск, фильтр и сортировку"
                 @click="emit('reset')"
             >
                 <FunnelX :size="16" aria-hidden="true" />
@@ -194,6 +211,14 @@ const sortAriaLabel = (field: WishlistSortField, label: string): string => {
     &:focus-visible {
         color: var(--brand-violet);
         background: rgba(139, 92, 246, 0.08);
+    }
+}
+
+// Узкий экран: открытое поле занимает всю строку над фильтрами
+@media (max-width: 599px) {
+    .sort-bar .card-search.open {
+        flex-basis: 100%;
+        width: 100%;
     }
 }
 

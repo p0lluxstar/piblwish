@@ -6,6 +6,7 @@ import LaoderPageSpinner from '@/components/ui/LaoderPageSpinner.vue';
 import ShowMoreButtons from '@/components/ui/ShowMoreButtons.vue';
 import WishlistSortBar from '@/components/wishlist/WishlistSortBar.vue';
 import { useCardPaging } from '@/composables/useCardPaging';
+import { useCardSearch } from '@/composables/useCardSearch';
 import {
     useSavedWishlists,
     useToggleSavedWishlist,
@@ -48,7 +49,13 @@ const {
     typeOf: (wishlist) => wishlist.type,
 });
 
-const filteredWishlists = computed(() => filterByType(sortedItems.value));
+// Список ищется и по имени владельца: его часто помнят лучше, чем название
+const { searchQuery, hasSearch, activeSearchQuery, filterBySearch } =
+    useCardSearch(wishlists, (wishlist) => [wishlist.title, wishlist.username]);
+
+const filteredWishlists = computed(() =>
+    filterBySearch(filterByType(sortedItems.value)),
+);
 
 const {
     visibleItems: visibleWishlists,
@@ -56,10 +63,11 @@ const {
     nextCount,
     showMore,
     showAll,
-} = useCardPaging(filteredWishlists, [sort, typeFilter]);
+} = useCardPaging(filteredWishlists, [sort, typeFilter, activeSearchQuery]);
 
-// Кнопка «Сбросить»: все типы и сортировка по сроку
+// Кнопка «Сбросить»: пустой запрос, все типы и сортировка по сроку
 const resetFilters = (): void => {
+    searchQuery.value = '';
     typeFilter.value = 'all';
     resetSort();
 };
@@ -101,7 +109,6 @@ const refresh = (): void => {
 <template>
     <div class="top">
         <div class="heading">Чужие списки</div>
-
         <button
             v-if="wishlists.length > 0"
             class="update-btn"
@@ -121,6 +128,9 @@ const refresh = (): void => {
     <!-- Панель имеет смысл, только когда списков больше одного -->
     <WishlistSortBar
         v-if="!isLoading && wishlists.length > 1"
+        v-model:search="searchQuery"
+        :show-search="hasSearch"
+        search-placeholder="Название или автор"
         :type-options="typeFilterOptions"
         :active-type="activeTypeFilter"
         :show-type-filter="hasTypeFilter"
@@ -147,6 +157,15 @@ const refresh = (): void => {
             Откройте список друга по ссылке и нажмите «Добавить к себе» — он
             появится в этом разделе, и ссылку больше не придётся искать.
         </p>
+    </div>
+
+    <!-- Пустой результат возможен только из-за поиска, как в WishlistMain -->
+    <div v-else-if="filteredWishlists.length === 0" class="state state--empty">
+        <p class="empty-title">Ничего не найдено</p>
+        <p class="empty-text">Проверьте запрос или поищите среди всех типов</p>
+        <button class="update-btn reset-search-btn" @click="resetFilters">
+            Сбросить поиск и фильтр
+        </button>
     </div>
 
     <div v-else class="grid">
@@ -215,8 +234,9 @@ const refresh = (): void => {
 }
 
 // Узкий экран: кнопка круглая, только с иконкой, как в WishlistMain
+// Кнопка сброса поиска на месте карточек не затрагивается: она вне .top
 @media (max-width: 599px) {
-    .update-btn {
+    .top .update-btn {
         justify-content: center;
         width: 38px;
         height: 38px;
@@ -255,6 +275,10 @@ const refresh = (): void => {
     font-size: 18px;
     font-weight: 700;
     color: var(--app-ink, var(--ink));
+}
+
+.reset-search-btn {
+    margin-top: 16px;
 }
 
 .empty-text {

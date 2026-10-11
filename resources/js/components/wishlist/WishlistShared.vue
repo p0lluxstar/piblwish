@@ -5,7 +5,7 @@ import {
     ExternalLink,
     Gift,
     RefreshCw,
-    Target,
+    Sparkles,
     Users,
     X,
 } from '@lucide/vue';
@@ -906,7 +906,7 @@ onMounted(getWishlist);
                          Перевод выполняется там, поэтому выбирать здесь нечего -->
                     <div v-if="isFund" class="item item--fund">
                         <span class="fund-icon" aria-hidden="true">
-                            <Target :size="12" />
+                            <Sparkles :size="12" />
                         </span>
 
                         <span class="fund-text">
@@ -1795,8 +1795,9 @@ onMounted(getWishlist);
     width: 19px;
     height: 19px;
     border-radius: 7px;
-    background: rgba(236, 72, 153, 0.12);
-    color: #db2777;
+    // Как значок цели на карточке в дашборде
+    background: linear-gradient(135deg, #fbcfe8, #ec4899);
+    color: #fff;
 }
 
 .fund-text {

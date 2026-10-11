@@ -6,6 +6,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useCardPaging } from '@/composables/useCardPaging';
+import { useCardSearch } from '@/composables/useCardSearch';
 import { useMotivationalPhrase } from '@/composables/useMotivationalPhrase';
 import {
     useArchivedCount,
@@ -102,10 +103,17 @@ const {
     typeOf: (wishlist): WishlistType => wishlist.type ?? 'gift',
 });
 
-const filteredWishlists = computed(() => filterByType(sortedWishlists.value));
+// У заметки нет названия: ищется её текст
+const { searchQuery, hasSearch, activeSearchQuery, filterBySearch } =
+    useCardSearch(wishLists, (wishlist) => [wishlist.title, wishlist.content]);
 
-// Кнопка «Сбросить»: все типы и сортировка раздела по умолчанию
+const filteredWishlists = computed(() =>
+    filterBySearch(filterByType(sortedWishlists.value)),
+);
+
+// Кнопка «Сбросить»: пустой запрос, все типы и сортировка раздела по умолчанию
 const resetFilters = (): void => {
+    searchQuery.value = '';
     typeFilter.value = 'all';
     resetSort();
 };
@@ -122,10 +130,14 @@ const {
     nextCount,
     showMore,
     showAll,
-} = useCardPaging(filteredWishlists, [sort, typeFilter]);
+} = useCardPaging(filteredWishlists, [sort, typeFilter, activeSearchQuery]);
 
 const SORT_OPTIONS: { field: WishlistSortField; label: string }[] = [
-    { field: 'date', label: 'По дате' },
+    // В архиве дата — время переноса в архив, подпись называет это явно
+    {
+        field: 'date',
+        label: props.archived ? 'По дате архивации' : 'По дате',
+    },
     ...(props.archived ? [] : [{ field: 'due' as const, label: 'По сроку' }]),
     { field: 'title', label: 'По названию' },
 ];
@@ -611,6 +623,9 @@ onMounted(generateRandomPhrase);
          Ссылка между разделами видна и при одной карточке -->
     <WishlistSortBar
         v-if="!isLoading && (wishLists.length > 1 || hasSectionLink)"
+        v-model:search="searchQuery"
+        :show-search="hasSearch"
+        search-placeholder="Поиск по названию"
         :type-options="typeFilterOptions"
         :active-type="activeTypeFilter"
         :show-type-filter="hasTypeFilter"
@@ -686,6 +701,21 @@ onMounted(generateRandomPhrase);
         <button class="add-btn px-6 py-2" @click="openCreateModal">
             <Plus :size="14" class="mr-1.5" />
             Создать карточку
+        </button>
+    </div>
+
+    <!-- Пустой результат возможен только из-за поиска: фильтр по типу
+         показывает лишь типы, у которых есть карточки -->
+    <div
+        v-else-if="filteredWishlists.length === 0"
+        class="flex flex-col items-center justify-center min-h-[300px] text-center"
+    >
+        <p class="empty-text text-lg mb-1">Ничего не найдено</p>
+        <p class="empty-hint mb-4">
+            Проверьте запрос или поищите среди всех типов
+        </p>
+        <button class="update-btn" @click="resetFilters">
+            Сбросить поиск и фильтр
         </button>
     </div>
 
@@ -781,6 +811,7 @@ onMounted(generateRandomPhrase);
     justify-content: space-between;
     margin-bottom: 20px;
 }
+
 // Заголовок прижат к верху блока: без line-height: 1 над буквами
 // оставалось бы место от межстрочного интервала
 .heading {
