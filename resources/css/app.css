@@ -65,6 +65,12 @@
     --success-bright: #10b981;
     --danger: #dc2626;
     --danger-strong: #e11d48;
+    /* Кнопки удаления с белым текстом: градиентная (подтверждение удаления
+       карточки, аккаунта, фото) и сплошная (подтверждения, плашки ошибок) */
+    --danger-gradient: linear-gradient(135deg, #fb7185, #ec4899);
+    --danger-fill: #dc2626;
+    --danger-glow: 0 14px 30px -12px rgba(236, 72, 153, 0.5);
+    --danger-glow-hover: 0 18px 36px -12px rgba(236, 72, 153, 0.55);
     --warning: #b45309;
     --fund: #be185d;
     --pink-strong: #db2777;
@@ -85,6 +91,13 @@
        scss/ui/appBackgroundGradients.scss; здесь — для страниц без фона
        (лендинг, вход) */
     --brand-gradient: linear-gradient(135deg, #a0385c, #563ea0);
+    /* Логотип чуть темнее светлой версии, а не светлее, как фирменные цвета */
+    --logo-gradient: linear-gradient(
+        135deg,
+        #8452ec 0%,
+        #df4592 60%,
+        #ee6a7e 100%
+    );
     --page-bg: #130f1b;
     --ink: #f2ecf9;
     --ink-soft: #bbadca;
@@ -105,6 +118,11 @@
     --success-bright: #34d399;
     --danger: #f87171;
     --danger-strong: #fb7185;
+    /* Кнопки удаления приглушены, как и --brand-gradient */
+    --danger-gradient: linear-gradient(135deg, #a83448, #9c2a64);
+    --danger-fill: #a8343f;
+    --danger-glow: 0 14px 30px -12px rgba(0, 0, 0, 0.7);
+    --danger-glow-hover: 0 18px 36px -12px rgba(0, 0, 0, 0.75);
     --warning: #fbbf24;
     --fund: #f472b6;
     --pink-strong: #f472b6;

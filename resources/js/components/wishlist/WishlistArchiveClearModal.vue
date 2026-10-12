@@ -136,7 +136,7 @@ onUnmounted(unlockBodyScroll);
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, #fb7185, var(--brand-pink));
+    background: var(--danger-gradient);
     border: none;
     color: #fff;
     border-radius: 18px;
@@ -147,11 +147,11 @@ onUnmounted(unlockBodyScroll);
     padding: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 14px 30px -12px rgba(236, 72, 153, 0.5);
+    box-shadow: var(--danger-glow);
 
     &:hover:not(:disabled) {
         transform: translateY(-2px);
-        box-shadow: 0 18px 36px -12px rgba(236, 72, 153, 0.55);
+        box-shadow: var(--danger-glow-hover);
     }
 
     &:disabled {

@@ -500,7 +500,7 @@ $item-price-height: 26px;
 
     &:hover {
         color: #fff;
-        background: linear-gradient(135deg, #fb7185, var(--brand-pink));
+        background: var(--danger-gradient);
     }
 }
 

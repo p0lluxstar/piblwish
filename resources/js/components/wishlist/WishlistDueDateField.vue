@@ -60,7 +60,10 @@ const status = computed<DueDateStatus | null>(() =>
 </template>
 
 <style scoped lang="scss">
+// Подсказка под полем выводится поверх отступа .form-group (16px) до следующего
+// блока, чтобы её появление не сдвигало форму; её строка (12px) в нём помещается
 .due-date-field {
+    position: relative;
     display: flex;
     flex-direction: column;
 }
@@ -121,8 +124,13 @@ const status = computed<DueDateStatus | null>(() =>
 }
 
 .due-date-hint {
-    margin-top: 6px;
-    font-size: 12px;
-    color: var(--ink-soft);
+    position: absolute;
+    top: calc(100% + 0px);
+    left: 0;
+    font-size: 10px;
+    line-height: 12px;
+    white-space: nowrap;
+    // Как пояснения переключателей в той же форме (ToggleSwitch)
+    color: var(--ink-muted);
 }
 </style>

@@ -52,6 +52,14 @@ class UserController extends Controller
         return new UserResource($user);
     }
 
+    // Вернуть настройки текущего пользователя к значениям по умолчанию
+    public function resetSettings(Request $request): UserResource
+    {
+        $user = $this->userService->resetSettings($request->user());
+
+        return new UserResource($user);
+    }
+
     // Загрузить фотографию пользователя; прежняя фотография удаляется
     public function updateAvatar(UpdateAvatarRequest $request): UserResource
     {

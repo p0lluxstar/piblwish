@@ -9,6 +9,7 @@ import LogoutAllDevicesSection from '@/components/user/LogoutAllDevicesSection.v
 import PasswordChangeSection from '@/components/user/PasswordChangeSection.vue';
 import ProfileSection from '@/components/user/ProfileSection.vue';
 import ReminderDaysPicker from '@/components/user/ReminderDaysPicker.vue';
+import ResetSettingsSection from '@/components/user/ResetSettingsSection.vue';
 import ThemePicker from '@/components/user/ThemePicker.vue';
 import UserSettingToggle from '@/components/user/UserSettingToggle.vue';
 import UserStatsSection from '@/components/user/UserStatsSection.vue';
@@ -98,6 +99,8 @@ const closeModal = (): void => {
 
                 <PasswordChangeSection />
 
+                <ResetSettingsSection />
+
                 <LogoutAllDevicesSection />
 
                 <div class="danger-zone">
@@ -183,7 +186,7 @@ const closeModal = (): void => {
     transition: all 0.2s ease;
 }
 .delete-account-btn:hover {
-    background: var(--danger-strong);
+    background: var(--danger-fill);
     color: #fff;
     border-color: transparent;
 }
@@ -218,7 +221,7 @@ const closeModal = (): void => {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, #fb7185, var(--brand-pink));
+    background: var(--danger-gradient);
     border: none;
     color: #fff;
     border-radius: 18px;
@@ -229,11 +232,11 @@ const closeModal = (): void => {
     padding: 11px;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 14px 30px -12px rgba(236, 72, 153, 0.5);
+    box-shadow: var(--danger-glow);
 
     &:hover:not(:disabled) {
         transform: translateY(-2px);
-        box-shadow: 0 18px 36px -12px rgba(236, 72, 153, 0.55);
+        box-shadow: var(--danger-glow-hover);
     }
 
     &:disabled {

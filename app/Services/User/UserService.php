@@ -8,6 +8,7 @@ use App\Mail\EmailChangeCodeMail;
 use App\Mail\EmailChangedMail;
 use App\Mail\PasswordChangedMail;
 use App\Models\User;
+use App\Services\Reminder\DueDateReminderService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -52,6 +53,21 @@ class UserService
             'email_reminders' => $emailReminders,
             'reminder_days' => $reminderDays,
         ], fn ($value) => $value !== null));
+
+        return $user;
+    }
+
+    // Возврат настроек из окна настроек к значениям по умолчанию — тем же,
+    // что у нового пользователя (значения колонок users в БД). Тема оформления
+    // хранится в браузере и сбрасывается на фронтенде
+    public function resetSettings(User $user): User
+    {
+        $user->update([
+            'background' => AppBackground::Blossom,
+            'show_friends_events' => true,
+            'email_reminders' => true,
+            'reminder_days' => DueDateReminderService::DEFAULT_DAYS,
+        ]);
 
         return $user;
     }

@@ -1357,6 +1357,101 @@
                 ]
             }
         },
+        "/v1/user/settings/reset": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Вернуть настройки по умолчанию",
+                "description": "Возвращает настройки, которые меняет PATCH /v1/user, к значениям нового пользователя: фон blossom, строка «Скоро у друзей» и напоминания на почту включены, срок напоминаний — 3 дня. Фото, email, пароль и статистика не меняются; тема оформления хранится в браузере и сбрасывается на клиенте. Возвращает пользователя в том же виде, что GET /v1/user.",
+                "operationId": "b7c34562b20e61d380971398f2a128cc",
+                "responses": {
+                    "200": {
+                        "description": "Настройки сброшены",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "example": "01jq3v7x8k2m4n6p8r0t2w4y6z"
+                                                },
+                                                "username": {
+                                                    "type": "string",
+                                                    "example": "john_doe"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "example": "john@example.com"
+                                                },
+                                                "background": {
+                                                    "type": "string",
+                                                    "example": "blossom"
+                                                },
+                                                "showFriendsEvents": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "emailReminders": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "reminderDays": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
+                                                "avatarUrl": {
+                                                    "type": "string",
+                                                    "example": null,
+                                                    "nullable": true
+                                                },
+                                                "stats": {
+                                                    "type": "object",
+                                                    "example": {
+                                                        "gift": 4,
+                                                        "todo": 7,
+                                                        "note": 2,
+                                                        "fund": 1
+                                                    }
+                                                },
+                                                "createdAt": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "example": "2026-09-12T10:15:00+00:00"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    },
+                    "429": {
+                        "description": "Слишком много запросов"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/v1/user/avatar": {
             "post": {
                 "tags": [
@@ -2138,7 +2233,7 @@
                                                                     "maxItems": 3
                                                                 },
                                                                 "priority": {
-                                                                    "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан",
+                                                                    "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; у списка дел — важность (1 — можно отложить, 2 — важно, 3 — очень важно); у сбора всегда null; null — не указан",
                                                                     "type": "integer",
                                                                     "example": 3,
                                                                     "nullable": true,
@@ -2217,7 +2312,7 @@
                             "schema": {
                                 "properties": {
                                     "type": {
-                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать urls, priority и price. У позиций сбора (целей) обязательна ровно одна ссылка https на разрешённую платформу (Т-Банк, ЮMoney, CloudTips), price — целевая сумма до 100 000 000, priority запрещён. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний",
+                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать urls и price, priority означает важность дела. У позиций сбора (целей) обязательна ровно одна ссылка https на разрешённую платформу (Т-Банк, ЮMoney, CloudTips), price — целевая сумма до 100 000 000, priority запрещён. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний",
                                         "type": "string",
                                         "example": "gift",
                                         "enum": [
@@ -2302,7 +2397,7 @@
                                                     "maxItems": 3
                                                 },
                                                 "priority": {
-                                                    "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан",
+                                                    "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; у списка дел — важность (1 — можно отложить, 2 — важно, 3 — очень важно); у сбора всегда null; null — не указан",
                                                     "type": "integer",
                                                     "example": 3,
                                                     "nullable": true,
@@ -2440,7 +2535,7 @@
                                                                 "maxItems": 3
                                                             },
                                                             "priority": {
-                                                                "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан",
+                                                                "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; у списка дел — важность (1 — можно отложить, 2 — важно, 3 — очень важно); у сбора всегда null; null — не указан",
                                                                 "type": "integer",
                                                                 "example": 3,
                                                                 "nullable": true,

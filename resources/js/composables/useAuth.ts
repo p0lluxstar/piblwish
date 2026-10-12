@@ -495,6 +495,47 @@ export const useUpdateReminderDays = (): UseUpdateReminderDaysReturn => {
     };
 };
 
+type UseResetUserSettingsReturn = UseMutationReturnType<
+    AxiosResponse<{ data: User }>,
+    AxiosError<ApiErrorResponse>,
+    void,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Возврат настроек аккаунта (фон, «Скоро у друзей», напоминания и их срок)
+// к значениям по умолчанию. Значения знает только сервер, поэтому пользователь
+// в сторе заменяется ответом, а не меняется заранее. Тему, которая хранится
+// в браузере, сбрасывает вызывающий компонент
+export const useResetUserSettings = (): UseResetUserSettingsReturn => {
+    const authStore = useAuthStore();
+
+    const mutation = useMutation<
+        AxiosResponse<{ data: User }>,
+        AxiosError<ApiErrorResponse>,
+        void
+    >({
+        mutationFn: () => api.post('/v1/user/settings/reset'),
+
+        onSuccess: (response) => {
+            authStore.setUser(response.data.data);
+        },
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(
+            mutation.error.value,
+            'Не удалось сбросить настройки',
+        ),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
 type UseUploadAvatarReturn = UseMutationReturnType<
     AxiosResponse<{ data: User }>,
     AxiosError<ApiErrorResponse>,

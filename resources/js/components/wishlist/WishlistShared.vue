@@ -2159,7 +2159,7 @@ onMounted(getWishlist);
 }
 
 .reservation-notice-copy--error {
-    background: var(--danger);
+    background: var(--danger-fill);
 }
 
 // Блок совместного подарка продолжает строку позиции: разделитель выводится под ним
