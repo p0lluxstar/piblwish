@@ -27,9 +27,11 @@ php artisan migrate
 php artisan l5-swagger:generate                # пересобрать storage/api-docs/api-docs.json
 ```
 
-Docker (`docker-compose.yml`): nginx на порту 8876, MySQL на 3307. Локально проект также запускается через OSPanel.
+Docker локально (`docker-compose.yml`, `_docker/app/Dockerfile`, описание в `README.md`): nginx на порту 8876, MySQL на 3307, контейнеры `queue` и `scheduler`; код подключён томом, фронтенд — `npm run dev:docker` (адрес API из `.env.docker`). Адрес базы, пароль (`DOCKER_DB_PASSWORD`, по умолчанию `secret`) и `APP_URL` задаёт `docker-compose.yml` поверх `.env`, поэтому тот же `.env` подходит и для OSPanel. Локально проект также запускается через OSPanel.
 
-Скрипты для прод-сервера лежат в `scripts/` (каталог исключён из git, на сервер копируется вручную) и запускаются там от root из корня проекта: `deploy.sh` (сборка образа и выкладка), `backup-data.sh` (дамп БД и фотографии пользователей), `restore-data.sh` (восстановление из копии `backup-data.sh`), `backup-config.sh` (`.env`, серверные Docker-файлы и конфигурация nginx, которых нет в git). Серверные `docker-compose.yml` и `_docker/app/Dockerfile` отличаются от файлов репозитория.
+Прод-сервер использует `docker-compose.prod.yml` и `_docker/app/Dockerfile.prod` (выбраны строкой `COMPOSE_FILE=docker-compose.prod.yml` в серверном `.env`): код, `vendor` и собранный фронтенд запекаются в образ `piblwish-app`, nginx работает на самом сервере, порты PHP-FPM (9090) и MySQL (3307) открыты только на `127.0.0.1`. `.dockerignore` не пускает в образ `.env`, данные MySQL и содержимое `storage`; `VITE_API_URL` передаётся аргументом сборки. Lock-файл должен проходить `npm ci` на версии npm из `node:24-alpine`.
+
+Скрипты для прод-сервера лежат в `scripts/` (каталог исключён из git, на сервер копируется вручную) и запускаются там от root из корня проекта: `deploy.sh` (сборка образа и выкладка), `backup-data.sh` (дамп БД и фотографии пользователей), `restore-data.sh` (восстановление из копии `backup-data.sh`), `backup-config.sh` (`.env` и конфигурация nginx, которых нет в git, сами скрипты и прод-файлы Docker). `deploy.sh` ставит на `storage` каталогам 775, файлам 664: бит исполнения у файлов Git считает изменением, и `git pull` на сервере отказывается обновлять отслеживаемые файлы.
 
 ## Архитектура бэкенда
 

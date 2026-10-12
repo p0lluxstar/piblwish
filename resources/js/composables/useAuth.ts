@@ -3,6 +3,7 @@ import {
     type UseMutationReturnType,
     useQuery,
     useQueryClient,
+    type UseQueryReturnType,
 } from '@tanstack/vue-query';
 import type { AxiosError, AxiosResponse } from 'axios';
 import { computed, type ComputedRef, watch } from 'vue';
@@ -160,7 +161,12 @@ export const useResendVerificationCode =
         };
     };
 
-export const useLogout = (): any => {
+export const useLogout = (): UseMutationReturnType<
+    AxiosResponse,
+    Error,
+    void,
+    unknown
+> => {
     const router = useRouter();
     const authStore = useAuthStore();
 
@@ -650,7 +656,7 @@ function getApiErrorMessage(
     return firstFieldError ?? data?.message ?? fallback;
 }
 
-export const useUser = (): any => {
+export const useUser = (): UseQueryReturnType<User, Error> => {
     const authStore = useAuthStore();
 
     const query = useQuery({

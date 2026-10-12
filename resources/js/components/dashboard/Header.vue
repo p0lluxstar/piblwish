@@ -123,7 +123,7 @@ const handleDeleteAccount = (): void => {
                     class="logout-btn"
                     aria-label="Выход"
                     :disabled="isPending"
-                    @click="logout"
+                    @click="logout()"
                 >
                     <!-- Содержимое остаётся в разметке и задаёт ширину кнопки,
                          во время выхода оно скрыто, а спиннер выводится поверх -->

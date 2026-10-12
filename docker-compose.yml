@@ -1,3 +1,30 @@
+# Локальный запуск в Docker: http://localhost:8876, фронтенд — npm run dev:docker.
+# Использует тот же .env, что и OSPanel: параметры, которые в Docker другие
+# (база, пароль, адрес сайта), задаются ниже и имеют приоритет над .env.
+# Для прод-сервера используется docker-compose.prod.yml.
+
+# Общие настройки контейнеров с кодом приложения (app, queue, scheduler)
+x-app: &app
+  image: piblwish-dev
+  restart: unless-stopped
+  env_file:
+    - .env
+  environment:
+    APP_URL: http://localhost:8876
+    DB_HOST: db
+    DB_PORT: 3306
+    DB_USERNAME: root
+    DB_PASSWORD: ${DOCKER_DB_PASSWORD:-secret}
+  volumes:
+    # Код подключён томом: правки видны без пересборки образа
+    - ./:/var/www
+    - ./_docker/app/logs:/var/log/php
+  depends_on:
+    db:
+      condition: service_healthy
+  networks:
+    - piblwish
+
 services:
   nginx:
     image: nginx:latest
@@ -15,30 +42,33 @@ services:
     restart: unless-stopped
 
   app:
+    <<: *app
     build:
       context: .
       dockerfile: _docker/app/Dockerfile
     container_name: piblwish_app
-    restart: unless-stopped
-    env_file:
-      - .env
-    volumes:
-      - ./:/var/www
-      - ./_docker/app/logs:/var/log/php  # логи PHP (опционально)
-    depends_on:
-      - db  # если используете БД
-      # - redis  # если используете Redis
-    networks:
-      - piblwish
 
-  # Добавьте БД, если её нет
+  # queue:listen, а не queue:work: перечитывает код после каждого задания
+  queue:
+    <<: *app
+    pull_policy: never
+    container_name: piblwish_queue
+    command: php artisan queue:listen --tries=1
+
+  # Планировщик Laravel: напоминания о сроке
+  scheduler:
+    <<: *app
+    pull_policy: never
+    container_name: piblwish_scheduler
+    command: php artisan schedule:work
+
   db:
     image: mysql:8.0
     container_name: piblwish_db
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DOCKER_DB_PASSWORD:-secret}
     ports:
       - "3307:3306"
     volumes:
@@ -49,6 +79,8 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 20s
       retries: 10
+      interval: 5s
+      start_period: 60s
 
 networks:
   piblwish:
