@@ -79,13 +79,13 @@ onMounted(() => {
     padding: 8px 8px 8px 12px;
     border: 1px solid rgba(236, 72, 153, 0.35);
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.85);
+    background: var(--surface-strong);
     animation: unsavedPromptIn 0.18s ease-out;
 }
 
 .unsaved-prompt-text {
     margin: 0;
-    color: var(--ink, #241533);
+    color: var(--ink);
     font-size: 12px;
     font-weight: 600;
 }
@@ -107,14 +107,14 @@ onMounted(() => {
     transition: all 0.2s ease;
 
     &:focus-visible {
-        outline: 2px solid #8b5cf6;
+        outline: 2px solid var(--brand-violet);
         outline-offset: 2px;
     }
 }
 
 .unsaved-prompt-discard {
-    background: rgba(139, 92, 246, 0.1);
-    color: #db2777;
+    background: var(--tint);
+    color: var(--pink-strong);
     font-weight: 600;
 
     &:hover:not(:disabled) {
@@ -127,10 +127,7 @@ onMounted(() => {
     align-items: center;
     justify-content: center;
     min-width: 84px;
-    background: var(
-        --brand-gradient,
-        linear-gradient(135deg, #8b5cf6, #ec4899)
-    );
+    background: var(--brand-gradient);
     color: #fff;
     font-weight: 700;
 
@@ -159,17 +156,17 @@ onMounted(() => {
     border: none;
     border-radius: 50%;
     background: transparent;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
     cursor: pointer;
     transition: all 0.2s ease;
 
     &:hover:not(:disabled) {
-        background: rgba(139, 92, 246, 0.1);
-        color: var(--ink, #241533);
+        background: var(--tint);
+        color: var(--ink);
     }
 
     &:focus-visible {
-        outline: 2px solid #8b5cf6;
+        outline: 2px solid var(--brand-violet);
         outline-offset: 2px;
     }
 

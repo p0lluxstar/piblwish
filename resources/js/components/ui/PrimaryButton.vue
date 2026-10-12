@@ -41,7 +41,7 @@ defineEmits(['click']);
 
 .primary {
     color: white;
-    background: var(--brand-gradient, linear-gradient(135deg, #8b5cf6, #ec4899));
-    box-shadow: var(--shadow-glow-lg, 0 22px 48px -16px rgba(139, 92, 246, 0.4));
+    background: var(--brand-gradient);
+    box-shadow: var(--shadow-glow-lg);
 }
 </style>

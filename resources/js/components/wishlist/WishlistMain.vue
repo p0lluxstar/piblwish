@@ -879,14 +879,14 @@ onMounted(generateRandomPhrase);
 }
 
 .update-btn {
-    background: #fff;
+    background: var(--surface-solid);
     color: var(--brand-violet);
     border: 1.5px solid var(--surface-border);
     box-shadow: none;
 
     &:hover:not(:disabled) {
         box-shadow: var(--shadow-glow);
-        background: #fff;
+        background: var(--surface-solid);
     }
 }
 
@@ -913,12 +913,12 @@ onMounted(generateRandomPhrase);
 
 // Текст лежит прямо на фоне, поэтому цвет зависит от выбранного фона приложения
 .empty-text {
-    color: var(--app-ink-soft, #6b7280);
+    color: var(--app-ink-soft, var(--ink-muted));
 }
 
 .empty-hint {
     font-size: 14px;
-    color: var(--app-ink-soft, #6b7280);
+    color: var(--app-ink-soft, var(--ink-muted));
 }
 
 // Ссылка между разделами и «Удалить все» — в конце панели, справа от сортировки
@@ -935,12 +935,12 @@ onMounted(generateRandomPhrase);
 // Удаление всех карточек архива: в розовых тонах кнопки подтверждения удаления.
 // Двойной класс перебивает оформление .sort-btn из WishlistSortBar
 .sort-btn.clear-btn {
-    color: #ec4899;
+    color: var(--brand-pink);
     border-color: rgba(236, 72, 153, 0.35);
 
     &:hover {
-        color: #ec4899;
-        border-color: #ec4899;
+        color: var(--brand-pink);
+        border-color: var(--brand-pink);
     }
 }
 

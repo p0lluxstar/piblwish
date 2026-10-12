@@ -164,7 +164,7 @@ const sortAriaLabel = (field: WishlistSortField, label: string): string => {
     display: flex;
     align-items: center;
     gap: 4px;
-    background: #fff;
+    background: var(--surface-solid);
     color: var(--ink-soft);
     border: 1.5px solid var(--surface-border);
     padding: 5px 14px;
@@ -185,7 +185,7 @@ const sortAriaLabel = (field: WishlistSortField, label: string): string => {
     &.active {
         color: var(--brand-violet);
         border-color: var(--brand-violet);
-        background: rgba(139, 92, 246, 0.08);
+        background: var(--tint);
     }
 }
 
@@ -210,7 +210,7 @@ const sortAriaLabel = (field: WishlistSortField, label: string): string => {
     &:hover,
     &:focus-visible {
         color: var(--brand-violet);
-        background: rgba(139, 92, 246, 0.08);
+        background: var(--tint);
     }
 }
 

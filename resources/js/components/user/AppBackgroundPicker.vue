@@ -85,7 +85,7 @@ const select = (background: AppBackground): void => {
         ),
         var(--app-bg);
     // У тёмного фона галочка светлая: класс фона задаёт --app-ink
-    color: var(--app-ink, var(--ink, #241533));
+    color: var(--app-ink, var(--ink));
     cursor: pointer;
     transition:
         transform 0.15s ease,
@@ -96,7 +96,7 @@ const select = (background: AppBackground): void => {
     }
 
     &:focus-visible {
-        outline: 2px solid var(--brand-violet, #8b5cf6);
+        outline: 2px solid var(--brand-violet);
         outline-offset: 2px;
     }
 
@@ -104,8 +104,8 @@ const select = (background: AppBackground): void => {
     &.is-active {
         border-color: transparent;
         box-shadow:
-            0 0 0 2px #fff,
-            0 0 0 4px var(--brand-violet, #8b5cf6);
+            0 0 0 2px var(--surface-solid),
+            0 0 0 4px var(--brand-violet);
     }
 }
 

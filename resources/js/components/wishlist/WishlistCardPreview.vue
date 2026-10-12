@@ -93,7 +93,7 @@ onUnmounted(unlockBodyScroll);
     margin: auto;
     overflow-y: auto;
     border-radius: var(--radius-lg);
-    background: #fff;
+    background: var(--surface-solid);
     animation: modalPop 0.22s ease-out;
     @include wishlistModal.modal-scrollbar;
 
@@ -111,7 +111,7 @@ onUnmounted(unlockBodyScroll);
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    color: #b3b3b3;
+    color: var(--ink-faint);
     cursor: pointer;
     transition: all 0.18s ease;
 

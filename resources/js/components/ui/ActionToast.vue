@@ -78,12 +78,12 @@ const runAction = (): void => {
     max-width: calc(100vw - 32px);
     padding: 10px 10px 10px 18px;
     border-radius: 16px;
-    background: var(--ink);
+    background: var(--toast-bg);
     color: #fff;
     font-size: 13px;
     font-weight: 500;
     line-height: 1.4;
-    box-shadow: 0 14px 34px -12px rgba(36, 21, 51, 0.5);
+    box-shadow: 0 14px 34px -12px rgba(0, 0, 0, 0.45);
     transform: translateX(-50%);
     animation: toastIn 0.2s ease-out;
 }

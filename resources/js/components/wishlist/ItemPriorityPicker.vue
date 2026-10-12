@@ -83,10 +83,10 @@ const select = (value: WishlistItemPriority): void => {
 .priority-picker {
     // Цвета значков: у подарка розовые сердца, у дела янтарные молнии
     --priority-off: rgba(139, 92, 246, 0.35);
-    --priority-on: #ec4899;
+    --priority-on: var(--brand-pink);
     --priority-hover: rgba(236, 72, 153, 0.08);
     --priority-focus: rgba(236, 72, 153, 0.5);
-    --priority-caption: #ec4899;
+    --priority-caption: var(--brand-pink);
 
     display: flex;
     align-items: center;
@@ -145,7 +145,7 @@ const select = (value: WishlistItemPriority): void => {
 }
 
 .priority-caption--empty {
-    color: #b3a3bd;
+    color: var(--ink-faint);
     font-weight: 400;
 }
 
@@ -160,7 +160,7 @@ const select = (value: WishlistItemPriority): void => {
 
     .priority-icon--on,
     .priority-caption {
-        color: #94a3b8;
+        color: var(--ink-muted);
     }
 }
 </style>

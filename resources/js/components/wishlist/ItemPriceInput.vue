@@ -114,23 +114,23 @@ const handleInput = (event: { target: unknown }): void => {
     padding: 0 22px 0 30px;
     border: 1.5px solid rgba(139, 92, 246, 0.15);
     border-radius: 9px;
-    background: #faf8ff;
+    background: var(--surface-soft);
     font-size: 12px;
     font-weight: 600;
-    color: #ec4899;
+    color: var(--brand-pink);
     text-align: right;
     transition: all 0.18s ease;
 
     &::placeholder {
-        color: #b3a3bd;
+        color: var(--ink-faint);
         font-weight: 400;
         text-align: left;
     }
 
     &:focus {
         outline: none;
-        border-color: #8b5cf6;
-        background: #fff;
+        border-color: var(--brand-violet);
+        background: var(--surface-solid);
         box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
     }
 }
@@ -141,14 +141,14 @@ const handleInput = (event: { target: unknown }): void => {
     top: 50%;
     transform: translateY(-50%);
     font-size: 12px;
-    color: #b3a3bd;
+    color: var(--ink-faint);
     pointer-events: none;
 }
 
 .price-input--muted {
     .price-input-field,
     .price-input-icon {
-        color: #94a3b8;
+        color: var(--ink-muted);
     }
 }
 </style>

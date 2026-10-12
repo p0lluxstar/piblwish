@@ -85,7 +85,7 @@ onUnmounted(unlockBodyScroll);
 
 .modal-body {
     margin-bottom: 24px;
-    color: var(--ink, #241533);
+    color: var(--ink);
     font-size: 14px;
     line-height: 1.5;
 
@@ -96,7 +96,7 @@ onUnmounted(unlockBodyScroll);
     .warning-text {
         font-size: 12px;
         font-weight: 600;
-        color: #ec4899;
+        color: var(--brand-pink);
         margin-bottom: 0;
     }
 }
@@ -110,9 +110,9 @@ onUnmounted(unlockBodyScroll);
     display: flex;
     justify-content: center;
     align-items: center;
-    background: rgba(139, 92, 246, 0.08);
+    background: var(--tint);
     border: none;
-    color: var(--ink, #241533);
+    color: var(--ink);
     border-radius: 18px;
     font-size: 13px;
     font-weight: 600;
@@ -123,7 +123,7 @@ onUnmounted(unlockBodyScroll);
     transition: all 0.2s ease;
 
     &:hover:not(:disabled) {
-        background: rgba(139, 92, 246, 0.14);
+        background: var(--tint-strong);
     }
 
     &:disabled {
@@ -136,7 +136,7 @@ onUnmounted(unlockBodyScroll);
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, #fb7185, #ec4899);
+    background: linear-gradient(135deg, #fb7185, var(--brand-pink));
     border: none;
     color: #fff;
     border-radius: 18px;

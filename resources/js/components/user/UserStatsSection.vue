@@ -64,7 +64,7 @@ const total = computed(() =>
 .stats-hint {
     margin: 0 0 10px;
     font-size: 13px;
-    color: var(--ink, #241533);
+    color: var(--ink);
 
     strong {
         font-weight: 700;
@@ -89,30 +89,30 @@ const total = computed(() =>
     padding: 8px 4px;
     border: 1px solid rgba(139, 92, 246, 0.18);
     border-radius: 12px;
-    background: #fff;
+    background: var(--surface-solid);
 }
 
 // Цвета как у меток типа на карточках дашборда (.card-type в WishlistCard)
 .stats-icon--gift {
-    color: var(--brand-violet, #8b5cf6);
+    color: var(--brand-violet);
 }
 
 .stats-icon--todo {
-    color: #059669;
+    color: var(--success);
 }
 
 .stats-icon--note {
-    color: #b45309;
+    color: var(--warning);
 }
 
 .stats-icon--fund {
-    color: #be185d;
+    color: var(--fund);
 }
 
 .stats-count {
     font-size: 16px;
     font-weight: 700;
-    color: var(--ink, #241533);
+    color: var(--ink);
 }
 
 .stats-label {
@@ -121,6 +121,6 @@ const total = computed(() =>
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 11px;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 </style>

@@ -49,7 +49,7 @@ const label = computed(() => itemPriorityLabels(props.todo)[props.priority]);
     display: inline-flex;
     flex-shrink: 0;
     gap: 1px;
-    color: #ec4899;
+    color: var(--brand-pink);
 }
 
 .priority--todo {
@@ -66,6 +66,6 @@ const label = computed(() => itemPriorityLabels(props.todo)[props.priority]);
 }
 
 .priority--muted {
-    color: #94a3b8;
+    color: var(--ink-muted);
 }
 </style>

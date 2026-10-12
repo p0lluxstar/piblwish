@@ -7,6 +7,11 @@
 // и окна, вынесенные через Teleport в body (настройки аккаунта).
 // Ключи совпадают с картой в appBackgrounds.scss; новый фон добавляется и сюда.
 // Цвета подобраны так, чтобы белый текст на кнопке оставался читаемым.
+//
+// В тёмной теме исходные градиенты слишком светлые для тёмных поверхностей,
+// поэтому для неё задана карта $app-background-gradients-dark с теми же
+// ключами: те же оттенки, но темнее. Селектор с data-theme специфичнее
+// и светлого варианта, и градиента тёмной темы по умолчанию в css/app.css.
 
 $app-background-gradients: (
     blossom: linear-gradient(135deg, #ff7aa8, #a78bfa),
@@ -20,6 +25,22 @@ $app-background-gradients: (
 
 @each $name, $gradient in $app-background-gradients {
     html[data-app-bg='#{$name}'] {
+        --brand-gradient: #{$gradient};
+    }
+}
+
+$app-background-gradients-dark: (
+    blossom: linear-gradient(135deg, #d9507f, #7c5cd6),
+    ocean: linear-gradient(135deg, #0e8ec4, #4446c9),
+    mint: linear-gradient(135deg, #179f72, #0a7069),
+    sand: linear-gradient(135deg, #d06a1c, #b5503c),
+    mist: linear-gradient(135deg, #64748b, #4446c9),
+    stone: linear-gradient(135deg, #6b7280, #374151),
+    cobalt: linear-gradient(135deg, #435d8c, #233d70),
+);
+
+@each $name, $gradient in $app-background-gradients-dark {
+    html[data-theme='dark'][data-app-bg='#{$name}'] {
         --brand-gradient: #{$gradient};
     }
 }

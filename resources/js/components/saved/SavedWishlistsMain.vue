@@ -219,7 +219,7 @@ const refresh = (): void => {
     padding: 9px 18px;
     border: 1.5px solid var(--surface-border);
     border-radius: 20px;
-    background: #fff;
+    background: var(--surface-solid);
     color: var(--brand-violet);
     font-size: 13px;
     font-weight: 600;
@@ -264,7 +264,7 @@ const refresh = (): void => {
     margin: 0 0 16px;
     font-size: 13px;
     font-weight: 600;
-    color: #dc2626;
+    color: var(--danger);
 }
 
 .state {
@@ -274,7 +274,7 @@ const refresh = (): void => {
     justify-content: center;
     min-height: 300px;
     text-align: center;
-    color: var(--app-ink-soft, #6b7280);
+    color: var(--app-ink-soft, var(--ink-muted));
 }
 
 .empty-title {

@@ -108,7 +108,7 @@ const close = (): void => {
     width: 42px;
     height: 31px;
     min-width: 0;
-    background: #fff;
+    background: var(--surface-solid);
     color: var(--ink-soft);
     border: 1.5px solid var(--surface-border);
     border-radius: 20px;
@@ -211,7 +211,7 @@ const close = (): void => {
     &:hover,
     &:focus-visible {
         color: var(--brand-violet);
-        background: rgba(139, 92, 246, 0.08);
+        background: var(--tint);
     }
 }
 </style>

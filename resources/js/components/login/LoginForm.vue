@@ -174,7 +174,7 @@ function cancelVerification(): void {
 .session-expired {
     max-width: 420px;
     margin: 16px 0 0;
-    color: #d14343;
+    color: var(--danger);
     font-size: 14px;
     line-height: 1.4;
 }
@@ -209,17 +209,17 @@ function cancelVerification(): void {
 }
 
 .remember:hover .remember-box {
-    border-color: var(--brand-violet, #8b5cf6);
+    border-color: var(--brand-violet);
     transform: scale(1.08);
 }
 
 .remember-input:checked + .remember-box {
     border-color: transparent;
-    background: var(--brand-violet, #8b5cf6);
+    background: var(--brand-violet);
 }
 
 .remember-input:focus-visible + .remember-box {
-    outline: 2px solid var(--brand-violet, #8b5cf6);
+    outline: 2px solid var(--brand-violet);
     outline-offset: 2px;
 }
 </style>

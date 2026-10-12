@@ -867,7 +867,7 @@ const FAQ: FaqItem[] = [
     padding: 7px 14px;
     border-radius: 20px;
     border: 1.5px solid var(--surface-border);
-    background: #fff;
+    background: var(--surface-solid);
     color: var(--brand-violet);
     font-size: 13px;
     font-weight: 600;
@@ -973,7 +973,7 @@ const FAQ: FaqItem[] = [
     flex-shrink: 0;
     border-radius: 8px;
     border: 1px solid var(--surface-border);
-    background: #fff;
+    background: var(--surface-solid);
     color: var(--brand-violet);
 }
 
@@ -989,7 +989,7 @@ const FAQ: FaqItem[] = [
     gap: 8px;
     padding: 5px 12px;
     border-radius: 20px;
-    background: #fff;
+    background: var(--surface-solid);
     border: 1px solid var(--surface-border);
     font-size: 13px;
 }

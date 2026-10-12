@@ -9,6 +9,7 @@ import LogoutAllDevicesSection from '@/components/user/LogoutAllDevicesSection.v
 import PasswordChangeSection from '@/components/user/PasswordChangeSection.vue';
 import ProfileSection from '@/components/user/ProfileSection.vue';
 import ReminderDaysPicker from '@/components/user/ReminderDaysPicker.vue';
+import ThemePicker from '@/components/user/ThemePicker.vue';
 import UserSettingToggle from '@/components/user/UserSettingToggle.vue';
 import UserStatsSection from '@/components/user/UserStatsSection.vue';
 import { lockBodyScroll, unlockBodyScroll } from '@/lib/bodyScrollLock';
@@ -62,7 +63,9 @@ const closeModal = (): void => {
                 <UserStatsSection />
 
                 <section class="background-section">
-                    <h3 class="section-title">Фон приложения</h3>
+                    <h3 class="section-title">Оформление</h3>
+
+                    <ThemePicker />
 
                     <AppBackgroundPicker />
                 </section>
@@ -172,7 +175,7 @@ const closeModal = (): void => {
     border: 1.5px solid rgba(225, 29, 72, 0.25);
     border-radius: 18px;
     background: transparent;
-    color: #e11d48;
+    color: var(--danger-strong);
     font-size: 13px;
     font-weight: 600;
     font-family: inherit;
@@ -180,13 +183,13 @@ const closeModal = (): void => {
     transition: all 0.2s ease;
 }
 .delete-account-btn:hover {
-    background: #e11d48;
+    background: var(--danger-strong);
     color: #fff;
     border-color: transparent;
 }
 
 .delete-confirm {
-    color: var(--ink, #241533);
+    color: var(--ink);
     font-size: 13px;
     line-height: 1.5;
 
@@ -197,7 +200,7 @@ const closeModal = (): void => {
     .warning-text {
         font-size: 12px;
         font-weight: 600;
-        color: #ec4899;
+        color: var(--brand-pink);
         margin-bottom: 14px;
     }
 }
@@ -215,7 +218,7 @@ const closeModal = (): void => {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, #fb7185, #ec4899);
+    background: linear-gradient(135deg, #fb7185, var(--brand-pink));
     border: none;
     color: #fff;
     border-radius: 18px;

@@ -113,7 +113,7 @@ const toggle = (): void => {
 // Список уже добавлен: спокойная кнопка, по нажатию закладка убирается
 .save-btn--saved {
     border: 1.5px solid var(--surface-border);
-    background: #fff;
+    background: var(--surface-solid);
     color: var(--brand-violet);
     box-shadow: none;
 
@@ -140,6 +140,6 @@ const toggle = (): void => {
     margin: 0;
     font-size: 12px;
     font-weight: 600;
-    color: #dc2626;
+    color: var(--danger);
 }
 </style>

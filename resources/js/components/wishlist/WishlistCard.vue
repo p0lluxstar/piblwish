@@ -912,7 +912,11 @@ $card-height: 280px;
     padding: 20px;
     // Тень в тон цвету списка; без цвета (white) — нейтральная серо-голубая
     box-shadow: 0 8px 24px -14px
-        color-mix(in srgb, var(--wishlist-glow, #64748b) 25%, transparent);
+        color-mix(
+            in srgb,
+            var(--wishlist-glow, var(--ink-muted)) 25%,
+            transparent
+        );
     transition:
         transform 0.25s ease,
         box-shadow 0.25s ease;
@@ -924,7 +928,11 @@ $card-height: 280px;
 .card:hover {
     transform: translateY(-6px) scale(1.015);
     box-shadow: 0 22px 48px -16px
-        color-mix(in srgb, var(--wishlist-glow, #64748b) 40%, transparent);
+        color-mix(
+            in srgb,
+            var(--wishlist-glow, var(--ink-muted)) 40%,
+            transparent
+        );
 }
 
 // Слой на всю карточку центрирует значок; значок не перехватывает клики
@@ -938,7 +946,7 @@ $card-height: 280px;
     pointer-events: none;
 
     svg {
-        color: var(--wishlist-glow, #64748b);
+        color: var(--wishlist-glow, var(--ink-muted));
         opacity: 0.04;
         transform: rotate(-15deg);
         transition: transform 0.35s ease;
@@ -973,7 +981,7 @@ $card-height: 280px;
     // Справа и в своей строке, если ряд перенёсся
     margin-left: auto;
     font-size: 10px;
-    color: #b3b3b3;
+    color: var(--ink-faint);
 
     .card-actions-btn {
         display: grid;
@@ -1013,7 +1021,7 @@ $card-height: 280px;
 }
 
 .copy-tooltip--error {
-    background: #ef4444;
+    background: var(--danger);
 }
 
 .copy-tooltip-enter-active,
@@ -1073,7 +1081,11 @@ $card-height: 280px;
         background: rgba(139, 92, 246, 0.3);
 
         &:hover {
-            background: linear-gradient(180deg, #8b5cf6, #ec4899);
+            background: linear-gradient(
+                180deg,
+                var(--brand-violet),
+                var(--brand-pink)
+            );
         }
     }
 }
@@ -1183,13 +1195,13 @@ $card-height: 280px;
     flex-shrink: 0;
     font-size: 12px;
     font-weight: 600;
-    color: #6b5b7b;
+    color: var(--ink-soft);
     white-space: nowrap;
 }
 
 // Выполненное дело: серый зачёркнутый текст, без фона забронированного подарка
 .item.item--done .item-label {
-    color: #94a3b8;
+    color: var(--ink-muted);
     text-decoration: line-through;
 }
 
@@ -1205,14 +1217,14 @@ $card-height: 280px;
     // Серые текст, цена и ссылка в тон значку подарка и сердечкам, как на общей странице
     .item-label,
     .item-price {
-        color: #94a3b8;
+        color: var(--ink-muted);
     }
 
     .item-link {
-        color: #94a3b8;
+        color: var(--ink-muted);
 
         &:hover {
-            color: #64748b;
+            color: var(--ink-muted);
             background: rgba(148, 163, 184, 0.22);
         }
     }
@@ -1264,14 +1276,14 @@ $card-height: 280px;
     // Выполненное дело: форма значка выбранного подарка, но зелёный градиент,
     // как у полосы прогресса списка дел
     &.reserved-icon {
-        background: linear-gradient(135deg, #6ee7b7, #10b981);
+        background: linear-gradient(135deg, #6ee7b7, var(--success-bright));
     }
 
     &.checkbox-custom {
         border-color: rgba(16, 185, 129, 0.45);
 
         &:hover {
-            border-color: #10b981;
+            border-color: var(--success-bright);
         }
     }
 }
@@ -1311,7 +1323,7 @@ $card-height: 280px;
     padding: 3px 10px;
     border: 1px solid rgba(139, 92, 246, 0.25);
     border-radius: 7px;
-    background: #fff;
+    background: var(--surface-solid);
     font-size: 12px;
     font-weight: 600;
     color: var(--ink);
@@ -1325,12 +1337,12 @@ $card-height: 280px;
 
 .uncheck-confirm-btn--danger {
     border-color: transparent;
-    background: #ef4444;
+    background: var(--danger);
     color: #fff;
 
     &:hover {
         border-color: transparent;
-        background: #dc2626;
+        background: var(--danger);
     }
 }
 
@@ -1342,14 +1354,14 @@ $card-height: 280px;
     width: 19px;
     height: 19px;
     border-radius: 7px;
-    background: linear-gradient(135deg, #ddd6fe, #8b5cf6);
+    background: linear-gradient(135deg, #ddd6fe, var(--brand-violet));
     color: #fff;
 }
 
 // В тон метке «Сбор», чтобы цель не путалась с выбранным подарком;
 // фон насыщенный, чтобы на нём был виден белый значок
 .item-bullet--fund {
-    background: linear-gradient(135deg, #fbcfe8, #ec4899);
+    background: linear-gradient(135deg, #fbcfe8, var(--brand-pink));
 }
 
 .card-badges {
@@ -1371,23 +1383,23 @@ $card-height: 280px;
 }
 
 .card-type--gift {
-    background: rgba(139, 92, 246, 0.12);
+    background: var(--tint-strong);
     color: var(--brand-violet);
 }
 
 .card-type--todo {
     background: rgba(16, 185, 129, 0.14);
-    color: #059669;
+    color: var(--success);
 }
 
 .card-type--note {
     background: rgba(245, 158, 11, 0.16);
-    color: #b45309;
+    color: var(--warning);
 }
 
 .card-type--fund {
     background: rgba(236, 72, 153, 0.13);
-    color: #be185d;
+    color: var(--fund);
 }
 
 // Поле без рамки и фона выглядит как обычный текст карточки. Высота растёт
@@ -1462,7 +1474,7 @@ $card-height: 280px;
 
 // В тон метке «Дела»
 .card-shared {
-    color: #059669;
+    color: var(--success);
 }
 
 .card-hidden {
@@ -1491,7 +1503,7 @@ $card-height: 280px;
 .card-progress {
     width: 100%;
     height: 5px;
-    background: rgba(139, 92, 246, 0.1);
+    background: var(--tint);
     border-radius: 999px;
     overflow: hidden;
 }
@@ -1525,7 +1537,7 @@ $card-height: 280px;
 // Прогресс списка дел — зелёный, списка желаний — фирменный градиент
 .card--todo {
     .progress-percent {
-        color: #059669;
+        color: var(--success);
     }
 
     .card-progress {
@@ -1533,7 +1545,7 @@ $card-height: 280px;
     }
 
     .card-progress-fill {
-        background: linear-gradient(135deg, #6ee7b7, #10b981);
+        background: linear-gradient(135deg, #6ee7b7, var(--success-bright));
     }
 }
 
@@ -1554,7 +1566,7 @@ $card-height: 280px;
     gap: 4px;
     font-size: 11px;
     line-height: normal;
-    color: #baa7c7;
+    color: var(--ink-faint);
 
     // Flex выравнивает значок по центру строки, в которую входит место под
     // выносные элементы букв (у, р), поэтому сами цифры и буквы даты стоят
@@ -1578,7 +1590,11 @@ $card-height: 280px;
     &:hover {
         transform: none;
         box-shadow: 0 8px 24px -14px
-            color-mix(in srgb, var(--wishlist-glow, #64748b) 25%, transparent);
+            color-mix(
+                in srgb,
+                var(--wishlist-glow, var(--ink-muted)) 25%,
+                transparent
+            );
     }
 
     // Отступы ряда 14px сверху и 18px слева. Справа от кнопок — крестик

@@ -38,6 +38,19 @@
     <meta name="twitter:title" content="{{ $ogTitle }}">
     <meta name="twitter:description" content="{{ $ogDescription }}">
     <meta name="twitter:image" content="{{ $ogImage }}">
+    {{-- Тема ставится до загрузки стилей и приложения, чтобы страница не мигала
+         светлой. Ключ и значения совпадают с composables/useTheme.ts --}}
+    <script>
+        (function () {
+            var preference = 'system';
+            try {
+                preference = localStorage.getItem('app-theme') || 'system';
+            } catch (e) {}
+            var dark = preference === 'dark'
+                || (preference !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        })();
+    </script>
     @vite(['resources/css/app.css', 'resources/js/app.ts'])
     <title>{{ $pageTitle }}</title>
 </head>

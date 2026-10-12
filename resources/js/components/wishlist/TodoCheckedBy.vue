@@ -78,7 +78,7 @@ const fullLabel = computed(() => {
     font-style: italic;
     line-height: 1.3;
     text-align: right;
-    color: #94a3b8;
+    color: var(--ink-muted);
     overflow-wrap: anywhere;
 }
 
@@ -86,7 +86,7 @@ const fullLabel = computed(() => {
 .todo-checked-by--own {
     font-style: normal;
     font-weight: 600;
-    color: #059669;
+    color: var(--success);
 }
 
 // Введённое гостем имя рядом с «Вы» — обычным начертанием, чтобы «Вы»

@@ -73,11 +73,11 @@ function updateValue(event: Event): void {
 
 .input {
     width: 100%;
-    border: 1.5px solid var(--surface-border, rgba(139, 92, 246, 0.14));
+    border: 1.5px solid var(--surface-border);
     border-radius: 16px;
     padding: 16px 18px;
-    background: rgba(255, 255, 255, 0.78);
-    color: var(--ink, #241533);
+    background: var(--surface);
+    color: var(--ink);
     font-size: 16px;
     outline: none;
     box-shadow: 0 12px 28px rgba(92, 62, 97, 0.06);
@@ -92,19 +92,19 @@ function updateValue(event: Event): void {
 }
 
 .input::placeholder {
-    color: #a1849f;
+    color: var(--ink-muted);
 }
 
 .input:focus {
-    border-color: var(--brand-violet, #8b5cf6);
-    background: #ffffff;
+    border-color: var(--brand-violet);
+    background: var(--surface-solid);
     box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.14);
 }
 
 /* Цвет как у текста ошибки в FormErrorMessage */
 .input--invalid,
 .input--invalid:focus {
-    border-color: #d14343;
+    border-color: var(--danger);
 }
 
 .input--invalid:focus {

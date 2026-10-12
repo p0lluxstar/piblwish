@@ -70,12 +70,12 @@ const status = computed<DueDateStatus | null>(() =>
     margin-bottom: 8px;
     font-weight: 600;
     font-size: 13px;
-    color: var(--ink, #241533);
+    color: var(--ink);
 }
 
 .due-date-optional {
     font-weight: 500;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 
 .due-date-row {
@@ -93,14 +93,14 @@ const status = computed<DueDateStatus | null>(() =>
     border-radius: 14px;
     font-size: 14px;
     font-family: inherit;
-    color: var(--ink, #241533);
-    background: #faf8ff;
+    color: var(--ink);
+    background: var(--surface-soft);
     transition: all 0.18s ease;
 
     &:focus {
         outline: none;
-        border-color: #8b5cf6;
-        background: #fff;
+        border-color: var(--brand-violet);
+        background: var(--surface-solid);
         box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
     }
 }
@@ -109,7 +109,7 @@ const status = computed<DueDateStatus | null>(() =>
     padding: 0;
     border: none;
     background: none;
-    color: #8b5cf6;
+    color: var(--brand-violet);
     font-size: 12px;
     font-weight: 600;
     font-family: inherit;
@@ -123,6 +123,6 @@ const status = computed<DueDateStatus | null>(() =>
 .due-date-hint {
     margin-top: 6px;
     font-size: 12px;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 </style>

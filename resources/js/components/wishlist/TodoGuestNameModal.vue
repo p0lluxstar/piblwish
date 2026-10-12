@@ -119,7 +119,7 @@ onUnmounted(unlockBodyScroll);
     margin: 0 0 16px;
     font-size: 13px;
     line-height: 1.5;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 
 .actions {
@@ -137,16 +137,16 @@ onUnmounted(unlockBodyScroll);
     padding: 12px;
     border: none;
     border-radius: 18px;
-    background: rgba(139, 92, 246, 0.08);
+    background: var(--tint);
     font-family: inherit;
     font-size: 13px;
     font-weight: 600;
-    color: var(--ink, #241533);
+    color: var(--ink);
     cursor: pointer;
     transition: all 0.2s ease;
 
     &:hover {
-        background: rgba(139, 92, 246, 0.14);
+        background: var(--tint-strong);
     }
 }
 </style>

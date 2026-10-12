@@ -58,14 +58,14 @@ defineProps<{
     cursor: pointer;
 
     &:focus-visible {
-        outline: 2px solid var(--brand-violet, #8b5cf6);
+        outline: 2px solid var(--brand-violet);
         outline-offset: 2px;
     }
 }
 
 .toggle-switch-icon {
     flex-shrink: 0;
-    color: var(--brand-violet, #8b5cf6);
+    color: var(--brand-violet);
 }
 
 .toggle-switch-text {
@@ -81,7 +81,7 @@ defineProps<{
 .toggle-switch-title {
     font-size: 13px;
     font-weight: 600;
-    color: var(--ink, #241533);
+    color: var(--ink);
 }
 
 .toggle-switch-hint {
@@ -90,7 +90,7 @@ defineProps<{
     gap: 5px;
     font-size: 10px;
     line-height: 1.3;
-    color: #8a7a99;
+    color: var(--ink-muted);
 }
 
 .toggle-switch-track {
@@ -110,16 +110,13 @@ defineProps<{
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: #fff;
+    background: var(--surface-solid);
     box-shadow: 0 1px 3px rgba(36, 21, 51, 0.25);
     transition: transform 0.18s ease;
 }
 
 .is-active .toggle-switch-track {
-    background: var(
-        --brand-gradient,
-        linear-gradient(135deg, #8b5cf6, #ec4899)
-    );
+    background: var(--brand-gradient);
 }
 
 .is-active .toggle-switch-thumb {

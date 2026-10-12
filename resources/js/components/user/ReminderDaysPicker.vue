@@ -122,20 +122,20 @@ $thumb-size: 16px;
     margin-bottom: 8px;
     font-size: 13px;
     font-weight: 600;
-    color: var(--ink, #241533);
+    color: var(--ink);
 }
 
 .reminder-days-value {
     flex-shrink: 0;
-    color: var(--brand-violet, #8b5cf6);
+    color: var(--brand-violet);
 }
 
 @mixin thumb {
     width: $thumb-size;
     height: $thumb-size;
-    border: 2px solid var(--brand-violet, #8b5cf6);
+    border: 2px solid var(--brand-violet);
     border-radius: 50%;
-    background: #fff;
+    background: var(--surface-solid);
     box-shadow: 0 2px 6px rgba(139, 92, 246, 0.35);
     cursor: pointer;
     transition: transform 0.15s ease;
@@ -155,7 +155,7 @@ $thumb-size: 16px;
         border-radius: 2px;
         background: linear-gradient(
             to right,
-            var(--brand-violet, #8b5cf6) var(--fill),
+            var(--brand-violet) var(--fill),
             rgba(139, 92, 246, 0.18) var(--fill)
         );
     }
@@ -175,7 +175,7 @@ $thumb-size: 16px;
     &::-moz-range-progress {
         height: 4px;
         border-radius: 2px;
-        background: var(--brand-violet, #8b5cf6);
+        background: var(--brand-violet);
     }
 
     &::-moz-range-thumb {
@@ -191,7 +191,7 @@ $thumb-size: 16px;
     }
 
     &:focus-visible {
-        outline: 2px solid var(--brand-violet, #8b5cf6);
+        outline: 2px solid var(--brand-violet);
         outline-offset: 4px;
         border-radius: 4px;
     }
@@ -213,7 +213,7 @@ $thumb-size: 16px;
     margin-top: 4px;
     padding: 0 calc(#{$thumb-size} / 2 - 4px);
     font-size: 11px;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 
     span {
         width: 8px;
@@ -222,7 +222,7 @@ $thumb-size: 16px;
 
     .is-active {
         font-weight: 700;
-        color: var(--brand-violet, #8b5cf6);
+        color: var(--brand-violet);
     }
 }
 

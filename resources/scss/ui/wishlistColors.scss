@@ -8,6 +8,10 @@
 //
 // glow — насыщенный оттенок того же цвета для тени карточки (--wishlist-glow):
 // сам фон слишком бледный, тень такого цвета была бы почти не видна.
+//
+// Тёмная тема: $wishlist-colors-dark с теми же ключами — тёмный фон того же
+// оттенка и более светлый glow. У white переменные не задаются и в тёмной
+// теме: компонент берёт свою обычную поверхность (--surface, --surface-solid).
 
 @use 'sass:map';
 
@@ -40,8 +44,44 @@ $wishlist-colors: (
     ),
 );
 
+$wishlist-colors-dark: (
+    'lavender': (
+        bg: #2a2240,
+        glow: #a78bfa,
+    ),
+    'pink': (
+        bg: #352032,
+        glow: #f472b6,
+    ),
+    'peach': (
+        bg: #35251c,
+        glow: #fb923c,
+    ),
+    'lemon': (
+        bg: #302c18,
+        glow: #facc15,
+    ),
+    'mint': (
+        bg: #172e26,
+        glow: #34d399,
+    ),
+    'sky': (
+        bg: #172a43,
+        glow: #60a5fa,
+    ),
+);
+
 @each $name, $color in $wishlist-colors {
     .wishlist-color--#{$name} {
+        --wishlist-bg: #{map.get($color, bg)};
+        --wishlist-glow: #{map.get($color, glow)};
+    }
+}
+
+// Файл подключается в scoped-стили; атрибут области получает только
+// последний селектор, :root ему не мешает
+@each $name, $color in $wishlist-colors-dark {
+    :root[data-theme='dark'] .wishlist-color--#{$name} {
         --wishlist-bg: #{map.get($color, bg)};
         --wishlist-glow: #{map.get($color, glow)};
     }

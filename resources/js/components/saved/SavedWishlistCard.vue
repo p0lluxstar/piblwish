@@ -209,7 +209,11 @@ const confirmRemove = (): void => {
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     box-shadow: 0 8px 24px -14px
-        color-mix(in srgb, var(--wishlist-glow, #64748b) 25%, transparent);
+        color-mix(
+            in srgb,
+            var(--wishlist-glow, var(--ink-muted)) 25%,
+            transparent
+        );
 }
 
 .card--unavailable {
@@ -237,18 +241,18 @@ const confirmRemove = (): void => {
 }
 
 .card-type--gift {
-    background: rgba(139, 92, 246, 0.12);
+    background: var(--tint-strong);
     color: var(--brand-violet);
 }
 
 .card-type--todo {
     background: rgba(16, 185, 129, 0.14);
-    color: #059669;
+    color: var(--success);
 }
 
 .card-type--fund {
     background: rgba(236, 72, 153, 0.13);
-    color: #be185d;
+    color: var(--fund);
 }
 
 .remove-btn {
@@ -260,7 +264,7 @@ const confirmRemove = (): void => {
     border: none;
     border-radius: 8px;
     background: none;
-    color: #b3b3b3;
+    color: var(--ink-faint);
     cursor: pointer;
     transition: all 0.18s ease;
 
@@ -371,7 +375,7 @@ const confirmRemove = (): void => {
     padding: 7px;
     border: 1.5px solid var(--surface-border);
     border-radius: 14px;
-    background: #fff;
+    background: var(--surface-solid);
     color: var(--brand-violet);
     font-size: 12px;
     font-weight: 700;
@@ -386,7 +390,7 @@ const confirmRemove = (): void => {
 
 .card-confirm-btn--danger {
     border-color: transparent;
-    background: linear-gradient(135deg, #fb7185, #ec4899);
+    background: linear-gradient(135deg, #fb7185, var(--brand-pink));
     color: #fff;
 }
 </style>

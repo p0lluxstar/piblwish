@@ -892,7 +892,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 
 // Превью цвета списка; для white — прежний белый фон модалки
 .modal {
-    background: var(--wishlist-bg, #fff);
+    background: var(--wishlist-bg, var(--surface-solid));
     transition: background-color 0.2s ease;
 }
 
@@ -911,7 +911,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
     padding: 16px;
     border: 1.5px solid rgba(139, 92, 246, 0.2);
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.6);
+    background: var(--surface);
     text-align: left;
     cursor: pointer;
     transition: all 0.18s ease;
@@ -953,7 +953,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 
 .type-option-description {
     font-size: 12px;
-    color: #6b5b7b;
+    color: var(--ink-soft);
 }
 
 .back-btn {

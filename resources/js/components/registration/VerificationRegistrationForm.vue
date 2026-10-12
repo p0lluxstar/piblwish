@@ -148,7 +148,7 @@ async function resendCode(): Promise<void> {
 
 .expired-text {
     margin: 0;
-    color: var(--muted, #7a6278);
+    color: var(--muted, var(--ink-muted));
     font-size: 14px;
     line-height: 1.4;
     text-align: center;

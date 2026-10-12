@@ -10,6 +10,7 @@ import {
 import { computed, ref } from 'vue';
 
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
+import ThemeToggleButton from '@/components/ui/ThemeToggleButton.vue';
 import UserAvatar from '@/components/ui/UserAvatar.vue';
 import UserSettingsModal from '@/components/user/UserSettingsModal.vue';
 import { useDeleteAccount, useLogout } from '@/composables/useAuth';
@@ -140,7 +141,9 @@ const handleDeleteAccount = (): void => {
                     />
                 </button>
             </div>
+            <!-- Вошедший пользователь выбирает тему в окне настроек -->
             <div v-else class="guest-actions">
+                <ThemeToggleButton />
                 <router-link to="/registration" class="guest-btn">
                     Регистрация
                 </router-link>
@@ -306,7 +309,7 @@ const handleDeleteAccount = (): void => {
 }
 .nav-link:hover {
     color: var(--brand-violet);
-    background: rgba(139, 92, 246, 0.08);
+    background: var(--tint);
 }
 /* Ссылка на открытую страницу: заливка фирменным градиентом, чтобы отличаться от наведения */
 .nav-link.router-link-active {
@@ -362,7 +365,7 @@ const handleDeleteAccount = (): void => {
     font-weight: 700;
     color: #fff;
     box-shadow: var(--shadow-glow);
-    border: 2px solid #fff;
+    border: 2px solid var(--surface-solid);
 }
 
 .settings-btn {
@@ -375,7 +378,7 @@ const handleDeleteAccount = (): void => {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 2px solid #fff;
+    border: 2px solid var(--surface-solid);
     background: var(--brand-amber);
     color: #4a2e00;
     cursor: pointer;
@@ -390,7 +393,7 @@ const handleDeleteAccount = (): void => {
     justify-content: center;
     align-items: center;
     gap: 6px;
-    background: rgba(139, 92, 246, 0.08);
+    background: var(--tint);
     border: 1px solid transparent;
     padding: 6px 16px;
     border-radius: 20px;
@@ -443,12 +446,12 @@ const handleDeleteAccount = (): void => {
     font-size: 13px;
     font-weight: 600;
     color: var(--brand-violet);
-    background: rgba(139, 92, 246, 0.08);
+    background: var(--tint);
     text-decoration: none;
     transition: all 0.2s ease;
 }
 .guest-btn:hover {
-    background: rgba(139, 92, 246, 0.14);
+    background: var(--tint-strong);
     transform: translateY(-1px);
 }
 

@@ -1372,7 +1372,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 
 // Превью цвета списка; для white — прежний белый фон модалки
 .modal {
-    background: var(--wishlist-bg, #fff);
+    background: var(--wishlist-bg, var(--surface-solid));
     transition: background-color 0.2s ease;
 }
 
@@ -1433,13 +1433,13 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
     background: transparent;
     font-size: 11px;
     font-weight: 600;
-    color: #db2777;
+    color: var(--pink-strong);
     cursor: pointer;
     transition: all 0.18s ease;
 
     &:hover:not(:disabled) {
         color: #fff;
-        background: #ec4899;
+        background: var(--brand-pink);
     }
 
     &:disabled {
@@ -1451,14 +1451,14 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 // Подтверждение для этой позиции открыто
 .clear-selection-btn--active {
     color: #fff;
-    background: #ec4899;
+    background: var(--brand-pink);
 }
 
 .clear-selection-btn--secondary {
-    color: #8a7a99;
+    color: var(--ink-muted);
 
     &:hover:not(:disabled) {
-        background: #8a7a99;
+        background: var(--ink-muted);
     }
 }
 
@@ -1475,14 +1475,14 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: #b3b3b3;
+    color: var(--ink-faint);
     cursor: pointer;
     transition: all 0.15s ease;
 
     &:hover,
     &--active {
         color: var(--brand-violet);
-        background: rgba(139, 92, 246, 0.1);
+        background: var(--tint);
     }
 
     &:focus-visible {
@@ -1508,7 +1508,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
     margin: 0;
     font-size: 11px;
     line-height: 1.4;
-    color: #6b5a7b;
+    color: var(--ink-soft);
 }
 
 .free-confirm-actions {
@@ -1521,11 +1521,11 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
     margin: 0;
     font-size: 11px;
     line-height: 1.4;
-    color: #8a7a99;
+    color: var(--ink-muted);
 }
 
 .item-selection-message--error {
-    color: #e11d48;
+    color: var(--danger-strong);
 }
 
 .clear-selection-spinner {
@@ -1546,21 +1546,21 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
     margin: 4px 0 0;
     font-size: 11px;
     line-height: 1.4;
-    color: #8a7a99;
+    color: var(--ink-muted);
 }
 
 .selection-status--error {
-    color: #e11d48;
+    color: var(--danger-strong);
 }
 
 // Выполненное дело: зелёный градиент, как в карточке списка дел
 .wishlist-item--todo .checkbox-input:checked + .checkbox-custom {
-    background: linear-gradient(135deg, #6ee7b7, #10b981);
+    background: linear-gradient(135deg, #6ee7b7, var(--success-bright));
 }
 
 // Выполненное дело: текст серый и зачёркнут, как в карточке
 .wishlist-item--done input[type='text'] {
-    color: #94a3b8;
+    color: var(--ink-muted);
     text-decoration: line-through;
 }
 </style>

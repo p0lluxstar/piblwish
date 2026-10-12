@@ -2,6 +2,8 @@
 import { CreditCardCheck, Gift, ListChecks, StickyNote } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
+import ThemeToggleButton from '@/components/ui/ThemeToggleButton.vue';
+
 import dashboardSlideImage from '../../images/slide-dashboard.jpg';
 import editSlideImage from '../../images/slide-edit.jpg';
 import sharedSlideImage from '../../images/slide-shared.jpg';
@@ -90,15 +92,19 @@ function resetImage(): void {
 <template>
     <main class="landing" @mousemove="handleMouseMove" @mouseleave="resetImage">
         <section class="left-panel">
-            <router-link to="/" class="brand-link">
-                <div class="brand">
-                    <div class="logo">
-                        <Gift :size="30" color="#fff" />
-                        <span class="logo-spark">✦</span>
+            <div class="top-row">
+                <router-link to="/" class="brand-link">
+                    <div class="brand">
+                        <div class="logo">
+                            <Gift :size="30" color="#fff" />
+                            <span class="logo-spark">✦</span>
+                        </div>
+                        <h1>PiblWish</h1>
                     </div>
-                    <h1>PiblWish</h1>
-                </div>
-            </router-link>
+                </router-link>
+
+                <ThemeToggleButton />
+            </div>
 
             <div class="hero-content">
                 <router-view />
@@ -187,15 +193,43 @@ function resetImage(): void {
     box-sizing: border-box;
 }
 
+/* Цвета лендинга, которые зависят от темы */
+.landing {
+    --landing-bg:
+        radial-gradient(circle at 24% 22%, #ff8fab47, #0000 34%),
+        radial-gradient(circle at 76% 72%, #c4b5fd57, #0000 38%),
+        linear-gradient(135deg, #fffafd 0%, #f7f3ff 100%);
+    --landing-panel-bg: linear-gradient(
+        135deg,
+        #fff7fb 0%,
+        #fff1f5 48%,
+        #f5f3ff 100%
+    );
+    --landing-panel-border: #e2c3d373;
+    --landing-chip-border: rgba(255, 255, 255, 0.9);
+}
+
+:root[data-theme='dark'] .landing {
+    --landing-bg:
+        radial-gradient(circle at 24% 22%, #db277730, #0000 34%),
+        radial-gradient(circle at 76% 72%, #7c3aed38, #0000 38%),
+        linear-gradient(135deg, #17111d 0%, #130f1d 100%);
+    --landing-panel-bg: linear-gradient(
+        135deg,
+        #1d1420 0%,
+        #1b1220 48%,
+        #16122a 100%
+    );
+    --landing-panel-border: rgba(167, 139, 250, 0.16);
+    --landing-chip-border: rgba(167, 139, 250, 0.2);
+}
+
 .landing {
     min-height: 100vh;
     display: grid;
     grid-template-columns: minmax(320px, 42%) 1fr;
     overflow: hidden;
-    background:
-        radial-gradient(circle at 24% 22%, #ff8fab47, #0000 34%),
-        radial-gradient(circle at 76% 72%, #c4b5fd57, #0000 38%),
-        linear-gradient(135deg, #fffafd 0%, #f7f3ff 100%);
+    background: var(--landing-bg);
     color: var(--ink);
     font-family:
         Inter,
@@ -213,8 +247,16 @@ function resetImage(): void {
     flex-direction: column;
     min-height: 100vh;
     padding: 56px;
-    background: linear-gradient(135deg, #fff7fb 0%, #fff1f5 48%, #f5f3ff 100%);
-    border-right: 1px solid #e2c3d373;
+    background: var(--landing-panel-bg);
+    border-right: 1px solid var(--landing-panel-border);
+}
+
+/* Логотип и переключатель темы в одной строке */
+.top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
 }
 
 /* Логотип в обычном потоке: форма центрируется в оставшемся месте и не наезжает на него при низком окне */
@@ -293,10 +335,7 @@ function resetImage(): void {
     place-items: center;
     padding: 56px;
     overflow: hidden;
-    background:
-        radial-gradient(circle at 24% 22%, #ff8fab47, #0000 34%),
-        radial-gradient(circle at 76% 72%, #c4b5fd57, #0000 38%),
-        linear-gradient(135deg, #fffafd 0%, #f7f3ff 100%);
+    background: var(--landing-bg);
 }
 
 .image-glow {
@@ -314,9 +353,9 @@ function resetImage(): void {
     width: min(46vw, 620px);
     height: min(62vh, 620px);
     overflow: hidden;
-    border: 4px solid rgba(255, 255, 255, 0.9);
+    border: 4px solid var(--surface-strong);
     border-radius: var(--radius-xl);
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--surface-strong);
     box-shadow: var(--shadow-glow-lg);
     transition: transform 0.16s ease-out;
     will-change: transform;
@@ -451,13 +490,13 @@ function resetImage(): void {
     z-index: 2;
     padding: 14px 20px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.85);
+    background: var(--surface-strong);
     color: var(--ink);
     font-size: 15px;
     font-weight: 800;
     box-shadow: var(--shadow-glow);
     backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--landing-chip-border);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -473,15 +512,15 @@ function resetImage(): void {
 }
 
 .floating-card-icon--todo {
-    color: #059669;
+    color: var(--success);
 }
 
 .floating-card-icon--note {
-    color: #b45309;
+    color: var(--warning);
 }
 
 .floating-card-icon--fund {
-    color: #be185d;
+    color: var(--fund);
 }
 
 .card-one {

@@ -292,7 +292,7 @@ const confirm = (): void => {
     margin: 0 0 12px;
     font-size: 13px;
     line-height: 1.5;
-    color: var(--ink, #241533);
+    color: var(--ink);
     overflow-wrap: anywhere;
 }
 
@@ -302,14 +302,14 @@ const confirm = (): void => {
     padding: 0;
     border: none;
     background: none;
-    color: #8b5cf6;
+    color: var(--brand-violet);
     font-size: 12px;
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
 
     &:disabled {
-        color: rgba(36, 21, 51, 0.45);
+        color: var(--ink-muted);
         cursor: default;
     }
 }
