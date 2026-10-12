@@ -1,9 +1,9 @@
 @php
     // Мета-теги превью ссылки. Общая страница списка передаёт $meta
     // (SharedWishlistPageController), остальные страницы получают общие теги сайта
-    $siteName = 'PiblWish';
-    $pageTitle = isset($meta) ? $meta['title'].' — '.$siteName : $siteName.' - Твои желания в одном месте';
-    $ogTitle = $meta['title'] ?? $siteName.' — твои желания в одном месте';
+    $siteName = 'PiblKit';
+    $pageTitle = isset($meta) ? $meta['title'].' — '.$siteName : $siteName.' - Желания, дела, сборы и заметки в одном месте';
+    $ogTitle = $meta['title'] ?? $siteName.' — желания, дела, сборы и заметки в одном месте';
     $ogDescription = $meta['description']
         ?? 'Списки желаний, дела, заметки и сборы. Делитесь ссылкой с друзьями — они выберут подарок, а сюрприз сохранится.';
     // Адреса строятся от APP_URL, как и адрес фото пользователя: за прокси
@@ -33,7 +33,7 @@
     <meta property="og:image" content="{{ $ogImage }}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="{{ $siteName }} — твои желания в одном месте">
+    <meta property="og:image:alt" content="{{ $siteName }} — желания, дела, сборы и заметки в одном месте">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ $ogTitle }}">
     <meta name="twitter:description" content="{{ $ogDescription }}">

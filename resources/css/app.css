@@ -84,7 +84,7 @@
        выделяется слишком сильно. Варианты под фон приложения — в
        scss/ui/appBackgroundGradients.scss; здесь — для страниц без фона
        (лендинг, вход) */
-    --brand-gradient: linear-gradient(135deg, #d9507f, #7c5cd6);
+    --brand-gradient: linear-gradient(135deg, #a0385c, #563ea0);
     --page-bg: #130f1b;
     --ink: #f2ecf9;
     --ink-soft: #bbadca;

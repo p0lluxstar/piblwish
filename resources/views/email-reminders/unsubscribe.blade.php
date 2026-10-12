@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
-    <title>Напоминания о сроке — PiblWish</title>
+    <title>Напоминания о сроке — PiblKit</title>
 </head>
 
 <body
@@ -57,7 +57,7 @@
         @endif
 
         <p style="margin: 20px 0 0;">
-            <a href="{{ url('/dashboard') }}" style="color: #2c3e50;">Перейти в PiblWish</a>
+            <a href="{{ url('/dashboard') }}" style="color: #2c3e50;">Перейти в PiblKit</a>
         </p>
     </div>
 </body>

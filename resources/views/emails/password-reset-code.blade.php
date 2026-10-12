@@ -17,7 +17,7 @@
 
     <p>
         Для смены пароля от аккаунта в системе
-        <strong>«PiblWish»</strong>
+        <strong>«PiblKit»</strong>
         введите следующий код:
     </p>
 

@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { CreditCardCheck, Gift, ListChecks, StickyNote } from '@lucide/vue';
+import {
+    CreditCardCheck,
+    Gift,
+    LayoutGrid,
+    ListChecks,
+    StickyNote,
+} from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import ThemeToggleButton from '@/components/ui/ThemeToggleButton.vue';
@@ -96,10 +102,10 @@ function resetImage(): void {
                 <router-link to="/" class="brand-link">
                     <div class="brand">
                         <div class="logo">
-                            <Gift :size="30" color="#fff" />
+                            <LayoutGrid :size="33" color="#fff" />
                             <span class="logo-spark">✦</span>
                         </div>
-                        <h1>PiblWish</h1>
+                        <h1>PiblKit</h1>
                     </div>
                 </router-link>
 
@@ -299,8 +305,8 @@ function resetImage(): void {
 
 .logo-spark {
     position: absolute;
-    top: 8px;
-    right: 9px;
+    top: 7px;
+    right: 8px;
     font-size: 13px;
     color: var(--brand-amber);
     animation: sparkle 2.4s ease-in-out infinite;

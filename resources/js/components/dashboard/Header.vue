@@ -2,7 +2,7 @@
 import {
     Bookmark,
     CircleQuestionMark,
-    Gift,
+    LayoutGrid,
     LayoutList,
     LogOut,
     Settings,
@@ -44,16 +44,16 @@ const handleDeleteAccount = (): void => {
     <header class="header">
         <div class="header-inner">
             <!-- Авторизованный пользователь попадает на свои карточки, гость — на главную -->
-            <router-link :to="logoLink" class="logo" aria-label="PiblWish">
+            <router-link :to="logoLink" class="logo" aria-label="PiblKit">
                 <div class="logo-icon">
-                    <Gift :size="18" color="#fff" />
+                    <LayoutGrid :size="20" color="#fff" />
                     <span class="logo-spark">✦</span>
                 </div>
                 <span class="logo-text">
                     <!-- На узком экране вместо полного названия — сокращение -->
                     <span class="logo-title" aria-hidden="true">
-                        <span class="logo-title-full">PiblWish</span>
-                        <span class="logo-title-short">PW</span>
+                        <span class="logo-title-full">PiblKit</span>
+                        <span class="logo-title-short">PK</span>
                     </span>
                     <!-- Фраза обращена к владельцу списков, поэтому гостю не показывается.
                          Невидимая самая длинная фраза лежит в той же ячейке и задаёт
@@ -214,8 +214,8 @@ const handleDeleteAccount = (): void => {
 }
 .logo-spark {
     position: absolute;
-    top: 2px;
-    right: 3px;
+    top: 5px;
+    right: 5px;
     font-size: 9px;
     color: var(--brand-amber);
     animation: sparkle 2.4s ease-in-out infinite;
