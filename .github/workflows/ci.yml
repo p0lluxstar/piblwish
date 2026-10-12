@@ -1,5 +1,6 @@
 # Проверка кода: тесты бэкенда, линтер, типы и сборка фронтенда, сборка прод-образа.
-# Запускается на пулреквестах и при push в dev и main. Ничего не выкладывает.
+# Запускается на пулреквестах и при push в dev и main. После push в main,
+# если все проверки прошли, задача deploy выкладывает код на сервер.
 name: CI
 
 on:
@@ -8,10 +9,11 @@ on:
     push:
         branches: [main, dev]
 
-# Новый push в ту же ветку отменяет проверку предыдущего
+# Новый push в ту же ветку отменяет проверку предыдущего. В main не отменяет:
+# иначе следующий push прервал бы уже начатую выкладку
 concurrency:
     group: ci-${{ github.ref }}
-    cancel-in-progress: true
+    cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
     contents: read
@@ -82,3 +84,33 @@ jobs:
                   build-args: VITE_API_URL=https://example.test
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
+
+    deploy:
+        name: Выкладка на сервер
+        needs: [backend, frontend, docker]
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+        # Секреты окружения production; в настройках окружения можно включить
+        # ручное подтверждение выкладки
+        environment: production
+        concurrency:
+            group: deploy-production
+            cancel-in-progress: false
+        steps:
+            # Ключ пользователя deploy может выполнить на сервере только
+            # /usr/local/bin/piblwish-deploy (command= в authorized_keys),
+            # поэтому команда в ssh не передаётся
+            - name: Запуск выкладки на сервере
+              env:
+                  SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+                  SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+                  SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+                  SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+              run: |
+                  install -m 700 -d ~/.ssh
+                  printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+                  chmod 600 ~/.ssh/deploy_key
+                  printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+                  ssh -i ~/.ssh/deploy_key -p "${SSH_PORT:-22}" \
+                      -o BatchMode=yes -o StrictHostKeyChecking=yes \
+                      "deploy@$SSH_HOST"
