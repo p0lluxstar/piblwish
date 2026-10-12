@@ -2,7 +2,7 @@
 import {
     Bookmark,
     CircleQuestionMark,
-    Gift,
+    LayoutGrid,
     LayoutList,
     LogOut,
     Settings,
@@ -10,6 +10,7 @@ import {
 import { computed, ref } from 'vue';
 
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
+import ThemeToggleButton from '@/components/ui/ThemeToggleButton.vue';
 import UserAvatar from '@/components/ui/UserAvatar.vue';
 import UserSettingsModal from '@/components/user/UserSettingsModal.vue';
 import { useDeleteAccount, useLogout } from '@/composables/useAuth';
@@ -43,16 +44,16 @@ const handleDeleteAccount = (): void => {
     <header class="header">
         <div class="header-inner">
             <!-- Авторизованный пользователь попадает на свои карточки, гость — на главную -->
-            <router-link :to="logoLink" class="logo" aria-label="PiblWish">
+            <router-link :to="logoLink" class="logo" aria-label="PiblKit">
                 <div class="logo-icon">
-                    <Gift :size="18" color="#fff" />
+                    <LayoutGrid :size="20" color="#fff" />
                     <span class="logo-spark">✦</span>
                 </div>
                 <span class="logo-text">
                     <!-- На узком экране вместо полного названия — сокращение -->
                     <span class="logo-title" aria-hidden="true">
-                        <span class="logo-title-full">PiblWish</span>
-                        <span class="logo-title-short">PW</span>
+                        <span class="logo-title-full">PiblKit</span>
+                        <span class="logo-title-short">PK</span>
                     </span>
                     <!-- Фраза обращена к владельцу списков, поэтому гостю не показывается.
                          Невидимая самая длинная фраза лежит в той же ячейке и задаёт
@@ -122,7 +123,7 @@ const handleDeleteAccount = (): void => {
                     class="logout-btn"
                     aria-label="Выход"
                     :disabled="isPending"
-                    @click="logout"
+                    @click="logout()"
                 >
                     <!-- Содержимое остаётся в разметке и задаёт ширину кнопки,
                          во время выхода оно скрыто, а спиннер выводится поверх -->
@@ -140,7 +141,9 @@ const handleDeleteAccount = (): void => {
                     />
                 </button>
             </div>
+            <!-- Вошедший пользователь выбирает тему в окне настроек -->
             <div v-else class="guest-actions">
+                <ThemeToggleButton />
                 <router-link to="/registration" class="guest-btn">
                     Регистрация
                 </router-link>
@@ -211,8 +214,8 @@ const handleDeleteAccount = (): void => {
 }
 .logo-spark {
     position: absolute;
-    top: 2px;
-    right: 3px;
+    top: 5px;
+    right: 5px;
     font-size: 9px;
     color: var(--brand-amber);
     animation: sparkle 2.4s ease-in-out infinite;
@@ -306,7 +309,7 @@ const handleDeleteAccount = (): void => {
 }
 .nav-link:hover {
     color: var(--brand-violet);
-    background: rgba(139, 92, 246, 0.08);
+    background: var(--tint);
 }
 /* Ссылка на открытую страницу: заливка фирменным градиентом, чтобы отличаться от наведения */
 .nav-link.router-link-active {
@@ -362,7 +365,7 @@ const handleDeleteAccount = (): void => {
     font-weight: 700;
     color: #fff;
     box-shadow: var(--shadow-glow);
-    border: 2px solid #fff;
+    border: 2px solid var(--surface-solid);
 }
 
 .settings-btn {
@@ -375,7 +378,7 @@ const handleDeleteAccount = (): void => {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 2px solid #fff;
+    border: 2px solid var(--surface-solid);
     background: var(--brand-amber);
     color: #4a2e00;
     cursor: pointer;
@@ -390,7 +393,7 @@ const handleDeleteAccount = (): void => {
     justify-content: center;
     align-items: center;
     gap: 6px;
-    background: rgba(139, 92, 246, 0.08);
+    background: var(--tint);
     border: 1px solid transparent;
     padding: 6px 16px;
     border-radius: 20px;
@@ -443,12 +446,12 @@ const handleDeleteAccount = (): void => {
     font-size: 13px;
     font-weight: 600;
     color: var(--brand-violet);
-    background: rgba(139, 92, 246, 0.08);
+    background: var(--tint);
     text-decoration: none;
     transition: all 0.2s ease;
 }
 .guest-btn:hover {
-    background: rgba(139, 92, 246, 0.14);
+    background: var(--tint-strong);
     transform: translateY(-1px);
 }
 

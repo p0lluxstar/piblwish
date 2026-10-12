@@ -1,0 +1,120 @@
+# Проверка кода: тесты бэкенда, линтер, типы и сборка фронтенда, сборка прод-образа.
+# Запускается на пулреквестах и при push в dev и main. После push в main,
+# если все проверки прошли, задача deploy выкладывает код на сервер.
+name: CI
+
+on:
+    pull_request:
+        branches: [main, dev]
+    push:
+        branches: [main, dev]
+
+# Новый push в ту же ветку отменяет проверку предыдущего. В main не отменяет:
+# иначе следующий push прервал бы уже начатую выкладку
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+    contents: read
+
+jobs:
+    backend:
+        name: Тесты бэкенда
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.4'
+                  extensions: gd, pdo_sqlite, zip, bcmath, intl, exif
+                  coverage: none
+
+            - name: Кеш Composer
+              uses: actions/cache@v4
+              with:
+                  path: ~/.composer/cache/files
+                  key: composer-${{ hashFiles('composer.lock') }}
+                  restore-keys: composer-
+
+            - run: composer install --no-interaction --prefer-dist --no-progress
+
+            # Тесты берут базу и драйверы из phpunit.xml (SQLite в памяти), из .env нужен только APP_KEY
+            - name: Подготовка .env
+              run: |
+                  cp .env.example .env
+                  php artisan key:generate
+
+            - run: php artisan test
+
+    frontend:
+        name: Линтер, типы и сборка фронтенда
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '24'
+                  cache: npm
+
+            - run: npm ci
+            - run: npm run lint
+            - run: npm run type-check
+            - run: npm run build
+              env:
+                  VITE_API_URL: https://example.test
+
+    docker:
+        name: Сборка прод-образа
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: docker/setup-buildx-action@v3
+
+            # Тот же Dockerfile, что на сервере: ловит, например, lock-файл,
+            # который не проходит npm ci на npm из node:24-alpine
+            - uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: _docker/app/Dockerfile.prod
+                  push: false
+                  build-args: VITE_API_URL=https://example.test
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+    deploy:
+        name: Выкладка на сервер
+        needs: [backend, frontend, docker]
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+        # Секреты окружения production; в настройках окружения можно включить
+        # ручное подтверждение выкладки
+        environment: production
+        concurrency:
+            group: deploy-production
+            cancel-in-progress: false
+        steps:
+            # Ключ пользователя deploy может выполнить на сервере только
+            # /usr/local/bin/piblwish-deploy (command= в authorized_keys),
+            # поэтому команда в ssh не передаётся
+            - name: Запуск выкладки на сервере
+              env:
+                  SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+                  SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+                  SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+                  SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+              run: |
+                  install -m 700 -d ~/.ssh
+                  printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+                  chmod 600 ~/.ssh/deploy_key
+                  printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+                  # ServerAliveInterval: сборка на сервере идёт долго и временами
+                  # ничего не выводит, без проверки связи соединение может
+                  # оборваться по таймауту
+                  ssh -i ~/.ssh/deploy_key -p "${SSH_PORT:-22}" \
+                      -o BatchMode=yes -o StrictHostKeyChecking=yes \
+                      -o ServerAliveInterval=30 -o ServerAliveCountMax=10 \
+                      "deploy@$SSH_HOST"

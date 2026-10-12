@@ -2,11 +2,21 @@
 import { RefreshCcw } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
-import LaoderPageSpinner from '@/components/ui/LaoderPageSpinner.vue';
+import CardSkeletonGrid from '@/components/ui/CardSkeletonGrid.vue';
+import ShowMoreButtons from '@/components/ui/ShowMoreButtons.vue';
+import WishlistSortBar from '@/components/wishlist/WishlistSortBar.vue';
+import { useCardPaging } from '@/composables/useCardPaging';
+import { useCardSearch } from '@/composables/useCardSearch';
 import {
     useSavedWishlists,
     useToggleSavedWishlist,
 } from '@/composables/useSavedWishlists';
+import {
+    useWishlistSort,
+    type WishlistSortField,
+} from '@/composables/useWishlistSort';
+import { useWishlistTypeFilter } from '@/composables/useWishlistTypeFilter';
+import { pinLeavingCard } from '@/lib/gridTransition';
 import type { SavedWishlist } from '@/types/savedWishlist';
 
 import SavedWishlistCard from './SavedWishlistCard.vue';
@@ -16,6 +26,57 @@ import SavedWishlistCard from './SavedWishlistCard.vue';
 const { data, isLoading, isFetching, error, refetch } = useSavedWishlists();
 
 const wishlists = computed(() => data.value ?? []);
+
+// Сортировки по дате создания нет: она не видна на карточке. По умолчанию
+// сверху списки с ближайшей датой. Недоступные списки (без даты и названия)
+// при любой сортировке стоят в конце
+const { sort, setSort, isDefaultSort, resetSort, sortedItems } =
+    useWishlistSort(wishlists, {
+        storageKey: 'saved-wishlists-sort',
+        fields: ['due', 'title'],
+        dueDateOf: (wishlist): string => wishlist.dueDate ?? '',
+        titleOf: (wishlist): string => wishlist.title ?? '',
+    });
+
+// Недоступный список без типа виден только в «Все»
+const {
+    typeFilter,
+    typeFilterOptions,
+    hasTypeFilter,
+    activeTypeFilter,
+    filterByType,
+} = useWishlistTypeFilter(wishlists, {
+    storageKey: 'saved-wishlists-type-filter',
+    typeOf: (wishlist) => wishlist.type,
+});
+
+// Список ищется и по имени владельца: его часто помнят лучше, чем название
+const { searchQuery, hasSearch, activeSearchQuery, filterBySearch } =
+    useCardSearch(wishlists, (wishlist) => [wishlist.title, wishlist.username]);
+
+const filteredWishlists = computed(() =>
+    filterBySearch(filterByType(sortedItems.value)),
+);
+
+const {
+    visibleItems: visibleWishlists,
+    hiddenCount,
+    nextCount,
+    showMore,
+    showAll,
+} = useCardPaging(filteredWishlists, [sort, typeFilter, activeSearchQuery]);
+
+// Кнопка «Сбросить»: пустой запрос, все типы и сортировка по сроку
+const resetFilters = (): void => {
+    searchQuery.value = '';
+    typeFilter.value = 'all';
+    resetSort();
+};
+
+const SORT_OPTIONS: { field: WishlistSortField; label: string }[] = [
+    { field: 'due', label: 'По сроку' },
+    { field: 'title', label: 'По названию' },
+];
 
 const {
     mutate: toggleSaved,
@@ -49,7 +110,6 @@ const refresh = (): void => {
 <template>
     <div class="top">
         <div class="heading">Чужие списки</div>
-
         <button
             v-if="wishlists.length > 0"
             class="update-btn"
@@ -66,9 +126,26 @@ const refresh = (): void => {
         {{ removeErrorMessage }}
     </p>
 
-    <div v-if="isLoading" class="state">
-        <LaoderPageSpinner />
-    </div>
+    <!-- Панель имеет смысл, только когда списков больше одного -->
+    <WishlistSortBar
+        v-if="!isLoading && wishlists.length > 1"
+        v-model:search="searchQuery"
+        :show-search="hasSearch"
+        search-placeholder="Название или автор"
+        :type-options="typeFilterOptions"
+        :active-type="activeTypeFilter"
+        :show-type-filter="hasTypeFilter"
+        :sort-options="SORT_OPTIONS"
+        :sort="sort"
+        :is-default-sort="isDefaultSort"
+        show-sort
+        @update:type="typeFilter = $event"
+        @sort="setSort"
+        @reset="resetFilters"
+    />
+
+    <!-- Карточки раздела ниже карточек дашборда и без фиксированной высоты -->
+    <CardSkeletonGrid v-if="isLoading" :count="4" :height="180" />
 
     <div v-else-if="error" class="state">
         <p>Ошибка при загрузке</p>
@@ -82,15 +159,39 @@ const refresh = (): void => {
         </p>
     </div>
 
-    <div v-else class="grid">
+    <!-- Пустой результат возможен только из-за поиска, как в WishlistMain -->
+    <div v-else-if="filteredWishlists.length === 0" class="state state--empty">
+        <p class="empty-title">Ничего не найдено</p>
+        <p class="empty-text">Проверьте запрос или поищите среди всех типов</p>
+        <button class="update-btn reset-search-btn" @click="resetFilters">
+            Сбросить поиск и фильтр
+        </button>
+    </div>
+
+    <TransitionGroup
+        v-else
+        tag="div"
+        name="card-grid"
+        class="grid card-grid"
+        appear
+        @before-leave="pinLeavingCard"
+    >
         <SavedWishlistCard
-            v-for="wishlist in wishlists"
+            v-for="wishlist in visibleWishlists"
             :key="wishlist.id"
             :wishlist="wishlist"
             :is-removing="removingId === wishlist.id"
             @remove="removeWishlist"
         />
-    </div>
+    </TransitionGroup>
+
+    <ShowMoreButtons
+        v-if="!isLoading && !error"
+        :hidden-count="hiddenCount"
+        :next-count="nextCount"
+        @more="showMore"
+        @all="showAll"
+    />
 </template>
 
 <style scoped lang="scss">
@@ -118,7 +219,7 @@ const refresh = (): void => {
     padding: 9px 18px;
     border: 1.5px solid var(--surface-border);
     border-radius: 20px;
-    background: #fff;
+    background: var(--surface-solid);
     color: var(--brand-violet);
     font-size: 13px;
     font-weight: 600;
@@ -140,8 +241,9 @@ const refresh = (): void => {
 }
 
 // Узкий экран: кнопка круглая, только с иконкой, как в WishlistMain
+// Кнопка сброса поиска на месте карточек не затрагивается: она вне .top
 @media (max-width: 599px) {
-    .update-btn {
+    .top .update-btn {
         justify-content: center;
         width: 38px;
         height: 38px;
@@ -162,7 +264,7 @@ const refresh = (): void => {
     margin: 0 0 16px;
     font-size: 13px;
     font-weight: 600;
-    color: #dc2626;
+    color: var(--danger);
 }
 
 .state {
@@ -172,7 +274,7 @@ const refresh = (): void => {
     justify-content: center;
     min-height: 300px;
     text-align: center;
-    color: var(--app-ink-soft, #6b7280);
+    color: var(--app-ink-soft, var(--ink-muted));
 }
 
 .empty-title {
@@ -180,6 +282,10 @@ const refresh = (): void => {
     font-size: 18px;
     font-weight: 700;
     color: var(--app-ink, var(--ink));
+}
+
+.reset-search-btn {
+    margin-top: 16px;
 }
 
 .empty-text {

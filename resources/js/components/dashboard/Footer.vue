@@ -5,7 +5,7 @@ import { CircleQuestionMark, Mail } from '@lucide/vue';
 <template>
     <footer class="footer">
         <div class="footer-inner">
-            <span class="footer-copy">© 2026 PiblWish</span>
+            <span class="footer-copy">© 2026 PiblKit</span>
             <div class="footer-links">
                 <router-link to="/help">
                     <CircleQuestionMark :size="13" />

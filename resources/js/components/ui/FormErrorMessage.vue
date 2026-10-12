@@ -3,7 +3,6 @@ defineProps<{
     show: boolean;
     message?: string;
 }>();
-
 </script>
 
 <template>
@@ -16,7 +15,7 @@ defineProps<{
 .error-message {
     max-width: 420px;
     margin: 0;
-    color: #d14343;
+    color: var(--danger);
     font-size: 14px;
     line-height: 1.4;
     text-align: center;

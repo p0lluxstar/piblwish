@@ -3,6 +3,7 @@
 namespace App\Services\User;
 
 use App\Enums\AppBackground;
+use App\Enums\WishlistType;
 use App\Mail\EmailChangeCodeMail;
 use App\Mail\EmailChangedMail;
 use App\Mail\PasswordChangedMail;
@@ -35,16 +36,21 @@ class UserService
     // Качество WebP (0–100)
     private const AVATAR_QUALITY = 85;
 
-    // Изменение настроек текущего пользователя: фон приложения и показ строки
-    // «Скоро у друзей» в дашборде; null означает, что настройка не меняется
+    // Изменение настроек текущего пользователя: фон приложения, показ строки
+    // «Скоро у друзей» в дашборде, письма-напоминания о сроке списков и их срок;
+    // null означает, что настройка не меняется
     public function updateSettings(
         User $user,
         ?AppBackground $background,
-        ?bool $showFriendsEvents = null
+        ?bool $showFriendsEvents = null,
+        ?bool $emailReminders = null,
+        ?int $reminderDays = null
     ): User {
         $user->update(array_filter([
             'background' => $background,
             'show_friends_events' => $showFriendsEvents,
+            'email_reminders' => $emailReminders,
+            'reminder_days' => $reminderDays,
         ], fn ($value) => $value !== null));
 
         return $user;
@@ -323,10 +329,16 @@ class UserService
             $user->wishlists()->delete();
             $user->savedWishlists()->delete();
 
-            $user->update([
+            // forceFill: счётчики статистики не входят в fillable
+            $user->forceFill([
                 'deactivated_at' => now(),
                 'avatar_path' => null,
-            ]);
+                // Статистика созданных карточек обнуляется вместе со списками
+                ...array_fill_keys(
+                    array_map(User::createdCountColumn(...), WishlistType::cases()),
+                    0
+                ),
+            ])->save();
 
             // Завершаем сессии пользователя на других устройствах:
             // запись пользователя остаётся, поэтому они продолжили бы работать

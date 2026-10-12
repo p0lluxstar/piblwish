@@ -18,20 +18,103 @@
     --brand-coral: #fb7185;
     --brand-amber: #fbbf24;
     --brand-gradient: linear-gradient(135deg, #ff7aa8, #a78bfa);
+    /* Тот же градиент, но не зависящий от фона приложения: --brand-gradient
+       переопределяется под фон (scss/ui/appBackgroundGradients.scss), а значок
+       выбранного подарка и прогресс списка желаний на карточке остаются такими */
+    --brand-gradient-fixed: linear-gradient(135deg, #ff7aa8, #a78bfa);
     --logo-gradient: linear-gradient(
         135deg,
         var(--brand-violet) 0%,
         var(--brand-pink) 60%,
         var(--brand-coral) 100%
     );
-    --ink: #241533;
-    --ink-soft: #6b5878;
-    --surface: rgba(255, 255, 255, 0.82);
-    --surface-border: rgba(139, 92, 246, 0.14);
-    --shadow-glow: 0 14px 34px -12px rgba(139, 92, 246, 0.38);
-    --shadow-glow-lg: 0 22px 48px -16px rgba(139, 92, 246, 0.4);
     --radius-lg: 22px;
     --radius-xl: 26px;
+
+    /* Цвета, зависящие от темы. Тёмные значения заданы ниже под
+       [data-theme='dark']; атрибут ставит скрипт в welcome.blade.php
+       и composables/useTheme.ts. Новые цвета интерфейса берутся отсюда,
+       а не задаются в компонентах напрямую */
+    color-scheme: light;
+    /* Фон страницы под фоном приложения (виден при прокрутке за край) */
+    --page-bg: #fbf8ff;
+    /* Текст: основной, второстепенный, приглушённый (подсказки, счётчики)
+       и бледный (плейсхолдеры, неактивные элементы) */
+    --ink: #241533;
+    --ink-soft: #6b5878;
+    --ink-muted: #8a7a99;
+    --ink-faint: #b3a3bd;
+    /* Полупрозрачная поверхность карточек и панелей поверх фона */
+    --surface: rgba(255, 255, 255, 0.82);
+    --surface-strong: rgba(255, 255, 255, 0.92);
+    /* Непрозрачная поверхность: окна, меню, кнопки, поля */
+    --surface-solid: #fff;
+    /* Слегка подкрашенная поверхность: блоки внутри окон, полосы */
+    --surface-soft: #faf8ff;
+    --surface-border: rgba(139, 92, 246, 0.14);
+    /* Фирменный фиолетовый оттенок для наведения, плашек и выделений */
+    --tint: rgba(139, 92, 246, 0.08);
+    --tint-strong: rgba(139, 92, 246, 0.14);
+    /* Затемнение под окнами */
+    --overlay: rgba(36, 21, 51, 0.45);
+    --shadow-glow: 0 14px 34px -12px rgba(139, 92, 246, 0.38);
+    --shadow-glow-lg: 0 22px 48px -16px rgba(139, 92, 246, 0.4);
+    --shadow-soft: 0 10px 30px -14px rgba(92, 62, 97, 0.25);
+    /* Смысловые цвета текста и значков */
+    --success: #059669;
+    --success-bright: #10b981;
+    --danger: #dc2626;
+    --danger-strong: #e11d48;
+    --warning: #b45309;
+    --fund: #be185d;
+    --pink-strong: #db2777;
+    /* Тёмная всплывающая плашка (ActionToast) и фон под кадрированием фото */
+    --toast-bg: #241533;
+    /* Светлый розоватый край градиента карточки общей страницы */
+    --surface-blush: #fff7fd;
+}
+
+/* Тёмная тема. Фирменные фиолетовый и розовый светлее, чтобы текст
+   этих цветов читался на тёмной поверхности */
+:root[data-theme='dark'] {
+    color-scheme: dark;
+    --brand-violet: #a78bfa;
+    --brand-pink: #f472b6;
+    /* Градиент кнопок темнее светлого: на тёмной поверхности исходный
+       выделяется слишком сильно. Варианты под фон приложения — в
+       scss/ui/appBackgroundGradients.scss; здесь — для страниц без фона
+       (лендинг, вход) */
+    --brand-gradient: linear-gradient(135deg, #a0385c, #563ea0);
+    --page-bg: #130f1b;
+    --ink: #f2ecf9;
+    --ink-soft: #bbadca;
+    --ink-muted: #9384a3;
+    --ink-faint: #6c5f7c;
+    --surface: rgba(34, 27, 47, 0.82);
+    --surface-strong: rgba(38, 30, 52, 0.94);
+    --surface-solid: #211a2d;
+    --surface-soft: #1b1525;
+    --surface-border: rgba(167, 139, 250, 0.16);
+    --tint: rgba(167, 139, 250, 0.12);
+    --tint-strong: rgba(167, 139, 250, 0.2);
+    --overlay: rgba(6, 3, 12, 0.66);
+    --shadow-glow: 0 14px 34px -12px rgba(0, 0, 0, 0.7);
+    --shadow-glow-lg: 0 22px 48px -16px rgba(0, 0, 0, 0.75);
+    --shadow-soft: 0 10px 30px -14px rgba(0, 0, 0, 0.6);
+    --success: #34d399;
+    --success-bright: #34d399;
+    --danger: #f87171;
+    --danger-strong: #fb7185;
+    --warning: #fbbf24;
+    --fund: #f472b6;
+    --pink-strong: #f472b6;
+    --toast-bg: #3a2e4d;
+    --surface-blush: #2a1f33;
+}
+
+body {
+    background: var(--page-bg);
+    color: var(--ink);
 }
 
 body.modal-open {

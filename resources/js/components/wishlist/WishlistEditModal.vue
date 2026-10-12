@@ -22,9 +22,11 @@ import {
 
 import { api } from '@/lib/api';
 
+import { useEscapeKey } from '../../composables/useEscapeKey';
 import { useItemReorder } from '../../composables/useItemReorder';
 import { FUND_PLATFORMS_TEXT } from '../../constants/fundHosts';
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
+import { lockBodyScroll, unlockBodyScroll } from '../../lib/bodyScrollLock';
 import { getFundPlatformOfInput, getFundUrlError } from '../../lib/fundUrl';
 import {
     getItemUrlErrors,
@@ -44,6 +46,7 @@ import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import ItemPriceInput from './ItemPriceInput.vue';
 import ItemPriorityPicker from './ItemPriorityPicker.vue';
 import TodoCheckedBy from './TodoCheckedBy.vue';
+import UnsavedChangesPrompt from './UnsavedChangesPrompt.vue';
 import WishlistColorPicker from './WishlistColorPicker.vue';
 import WishlistDueDateField from './WishlistDueDateField.vue';
 import WishlistGuestCheckToggle from './WishlistGuestCheckToggle.vue';
@@ -478,13 +481,15 @@ const removeItemUrl = (index: number, urlIndex: number): void => {
 
 // Пустые позиции отбрасываются, ссылки нормализуются; null — в форме есть некорректная ссылка
 const prepareItems = (): WishlistItem[] | null => {
-    // У дел есть только текст и отметка: ссылку, приоритет и цену сервер для них не сохраняет
+    // У дел есть только текст, важность (priority) и отметка: ссылку и цену
+    // сервер для них не сохраняет
     if (isTodo.value) {
         return form.value.items
             .filter((item) => item.label.trim())
             .map((item) => ({
                 id: item.id,
                 label: item.label,
+                priority: item.priority,
                 isSelected: item.isSelected ?? false,
             }));
     }
@@ -529,12 +534,13 @@ const prepareItems = (): WishlistItem[] | null => {
 // Запрос выполняет WishlistMain (мутация updateWishlist): там же состояние
 // загрузки для кнопки. После сохранения окно не закрывается, а получает
 // сохранённый список в props.wishlist
-const handleSubmit = (): void => {
+// Возвращает false, если форма не прошла проверку и ничего не отправлено
+const handleSubmit = (): boolean => {
     // Сохранять нечего: форма совпадает с сохранённым списком
-    if (!isDirty.value) return;
+    if (!isDirty.value) return false;
 
     if (isNote.value) {
-        if (isNoteEmpty.value) return;
+        if (isNoteEmpty.value) return false;
 
         emit('update', {
             id: props.wishlist.id,
@@ -542,18 +548,18 @@ const handleSubmit = (): void => {
             content: form.value.content,
         });
 
-        return;
+        return true;
     }
 
     // Название обязательно у списков желаний и дел: без него сервер список не примет
     if (!form.value.title.trim()) {
         isTitleMissing.value = true;
-        return;
+        return false;
     }
 
     const items = prepareItems();
 
-    if (!items) return;
+    if (!items) return false;
 
     emit('update', {
         id: props.wishlist.id,
@@ -572,38 +578,99 @@ const handleSubmit = (): void => {
             : {}),
         items,
     });
-};
 
-// Блокировка прокрутки при открытии модального окна
-const disableBodyScroll = (): void => {
-    document.body.classList.add('modal-open');
-};
-
-const enableBodyScroll = (): void => {
-    document.body.classList.remove('modal-open');
+    return true;
 };
 
 onMounted(() => {
-    disableBodyScroll();
+    // Блокировка прокрутки страницы под окном
+    lockBodyScroll();
 
     // Выбор гостей есть только у списка желаний
     if (isGift.value) void loadSelections(false);
 });
 
-onUnmounted(() => {
-    enableBodyScroll();
-});
+onUnmounted(unlockBodyScroll);
 
 const closeModal = (): void => {
     form.value = defaultForm();
     urlErrors.value = [];
-    enableBodyScroll();
     emit('close');
 };
 
+// Крестик при несохранённых правках не закрывает окно сразу, а спрашивает
+// под заголовком, закрыть ли его без сохранения
+const isUnsavedPromptShown = ref(false);
+
+const requestClose = (): void => {
+    if (isDirty.value) {
+        isUnsavedPromptShown.value = true;
+
+        return;
+    }
+
+    closeModal();
+};
+
+// Правки вернули к сохранённому состоянию: спрашивать больше не о чем
+watch(isDirty, (dirty) => {
+    if (!dirty) isUnsavedPromptShown.value = false;
+});
+
+// Сохранение из вопроса: если форма не прошла проверку, вопрос убирается,
+// чтобы были видны подсвеченные поля. Обычное сохранение оставляет окно
+// открытым, а сохранение из вопроса после ответа сервера его закрывает:
+// пользователь уже собирался закрыть окно
+const isClosingAfterSave = ref(false);
+
+const saveFromPrompt = (): void => {
+    if (handleSubmit()) {
+        isClosingAfterSave.value = true;
+    } else {
+        isUnsavedPromptShown.value = false;
+    }
+};
+
+watch(
+    () => props.isPending,
+    (pending, wasPending) => {
+        if (pending || !wasPending || !isClosingAfterSave.value) return;
+
+        isClosingAfterSave.value = false;
+
+        if (!props.errorMessage) closeModal();
+    },
+);
+
+// Сервер не принял сохранение из вопроса: ошибка выводится над кнопкой
+// отправки внизу формы, поэтому вопрос убирается, а форма прокручивается к ней
+watch(
+    () => props.errorMessage,
+    (message) => {
+        if (!message || !isUnsavedPromptShown.value) return;
+
+        isUnsavedPromptShown.value = false;
+        nudgeUnsaved(modalEl.value, saveButtonEl.value);
+    },
+);
+
+// Esc действует как крестик, а при открытом вопросе о несохранённых правках
+// убирает вопрос и оставляет окно открытым. Вопрос убирается и при вводе в форму
+const overlayEl = useTemplateRef<HTMLElement>('overlay');
+
+useEscapeKey(overlayEl, () => {
+    if (isUnsavedPromptShown.value) {
+        isUnsavedPromptShown.value = false;
+
+        return;
+    }
+
+    requestClose();
+});
+
 // Окно закрывается кликом по фону, только если в форме нет несохранённых
-// правок (иначе — только крестиком), а нажатие и отпускание кнопки были
-// на фоне: выделение текста в поле, законченное за пределами окна, не считается
+// правок (иначе — только крестиком с подтверждением), а нажатие и отпускание
+// кнопки были на фоне: выделение текста в поле, законченное за пределами окна, не считается
 const isOverlayPressed = ref(false);
 
 const modalEl = useTemplateRef<HTMLElement>('modal');
@@ -629,6 +696,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 
 <template>
     <div
+        ref="overlay"
         class="modal-overlay"
         @mousedown.self="isOverlayPressed = true"
         @click="closeOnOverlayClick"
@@ -646,10 +714,22 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                     }}
                 </h2>
 
-                <button class="close-btn" @click="closeModal"></button>
+                <button class="close-btn" @click="requestClose"></button>
             </div>
 
-            <form @submit.prevent="handleSubmit">
+            <UnsavedChangesPrompt
+                v-if="isUnsavedPromptShown"
+                :can-save="!isNoteEmpty"
+                :is-pending="props.isPending"
+                @save="saveFromPrompt"
+                @discard="closeModal"
+                @dismiss="isUnsavedPromptShown = false"
+            />
+
+            <form
+                @submit.prevent="handleSubmit"
+                @input="isUnsavedPromptShown = false"
+            >
                 <div v-if="!isNote" class="form-group">
                     <label>Название списка</label>
 
@@ -785,10 +865,9 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                                 'wishlist-item',
                                 {
                                     'wishlist-item--todo': isTodo || isFund,
+                                    'wishlist-item--task': isTodo,
                                     'wishlist-item--done':
                                         isTodo && item.isSelected,
-                                    'wishlist-item--checked-by':
-                                        showCheckedByRow,
                                 },
                             ]"
                         >
@@ -796,8 +875,8 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                              Повторный клик снимает отметку -->
                             <label v-if="isTodo" class="checkbox-wrapper">
                                 <input
-                                    type="checkbox"
                                     v-model="item.isSelected"
+                                    type="checkbox"
                                     class="checkbox-input"
                                     :aria-label="
                                         item.isSelected
@@ -834,13 +913,18 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                             </span>
 
                             <div class="wishlist-item-fields">
-                                <!-- Приоритет над полем описания у левого края,
+                                <!-- Приоритет (у дела — важность) над полем описания у левого края,
                                  снятие выбора гостя — у правого -->
-                                <div v-if="isGift" class="item-meta-row">
+                                <div
+                                    v-if="isGift || isTodo"
+                                    class="item-meta-row"
+                                >
                                     <ItemPriorityPicker
                                         v-model="item.priority"
+                                        :todo="isTodo"
                                         :muted="
-                                            showSelection && item.isSelected
+                                            (isTodo || showSelection) &&
+                                            item.isSelected
                                         "
                                     />
 
@@ -990,30 +1074,32 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                                     {{ itemMessages[item.id].text }}
                                 </p>
 
-                                <!-- Кто отметил дело — над полем, у правого края -->
-                                <TodoCheckedBy
-                                    v-if="showCheckedByRow"
-                                    class="item-checked-by"
-                                    :checked-by="formCheckedBy(item)"
-                                    :owner-name="ownCheckLabel"
-                                    :is-own="
-                                        ownCheckLabel !== null &&
-                                        formCheckedBy(item)?.guest === false
-                                    "
-                                    empty-label="Не выполнено"
-                                />
+                                <div class="item-label-field">
+                                    <input
+                                        v-model="item.label"
+                                        type="text"
+                                        :placeholder="
+                                            isTodo
+                                                ? 'Например: Купить продукты'
+                                                : isFund
+                                                  ? 'Например: На машину'
+                                                  : 'Например: Книга'
+                                        "
+                                    />
 
-                                <input
-                                    v-model="item.label"
-                                    type="text"
-                                    :placeholder="
-                                        isTodo
-                                            ? 'Например: Купить продукты'
-                                            : isFund
-                                              ? 'Например: На машину'
-                                              : 'Например: Книга'
-                                    "
-                                />
+                                    <!-- Кто отметил дело — внутри поля, у нижнего правого края -->
+                                    <TodoCheckedBy
+                                        v-if="showCheckedByRow"
+                                        class="item-checked-by"
+                                        :checked-by="formCheckedBy(item)"
+                                        :owner-name="ownCheckLabel"
+                                        :is-own="
+                                            ownCheckLabel !== null &&
+                                            formCheckedBy(item)?.guest === false
+                                        "
+                                        empty-label="Не выполнено"
+                                    />
+                                </div>
 
                                 <!-- Цель сбора: одна обязательная ссылка на сбор и целевая сумма.
                                      Платформа определяется по ссылке и показывается под полем -->
@@ -1262,16 +1348,31 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 @use '../../../scss/ui/wishlistModal.scss';
 @use '../../../scss/ui/wishlistColors.scss';
 
-// Подпись «кто отметил» над полем дела, у правого края; ближе к полю,
-// чем остальные поля позиции друг к другу
+// Поле названия позиции; подпись «кто отметил» лежит внутри поля
+// у нижнего правого края и не увеличивает высоту строки
+.item-label-field {
+    position: relative;
+    display: flex;
+}
+
+// Дела стоят плотнее остальных позиций: у них нет полей под названием.
+// Класс wishlist-item--todo есть и у целей сбора, поэтому дело отмечено отдельно
+.wishlist-item.wishlist-item--task {
+    margin-bottom: 5px;
+}
+
+// Клики проходят сквозь подпись в поле
 .item-checked-by {
-    align-self: flex-end;
-    margin-bottom: -3px;
+    position: absolute;
+    right: 14px;
+    top: 2px;
+    max-width: calc(100% - 28px);
+    pointer-events: none;
 }
 
 // Превью цвета списка; для white — прежний белый фон модалки
 .modal {
-    background: var(--wishlist-bg, #fff);
+    background: var(--wishlist-bg, var(--surface-solid));
     transition: background-color 0.2s ease;
 }
 
@@ -1285,13 +1386,6 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 .wishlist-item > .selection-mark {
     flex-shrink: 0;
     margin-top: calc(var(--item-label-offset) + 12px);
-}
-
-// Подпись «кто отметил» над полем дела (строка 11px × 1.3 и промежуток 6px − 3px)
-// сдвигает поле вниз на 17px: галочка, стрелки и корзина сдвигаются вместе с ним.
-// Смещение --item-label-offset задано в wishlistModal.scss, у дела оно равно 0
-.wishlist-item.wishlist-item--checked-by {
-    --item-label-offset: 17px;
 }
 
 // Вместо галочки из checkboxCard.scss — значок на градиенте, как в карточке
@@ -1339,13 +1433,13 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
     background: transparent;
     font-size: 11px;
     font-weight: 600;
-    color: #db2777;
+    color: var(--pink-strong);
     cursor: pointer;
     transition: all 0.18s ease;
 
     &:hover:not(:disabled) {
         color: #fff;
-        background: #ec4899;
+        background: var(--brand-pink);
     }
 
     &:disabled {
@@ -1357,14 +1451,14 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
 // Подтверждение для этой позиции открыто
 .clear-selection-btn--active {
     color: #fff;
-    background: #ec4899;
+    background: var(--brand-pink);
 }
 
 .clear-selection-btn--secondary {
-    color: #8a7a99;
+    color: var(--ink-muted);
 
     &:hover:not(:disabled) {
-        background: #8a7a99;
+        background: var(--ink-muted);
     }
 }
 
@@ -1381,14 +1475,14 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: #b3b3b3;
+    color: var(--ink-faint);
     cursor: pointer;
     transition: all 0.15s ease;
 
     &:hover,
     &--active {
         color: var(--brand-violet);
-        background: rgba(139, 92, 246, 0.1);
+        background: var(--tint);
     }
 
     &:focus-visible {
@@ -1414,7 +1508,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
     margin: 0;
     font-size: 11px;
     line-height: 1.4;
-    color: #6b5a7b;
+    color: var(--ink-soft);
 }
 
 .free-confirm-actions {
@@ -1427,11 +1521,11 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
     margin: 0;
     font-size: 11px;
     line-height: 1.4;
-    color: #8a7a99;
+    color: var(--ink-muted);
 }
 
 .item-selection-message--error {
-    color: #e11d48;
+    color: var(--danger-strong);
 }
 
 .clear-selection-spinner {
@@ -1452,21 +1546,21 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
     margin: 4px 0 0;
     font-size: 11px;
     line-height: 1.4;
-    color: #8a7a99;
+    color: var(--ink-muted);
 }
 
 .selection-status--error {
-    color: #e11d48;
+    color: var(--danger-strong);
 }
 
 // Выполненное дело: зелёный градиент, как в карточке списка дел
 .wishlist-item--todo .checkbox-input:checked + .checkbox-custom {
-    background: linear-gradient(135deg, #6ee7b7, #10b981);
+    background: linear-gradient(135deg, #6ee7b7, var(--success-bright));
 }
 
 // Выполненное дело: текст серый и зачёркнут, как в карточке
 .wishlist-item--done input[type='text'] {
-    color: #94a3b8;
+    color: var(--ink-muted);
     text-decoration: line-through;
 }
 </style>

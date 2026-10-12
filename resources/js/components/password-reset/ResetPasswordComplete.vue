@@ -29,7 +29,7 @@ h2 {
 .hint {
     max-width: 420px;
     margin: 12px 0 40px;
-    color: var(--muted, #7a6278);
+    color: var(--muted, var(--ink-muted));
     line-height: 1.5;
 }
 </style>

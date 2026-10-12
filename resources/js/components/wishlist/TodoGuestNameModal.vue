@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
+import { lockBodyScroll, unlockBodyScroll } from '../../lib/bodyScrollLock';
+
 // Наибольшая длина имени, совпадает с CheckSharedTodoItemsRequest
 const NAME_MAX_LENGTH = 50;
 
@@ -37,22 +39,12 @@ const confirm = (): void => {
     emit('confirm', trimmedName.value);
 };
 
-const disableBodyScroll = (): void => {
-    document.body.classList.add('modal-open');
-};
-
-const enableBodyScroll = (): void => {
-    document.body.classList.remove('modal-open');
-};
-
 onMounted(() => {
-    disableBodyScroll();
+    lockBodyScroll();
     input.value?.focus();
 });
 
-onUnmounted(() => {
-    enableBodyScroll();
-});
+onUnmounted(unlockBodyScroll);
 </script>
 
 <template>
@@ -127,7 +119,7 @@ onUnmounted(() => {
     margin: 0 0 16px;
     font-size: 13px;
     line-height: 1.5;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 
 .actions {
@@ -145,16 +137,16 @@ onUnmounted(() => {
     padding: 12px;
     border: none;
     border-radius: 18px;
-    background: rgba(139, 92, 246, 0.08);
+    background: var(--tint);
     font-family: inherit;
     font-size: 13px;
     font-weight: 600;
-    color: var(--ink, #241533);
+    color: var(--ink);
     cursor: pointer;
     transition: all 0.2s ease;
 
     &:hover {
-        background: rgba(139, 92, 246, 0.14);
+        background: var(--tint-strong);
     }
 }
 </style>

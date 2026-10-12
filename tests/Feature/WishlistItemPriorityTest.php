@@ -115,4 +115,37 @@ class WishlistItemPriorityTest extends TestCase
             ->assertJsonPath('data.0.items.0.priority', 2)
             ->assertJsonMissingPath('data.0.items.0.isSelected');
     }
+
+    // У дела приоритет означает важность: сохраняется при создании и изменении
+    public function test_todo_item_importance_is_saved(): void
+    {
+        $user = User::factory()->create();
+
+        $wishlistId = $this->actingAs($user)
+            ->postJson('/v1/wishlists', [
+                'type' => 'todo',
+                'title' => 'Дела',
+                'items' => [
+                    ['label' => 'Оплатить счета', 'priority' => 3],
+                    ['label' => 'Разобрать шкаф'],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.items.0.priority', 3)
+            ->assertJsonPath('data.items.1.priority', null)
+            ->json('data.id');
+
+        $items = Wishlist::findOrFail($wishlistId)->items()->orderBy('position')->get();
+
+        $this->actingAs($user)
+            ->patchJson("/v1/wishlists/{$wishlistId}", [
+                'items' => [
+                    ['id' => $items[0]->id, 'label' => 'Оплатить счета', 'priority' => null],
+                    ['id' => $items[1]->id, 'label' => 'Разобрать шкаф', 'priority' => 1],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.items.0.priority', null)
+            ->assertJsonPath('data.items.1.priority', 1);
+    }
 }

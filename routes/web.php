@@ -1,11 +1,14 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Middleware\RenewRememberCookie;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\SavedWishlistController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WishlistController;
-use App\Http\Controllers\Api\SavedWishlistController;
+use App\Http\Controllers\EmailReminderController;
+use App\Http\Controllers\SharedWishlistPageController;
+use App\Http\Middleware\RenewRememberCookie;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,6 +36,8 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:registration');
     Route::post('/verify-registration', [AuthController::class, 'verifyRegistrationCode'])
         ->middleware('throttle:verify-code');
+    Route::post('/verify-registration/resend', [AuthController::class, 'resendVerificationCode'])
+        ->middleware('throttle:verify-code-resend');
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])
         ->middleware('throttle:password-reset-request');
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])
@@ -72,17 +77,32 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard', RenewReme
     Route::delete('/saved-wishlists/{id}', [SavedWishlistController::class, 'removeSavedWishlist']);
 });
 
+// Отписка от напоминаний о сроке по ссылке из письма (EmailReminderController).
+// Подпись проверяется без хоста и схемы (signed:relative), см. DueDateReminderService::unsubscribeUrl
+Route::middleware('signed:relative')->group(function () {
+    Route::get('/email-reminders/unsubscribe/{user}', [EmailReminderController::class, 'showUnsubscribe'])
+        ->name('email-reminders.unsubscribe');
+    Route::post('/email-reminders/unsubscribe/{user}', [EmailReminderController::class, 'unsubscribe'])
+        ->withoutMiddleware(ValidateCsrfToken::class);
+});
+
+// Общая страница списка: SPA с мета-тегами списка для превью ссылки в мессенджерах.
+// Прежние адреса (/shared, /shared-wishlists, /shared-todolists) SPA перенаправляет
+// сама, но боты не выполняют JavaScript, поэтому теги нужны и на них
+Route::get('/{prefix}/{id}', SharedWishlistPageController::class)
+    ->where('prefix', 'shared|shared-wishlists?|shared-todolists?|shared-fund');
+
 /**
  * SPA Fallback
- * 
+ *
  * Все запросы, которые не попали под API или другие маршруты,
  * перенаправляются на главную страницу.
- * 
+ *
  * Это необходимо для работы клиентского роутинга (Vue Router / React Router):
  * - Пользователь может обновить страницу на любом URL
  * - Можно делиться ссылками на конкретные страницы
  * - SEO-боты получают HTML (если настроен SSR)
- * 
+ *
  * ВАЖНО: Этот маршрут должен быть ПОСЛЕДНИМ в файле routes/web.php!
  * Иначе он перехватит все запросы, включая API.
  *

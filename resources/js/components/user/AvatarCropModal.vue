@@ -254,7 +254,7 @@ onBeforeUnmount(() => {
     margin: 0 0 12px;
     font-size: 13px;
     line-height: 1.5;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 
 // cropperjs заполняет контейнер, поэтому его высота задана явно
@@ -262,7 +262,7 @@ onBeforeUnmount(() => {
     height: min(60vh, 320px);
     overflow: hidden;
     border-radius: 14px;
-    background: #241533;
+    background: var(--toast-bg);
 
     img {
         display: block;
@@ -278,7 +278,7 @@ onBeforeUnmount(() => {
 }
 
 .crop-area :deep(.cropper-view-box) {
-    outline: 2px solid #fff;
+    outline: 2px solid var(--surface-solid);
     outline-offset: -1px;
 }
 
@@ -297,12 +297,12 @@ onBeforeUnmount(() => {
     border: 1.5px solid rgba(139, 92, 246, 0.25);
     border-radius: 50%;
     background: transparent;
-    color: #8b5cf6;
+    color: var(--brand-violet);
     cursor: pointer;
     transition: all 0.2s ease;
 
     &:hover:not(:disabled) {
-        background: rgba(139, 92, 246, 0.08);
+        background: var(--tint);
     }
 
     &:disabled {

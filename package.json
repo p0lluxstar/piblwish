@@ -5,6 +5,7 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
+        "dev:docker": "vite --mode docker",
         "format": "prettier --write .",
         "lint": "eslint . --ext .js,.ts,.vue",
         "type-check": "vue-tsc --noEmit"
@@ -30,7 +31,7 @@
     },
     "dependencies": {
         "@fontsource-variable/shantell-sans": "^5.3.0",
-        "@lucide/vue": "^1.14.0",
+        "@lucide/vue": "^1.55.0",
         "@tanstack/vue-query": "^5.100.6",
         "axios": "^1.15.2",
         "cropperjs": "1.6.2",

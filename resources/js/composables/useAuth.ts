@@ -3,9 +3,10 @@ import {
     type UseMutationReturnType,
     useQuery,
     useQueryClient,
+    type UseQueryReturnType,
 } from '@tanstack/vue-query';
 import type { AxiosError, AxiosResponse } from 'axios';
-import { computed, type ComputedRef, ref, watch } from 'vue';
+import { computed, type ComputedRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { api } from '@/lib/api';
@@ -22,23 +23,38 @@ import type {
 } from '@/types/auth';
 import type { AppBackground, User } from '@/types/user';
 
-export const useLogin = (): any => {
+type UseLoginReturn = UseMutationReturnType<
+    AxiosResponse<{ data: User }>,
+    AxiosError<ApiErrorResponse>,
+    LoginPayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+export const useLogin = (): UseLoginReturn => {
     const router = useRouter();
     const authStore = useAuthStore();
-    const errorMessage = ref<string | null>(null);
 
-    const mutation = useMutation({
-        mutationFn: (payload: LoginPayload) => api.post('/v1/login', payload),
+    const mutation = useMutation<
+        AxiosResponse<{ data: User }>,
+        AxiosError<ApiErrorResponse>,
+        LoginPayload
+    >({
+        mutationFn: (payload) => api.post('/v1/login', payload),
 
         onSuccess: (response) => {
             authStore.setUser(response.data.data);
             router.push('/dashboard');
         },
-
-        onError: (error: any): void => {
-            errorMessage.value = error?.response?.data?.data?.message;
-        },
     });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(
+            mutation.error.value,
+            'Не удалось войти. Попробуйте позже',
+        ),
+    );
 
     return {
         ...mutation,
@@ -46,21 +62,111 @@ export const useLogin = (): any => {
     };
 };
 
-export const useRegister = (): any => {
-    return useMutation({
-        mutationFn: (payload: RegisterPayload) =>
-            api.post('/v1/register', payload),
-    });
+type UseRegisterReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    RegisterPayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
 };
 
-export const useVerifyRegistration = () => {
-    return useMutation({
-        mutationFn: (payload: { email: string; code: string }) =>
-            api.post('/v1/verify-registration', payload),
+export const useRegister = (): UseRegisterReturn => {
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        RegisterPayload
+    >({
+        mutationFn: (payload) => api.post('/v1/register', payload),
     });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(
+            mutation.error.value,
+            'Не удалось зарегистрироваться. Попробуйте позже',
+        ),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
 };
 
-export const useLogout = (): any => {
+type VerifyRegistrationPayload = { email: string; code: string };
+
+type UseVerifyRegistrationReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    VerifyRegistrationPayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+export const useVerifyRegistration = (): UseVerifyRegistrationReturn => {
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        VerifyRegistrationPayload
+    >({
+        mutationFn: (payload) => api.post('/v1/verify-registration', payload),
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(
+            mutation.error.value,
+            'Не удалось подтвердить код. Попробуйте позже',
+        ),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type ResendVerificationCodePayload = { email: string };
+
+type UseResendVerificationCodeReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    ResendVerificationCodePayload,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+export const useResendVerificationCode =
+    (): UseResendVerificationCodeReturn => {
+        const mutation = useMutation<
+            AxiosResponse,
+            AxiosError<ApiErrorResponse>,
+            ResendVerificationCodePayload
+        >({
+            mutationFn: (payload) =>
+                api.post('/v1/verify-registration/resend', payload),
+        });
+
+        const errorMessage = computed((): string | null =>
+            getApiErrorMessage(
+                mutation.error.value,
+                'Не удалось отправить код. Попробуйте позже',
+            ),
+        );
+
+        return {
+            ...mutation,
+            errorMessage,
+        };
+    };
+
+export const useLogout = (): UseMutationReturnType<
+    AxiosResponse,
+    Error,
+    void,
+    unknown
+> => {
     const router = useRouter();
     const authStore = useAuthStore();
 
@@ -271,7 +377,10 @@ export const useUpdateBackground = (): UseUpdateBackgroundReturn => {
     };
 };
 
-type UseUpdateShowFriendsEventsReturn = UseMutationReturnType<
+// Логическая настройка пользователя, которая меняется переключателем в окне настроек
+export type UserToggleSetting = 'showFriendsEvents' | 'emailReminders';
+
+type UseUpdateUserToggleReturn = UseMutationReturnType<
     AxiosResponse,
     AxiosError<ApiErrorResponse>,
     boolean,
@@ -280,51 +389,111 @@ type UseUpdateShowFriendsEventsReturn = UseMutationReturnType<
     errorMessage: ComputedRef<string | null>;
 };
 
-// Показ строки «Скоро у друзей» в дашборде. Переключатель меняется сразу,
-// до ответа сервера; при ошибке возвращается прежнее значение
-export const useUpdateShowFriendsEvents =
-    (): UseUpdateShowFriendsEventsReturn => {
-        const authStore = useAuthStore();
+// Изменение логической настройки: строки «Скоро у друзей» в дашборде или писем
+// о сроке списков. Переключатель меняется сразу, до ответа сервера;
+// при ошибке возвращается прежнее значение
+export const useUpdateUserToggle = (
+    setting: UserToggleSetting,
+): UseUpdateUserToggleReturn => {
+    const authStore = useAuthStore();
 
-        const setValue = (showFriendsEvents: boolean): void => {
-            if (authStore.user) {
-                authStore.setUser({ ...authStore.user, showFriendsEvents });
-            }
-        };
-
-        const mutation = useMutation<
-            AxiosResponse,
-            AxiosError<ApiErrorResponse>,
-            boolean
-        >({
-            mutationFn: (showFriendsEvents) =>
-                api.patch('/v1/user', { showFriendsEvents }),
-
-            onMutate: (showFriendsEvents) => {
-                setValue(showFriendsEvents);
-            },
-
-            // Значение после ошибки противоположно отправленному. Если пользователь
-            // уже переключил ещё раз, состояние и так совпадает с этим значением
-            onError: (_error, showFriendsEvents) => {
-                if (authStore.user?.showFriendsEvents === showFriendsEvents) {
-                    setValue(!showFriendsEvents);
-                }
-            },
-        });
-
-        const errorMessage = computed((): string | null =>
-            getApiErrorMessage(
-                mutation.error.value,
-                'Не удалось сохранить настройку',
-            ),
-        );
-
-        return {
-            ...mutation,
-            errorMessage,
-        };
+    const setValue = (value: boolean): void => {
+        if (authStore.user) {
+            authStore.setUser({ ...authStore.user, [setting]: value });
+        }
     };
+
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        boolean
+    >({
+        mutationFn: (value) => api.patch('/v1/user', { [setting]: value }),
+
+        onMutate: (value) => {
+            setValue(value);
+        },
+
+        // Значение после ошибки противоположно отправленному. Если пользователь
+        // уже переключил ещё раз, состояние и так совпадает с этим значением
+        onError: (_error, value) => {
+            if (authStore.user?.[setting] === value) {
+                setValue(!value);
+            }
+        },
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(
+            mutation.error.value,
+            'Не удалось сохранить настройку',
+        ),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
+
+type UseUpdateReminderDaysReturn = UseMutationReturnType<
+    AxiosResponse,
+    AxiosError<ApiErrorResponse>,
+    number,
+    unknown
+> & {
+    errorMessage: ComputedRef<string | null>;
+};
+
+// Срок напоминаний на почту (1–7 дней до даты списка). Выбор применяется сразу,
+// до ответа сервера; при ошибке возвращается прежнее значение, если пользователь
+// после этого не выбрал другое
+export const useUpdateReminderDays = (): UseUpdateReminderDaysReturn => {
+    const authStore = useAuthStore();
+
+    const setValue = (reminderDays: number): void => {
+        if (authStore.user) {
+            authStore.setUser({ ...authStore.user, reminderDays });
+        }
+    };
+
+    const mutation = useMutation<
+        AxiosResponse,
+        AxiosError<ApiErrorResponse>,
+        number,
+        { previous: number | undefined }
+    >({
+        mutationFn: (reminderDays) => api.patch('/v1/user', { reminderDays }),
+
+        onMutate: (reminderDays) => {
+            const previous = authStore.user?.reminderDays;
+            setValue(reminderDays);
+
+            return { previous };
+        },
+
+        onError: (_error, reminderDays, context) => {
+            if (
+                context?.previous !== undefined &&
+                authStore.user?.reminderDays === reminderDays
+            ) {
+                setValue(context.previous);
+            }
+        },
+    });
+
+    const errorMessage = computed((): string | null =>
+        getApiErrorMessage(
+            mutation.error.value,
+            'Не удалось сохранить настройку',
+        ),
+    );
+
+    return {
+        ...mutation,
+        errorMessage,
+    };
+};
 
 type UseUploadAvatarReturn = UseMutationReturnType<
     AxiosResponse<{ data: User }>,
@@ -487,7 +656,7 @@ function getApiErrorMessage(
     return firstFieldError ?? data?.message ?? fallback;
 }
 
-export const useUser = (): any => {
+export const useUser = (): UseQueryReturnType<User, Error> => {
     const authStore = useAuthStore();
 
     const query = useQuery({

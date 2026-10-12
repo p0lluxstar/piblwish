@@ -12,6 +12,7 @@
                     "Auth"
                 ],
                 "summary": "Регистрация пользователя",
+                "description": "Если email принадлежит неподтверждённому аккаунту, он получает новые логин и пароль, а на адрес уходит новый код.",
                 "operationId": "c47411f6de96b5b30018c647e449e470",
                 "requestBody": {
                     "required": true,
@@ -82,6 +83,46 @@
                 }
             }
         },
+        "/v1/verify-registration/resend": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Повторная отправка кода регистрации",
+                "description": "Новый код заменяет прежний и действует 2 минуты. Отправляется только неподтверждённому и не удалённому аккаунту. Ответ одинаков для любого email.",
+                "operationId": "b1c340ad8dc90a73cdddf7ea672f3d99",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "example": "test@example.com"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Запрос принят"
+                    },
+                    "422": {
+                        "description": "Ошибка валидации"
+                    },
+                    "429": {
+                        "description": "Слишком частые запросы (не чаще одного в минуту для email)"
+                    }
+                }
+            }
+        },
         "/v1/login": {
             "post": {
                 "tags": [
@@ -126,7 +167,7 @@
                         "description": "Неверные данные или аккаунт деактивирован"
                     },
                     "403": {
-                        "description": "Аккаунт не подтверждён (email не подтверждён)"
+                        "description": "Email не подтверждён; на него отправлен новый код регистрации (действует 2 минуты)"
                     }
                 }
             }
@@ -177,7 +218,7 @@
                     "Auth"
                 ],
                 "summary": "Установка нового пароля по коду",
-                "description": "Код действует 10 минут. После смены пароля все сессии и токены пользователя завершаются.",
+                "description": "Код действует 2 минуты. После смены пароля все сессии и токены пользователя завершаются.",
                 "operationId": "3900632a0e8b776a145bee67e1947ccf",
                 "requestBody": {
                     "required": true,
@@ -508,6 +549,11 @@
                                                     "type": "string",
                                                     "format": "date",
                                                     "nullable": true
+                                                },
+                                                "createdAt": {
+                                                    "description": "Дата создания списка",
+                                                    "type": "string",
+                                                    "format": "date-time"
                                                 },
                                                 "username": {
                                                     "type": "string",
@@ -1023,11 +1069,43 @@
                                                     "type": "boolean",
                                                     "example": true
                                                 },
+                                                "emailReminders": {
+                                                    "description": "Присылать письма перед датой своих и сохранённых чужих списков",
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "reminderDays": {
+                                                    "description": "За сколько дней до даты списка приходит напоминание, 1–7 (по умолчанию 3)",
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
                                                 "avatarUrl": {
                                                     "description": "Адрес фотографии пользователя; null — фотографии нет, показывается первая буква имени",
                                                     "type": "string",
                                                     "example": "https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp",
                                                     "nullable": true
+                                                },
+                                                "stats": {
+                                                    "description": "Сколько карточек каждого типа пользователь создал за всё время, включая удалённые и дубликаты",
+                                                    "properties": {
+                                                        "gift": {
+                                                            "type": "integer",
+                                                            "example": 4
+                                                        },
+                                                        "todo": {
+                                                            "type": "integer",
+                                                            "example": 7
+                                                        },
+                                                        "note": {
+                                                            "type": "integer",
+                                                            "example": 2
+                                                        },
+                                                        "fund": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        }
+                                                    },
+                                                    "type": "object"
                                                 },
                                                 "createdAt": {
                                                     "type": "string",
@@ -1110,7 +1188,7 @@
                     "User"
                 ],
                 "summary": "Изменить настройки текущего пользователя",
-                "description": "Сохраняет фон приложения и показ строки «Скоро у друзей» в дашборде. Можно передать одну или обе настройки, непереданная не меняется; запрос без них отклоняется (422). Фон по умолчанию — blossom, строка по умолчанию показывается. Возвращает пользователя в том же виде, что GET /v1/user.",
+                "description": "Сохраняет фон приложения, показ строки «Скоро у друзей» в дашборде и письма-напоминания о сроке списков и их срок (reminderDays, 1–7 дней, по умолчанию 3). Можно передать одну или несколько настроек, непереданная не меняется; запрос без них отклоняется (422). Фон по умолчанию — blossom, строка и напоминания по умолчанию включены. Возвращает пользователя в том же виде, что GET /v1/user.",
                 "operationId": "05db2d69688dae19cebf7374eb736629",
                 "requestBody": {
                     "required": true,
@@ -1123,8 +1201,20 @@
                                         "type": "boolean",
                                         "example": false
                                     },
+                                    "emailReminders": {
+                                        "description": "Присылать письма перед датой своих и сохранённых чужих списков",
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "reminderDays": {
+                                        "description": "За сколько дней до даты списка приходит напоминание, 1–7; о каждом списке с данной датой — один раз",
+                                        "type": "integer",
+                                        "example": 3,
+                                        "maximum": 7,
+                                        "minimum": 1
+                                    },
                                     "background": {
-                                        "description": "Обязателен, если не передан showFriendsEvents",
+                                        "description": "Обязателен, если не переданы showFriendsEvents, emailReminders и reminderDays",
                                         "type": "string",
                                         "example": "ocean",
                                         "enum": [
@@ -1180,10 +1270,27 @@
                                                     "type": "boolean",
                                                     "example": true
                                                 },
+                                                "emailReminders": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "reminderDays": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
                                                 "avatarUrl": {
                                                     "type": "string",
                                                     "example": null,
                                                     "nullable": true
+                                                },
+                                                "stats": {
+                                                    "type": "object",
+                                                    "example": {
+                                                        "gift": 4,
+                                                        "todo": 7,
+                                                        "note": 2,
+                                                        "fund": 1
+                                                    }
                                                 },
                                                 "createdAt": {
                                                     "type": "string",
@@ -1203,7 +1310,7 @@
                         "description": "Не авторизован"
                     },
                     "422": {
-                        "description": "Ошибка валидации: не передана ни одна настройка, такого фона нет или showFriendsEvents не логическое значение",
+                        "description": "Ошибка валидации: не передана ни одна настройка, такого фона нет или showFriendsEvents/emailReminders не логическое значение или reminderDays вне 1–7",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1314,9 +1421,39 @@
                                                     "type": "boolean",
                                                     "example": true
                                                 },
+                                                "emailReminders": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "reminderDays": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
                                                 "avatarUrl": {
                                                     "type": "string",
                                                     "example": "https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp"
+                                                },
+                                                "stats": {
+                                                    "description": "Сколько карточек каждого типа пользователь создал за всё время, включая удалённые и дубликаты",
+                                                    "properties": {
+                                                        "gift": {
+                                                            "type": "integer",
+                                                            "example": 4
+                                                        },
+                                                        "todo": {
+                                                            "type": "integer",
+                                                            "example": 7
+                                                        },
+                                                        "note": {
+                                                            "type": "integer",
+                                                            "example": 2
+                                                        },
+                                                        "fund": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        }
+                                                    },
+                                                    "type": "object"
                                                 },
                                                 "createdAt": {
                                                     "type": "string",
@@ -1426,10 +1563,27 @@
                                                     "type": "boolean",
                                                     "example": true
                                                 },
+                                                "emailReminders": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "reminderDays": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
                                                 "avatarUrl": {
                                                     "type": "string",
                                                     "example": null,
                                                     "nullable": true
+                                                },
+                                                "stats": {
+                                                    "type": "object",
+                                                    "example": {
+                                                        "gift": 4,
+                                                        "todo": 7,
+                                                        "note": 2,
+                                                        "fund": 1
+                                                    }
                                                 },
                                                 "createdAt": {
                                                     "type": "string",
@@ -1757,10 +1911,27 @@
                                                     "type": "boolean",
                                                     "example": true
                                                 },
+                                                "emailReminders": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "reminderDays": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
                                                 "avatarUrl": {
                                                     "type": "string",
                                                     "example": null,
                                                     "nullable": true
+                                                },
+                                                "stats": {
+                                                    "type": "object",
+                                                    "example": {
+                                                        "gift": 4,
+                                                        "todo": 7,
+                                                        "note": 2,
+                                                        "fund": 1
+                                                    }
                                                 },
                                                 "createdAt": {
                                                     "type": "string",

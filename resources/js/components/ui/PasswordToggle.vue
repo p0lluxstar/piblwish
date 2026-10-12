@@ -37,7 +37,7 @@ const visible = defineModel<boolean>({ required: true });
     border: none;
     border-radius: 10px;
     background: transparent;
-    color: #a1849f;
+    color: var(--ink-muted);
     cursor: pointer;
     transition:
         color 0.2s ease,
@@ -45,7 +45,7 @@ const visible = defineModel<boolean>({ required: true });
 }
 
 .password-toggle:hover {
-    color: var(--brand-violet, #8b5cf6);
-    background: rgba(139, 92, 246, 0.08);
+    color: var(--brand-violet);
+    background: var(--tint);
 }
 </style>

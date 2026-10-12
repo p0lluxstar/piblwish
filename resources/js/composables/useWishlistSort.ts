@@ -1,8 +1,8 @@
 import { computed, type ComputedRef, type Ref, ref, watch } from 'vue';
 
-import type { Wishlist } from '@/types/wishlist';
-
-export type WishlistSortField = 'date' | 'title';
+// date — дата создания (в архиве — переноса в архив), due — дата списка
+// (срок списка дел и сбора, дата события списка желаний), title — название
+export type WishlistSortField = 'date' | 'due' | 'title';
 export type SortDirection = 'asc' | 'desc';
 
 export interface WishlistSortState {
@@ -10,34 +10,47 @@ export interface WishlistSortState {
     direction: SortDirection;
 }
 
-const STORAGE_KEY = 'wishlists-sort';
-const DEFAULT_SORT: WishlistSortState = { field: 'date', direction: 'desc' };
+// Естественное направление поля: даты создания — новые сверху,
+// сроки — ближайшие сверху, названия — от А до Я
+const NATURAL_DIRECTION: Record<WishlistSortField, SortDirection> = {
+    date: 'desc',
+    due: 'asc',
+    title: 'asc',
+};
 
-const isSortState = (value: unknown): value is WishlistSortState => {
+const isSortState = (
+    value: unknown,
+    fields: WishlistSortField[],
+): value is WishlistSortState => {
     if (typeof value !== 'object' || value === null) return false;
 
     const { field, direction } = value as Record<string, unknown>;
 
     return (
-        (field === 'date' || field === 'title') &&
+        fields.includes(field as WishlistSortField) &&
         (direction === 'asc' || direction === 'desc')
     );
 };
 
 // Чтение защищено: в приватном режиме доступ к localStorage может выбросить исключение,
-// а сохранённое значение может оказаться повреждённым или устаревшим
-const readSort = (storageKey: string): WishlistSortState => {
+// а сохранённое значение может оказаться повреждённым, устаревшим или относиться
+// к полю, которого в этом разделе нет
+const readSort = (
+    storageKey: string,
+    fields: WishlistSortField[],
+    defaultSort: WishlistSortState,
+): WishlistSortState => {
     try {
         const parsed: unknown = JSON.parse(
             window.localStorage.getItem(storageKey) ?? 'null',
         );
 
-        if (isSortState(parsed)) return parsed;
+        if (isSortState(parsed, fields)) return parsed;
     } catch {
         // Значение отсутствует или некорректно — используется сортировка по умолчанию
     }
 
-    return DEFAULT_SORT;
+    return defaultSort;
 };
 
 const writeSort = (storageKey: string, value: WishlistSortState): void => {
@@ -53,35 +66,46 @@ const collator = new Intl.Collator('ru', {
     numeric: true,
 });
 
-// У заметки нет названия: при сортировке по названию учитывается её текст
-const sortTitle = (wishlist: Wishlist): string =>
-    wishlist.title ?? wishlist.content ?? '';
+export interface WishlistSortConfig<T> {
+    storageKey: string;
+    // Поля, по которым можно сортировать в разделе; первое — по умолчанию
+    fields: WishlistSortField[];
+    // Значения полей карточки; пустая строка — значения нет
+    dateOf?: (item: T) => string;
+    dueDateOf?: (item: T) => string;
+    titleOf: (item: T) => string;
+}
 
-// Дата карточки для сортировки «По дате»: по умолчанию дата создания
-const createdAtOf = (wishlist: Wishlist): string => wishlist.createdAt ?? '';
-
-// Сортировка карточек списков в дашборде; выбор пользователя хранится в localStorage.
-// Архив передаёт свой ключ хранения и сортирует по времени переноса в архив
-export const useWishlistSort = (
-    wishlists: Ref<Wishlist[]>,
+// Сортировка карточек списков (свои в дашборде и архиве, чужие в разделе
+// «Чужие списки»); выбор пользователя хранится в localStorage
+export const useWishlistSort = <T>(
+    items: Ref<T[]>,
     {
-        storageKey = STORAGE_KEY,
-        dateOf = createdAtOf,
-    }: {
-        storageKey?: string;
-        dateOf?: (wishlist: Wishlist) => string;
-    } = {},
+        storageKey,
+        fields,
+        dateOf = (): string => '',
+        dueDateOf = (): string => '',
+        titleOf,
+    }: WishlistSortConfig<T>,
 ): {
     sort: Ref<WishlistSortState>;
     setSort: (field: WishlistSortField) => void;
-    sortedWishlists: ComputedRef<Wishlist[]>;
+    isDefaultSort: ComputedRef<boolean>;
+    resetSort: () => void;
+    sortedItems: ComputedRef<T[]>;
 } => {
-    const sort = ref<WishlistSortState>(readSort(storageKey));
+    const defaultSort: WishlistSortState = {
+        field: fields[0],
+        direction: NATURAL_DIRECTION[fields[0]],
+    };
+    const sort = ref<WishlistSortState>(
+        readSort(storageKey, fields, defaultSort),
+    );
 
     watch(sort, (value) => writeSort(storageKey, value));
 
-    // Повторное нажатие на активную кнопку меняет направление.
-    // Новое поле выбирается с естественным направлением: даты — новые сверху, названия — от А до Я
+    // Повторное нажатие на активную кнопку меняет направление,
+    // новое поле выбирается с естественным направлением
     const setSort = (field: WishlistSortField): void => {
         if (sort.value.field === field) {
             sort.value = {
@@ -92,20 +116,46 @@ export const useWishlistSort = (
             return;
         }
 
-        sort.value = { field, direction: field === 'date' ? 'desc' : 'asc' };
+        sort.value = { field, direction: NATURAL_DIRECTION[field] };
     };
 
-    const sortedWishlists = computed(() => {
+    const isDefaultSort = computed(
+        () =>
+            sort.value.field === defaultSort.field &&
+            sort.value.direction === defaultSort.direction,
+    );
+
+    const resetSort = (): void => {
+        sort.value = { ...defaultSort };
+    };
+
+    const valueOf: Record<WishlistSortField, (item: T) => string> = {
+        date: dateOf,
+        due: dueDateOf,
+        title: titleOf,
+    };
+
+    const sortedItems = computed(() => {
         const { field, direction } = sort.value;
         const factor = direction === 'asc' ? 1 : -1;
+        const getValue = valueOf[field];
 
-        return [...wishlists.value].sort((a, b) =>
-            field === 'title'
-                ? factor * collator.compare(sortTitle(a), sortTitle(b))
+        return [...items.value].sort((a, b) => {
+            const valueA = getValue(a);
+            const valueB = getValue(b);
+
+            // Карточки без значения (список без даты, недоступный чужой список)
+            // в любом направлении стоят в конце
+            if (!valueA || !valueB) {
+                return Number(!valueA) - Number(!valueB);
+            }
+
+            return field === 'title'
+                ? factor * collator.compare(valueA, valueB)
                 : // Даты в формате ISO 8601 упорядочиваются при сравнении как строки
-                  factor * dateOf(a).localeCompare(dateOf(b)),
-        );
+                  factor * valueA.localeCompare(valueB);
+        });
     });
 
-    return { sort, setSort, sortedWishlists };
+    return { sort, setSort, isDefaultSort, resetSort, sortedItems };
 };

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, watchEffect } from 'vue';
 
 import Footer from '@/components/dashboard/Footer.vue';
 import Header from '@/components/dashboard/Header.vue';
@@ -11,9 +11,20 @@ import { useAuthStore } from '@/stores/auth';
 const auth = useAuthStore();
 
 // Фон, выбранный в настройках аккаунта; у гостя — фон по умолчанию
-const backgroundClass = computed(
-    (): string => `app-bg--${auth.user?.background ?? DEFAULT_APP_BACKGROUND}`,
+const background = computed(
+    (): string => auth.user?.background ?? DEFAULT_APP_BACKGROUND,
 );
+const backgroundClass = computed((): string => `app-bg--${background.value}`);
+
+// Градиент кнопок под фон (scss/ui/appBackgroundGradients.scss) задаётся
+// на <html>, чтобы его получили и окна, вынесенные через Teleport в body
+watchEffect((): void => {
+    document.documentElement.dataset.appBg = background.value;
+});
+
+onBeforeUnmount((): void => {
+    delete document.documentElement.dataset.appBg;
+});
 </script>
 
 <template>
@@ -38,7 +49,10 @@ const backgroundClass = computed(
     display: flex;
     flex-direction: column;
     background: var(--app-bg);
-    overflow-x: hidden;
+    // clip, а не hidden: с hidden overflow-y становится auto, блок превращается
+    // в контейнер прокрутки и показывает вторую полосу рядом с полосой страницы,
+    // а липкая шапка прилипает к нему, а не к окну
+    overflow-x: clip;
     isolation: isolate;
 }
 

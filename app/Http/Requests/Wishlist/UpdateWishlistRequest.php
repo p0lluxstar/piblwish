@@ -20,7 +20,7 @@ class UpdateWishlistRequest extends FormRequest
     public function rules(): array
     {
         // Тип списка после создания не меняется, поэтому поля type здесь нет.
-        // Ссылки, цену, приоритет и режим сюрприза у списка дел очищает WishlistService.
+        // Ссылки, цену и режим сюрприза у списка дел очищает WishlistService.
         // У заметки WishlistService изменяет только цвет и текст, у списков — всё, кроме текста.
         // isShared WishlistService не учитывает у заметки, а guestsCanCheck
         // и guestNameRequired учитывает только у списка дел.

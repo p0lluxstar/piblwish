@@ -58,6 +58,14 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(20)->by($request->ip()),
         ]);
 
+        // Повторная отправка кода регистрации: каждая попытка может отправить
+        // письмо. Код действует 2 минуты, поэтому раз в минуту для email хватает
+        RateLimiter::for('verify-code-resend', fn (Request $request): array => [
+            Limit::perMinute(1)->by(mb_strtolower((string) $request->input('email'))),
+            Limit::perMinute(3)->by($request->ip()),
+            Limit::perHour(20)->by($request->ip()),
+        ]);
+
         // Запрос кода восстановления: каждая попытка может отправить письмо.
         // Лимит по email защищает владельца адреса от потока писем
         RateLimiter::for('password-reset-request', fn (Request $request): array => [
@@ -67,7 +75,7 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         // Установка пароля по коду: перебор 6-значного кода для одного email.
-        // Код действует 10 минут, поэтому на один код приходится не больше 50 попыток
+        // Код действует 2 минуты, поэтому на один код приходится не больше 10 попыток
         RateLimiter::for('password-reset', fn (Request $request): array => [
             Limit::perMinute(5)->by(mb_strtolower((string) $request->input('email'))),
             Limit::perMinute(20)->by($request->ip()),

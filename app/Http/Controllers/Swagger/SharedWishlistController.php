@@ -105,6 +105,12 @@ use OpenApi\Attributes as OA;
                                 format: 'date',
                                 nullable: true
                             ),
+                            new OA\Property(
+                                property: 'createdAt',
+                                description: 'Дата создания списка',
+                                type: 'string',
+                                format: 'date-time'
+                            ),
                             new OA\Property(property: 'username', type: 'string', nullable: true),
                             new OA\Property(
                                 property: 'avatarUrl',

@@ -102,7 +102,6 @@ class WishlistTypeTest extends TestCase
                 'items' => [[
                     'label' => 'Купить продукты',
                     'urls' => ['https://example.com'],
-                    'priority' => 2,
                     'price' => 500,
                 ]],
             ])
@@ -110,7 +109,6 @@ class WishlistTypeTest extends TestCase
             ->assertJsonValidationErrors([
                 'hideSelections',
                 'items.0.urls',
-                'items.0.priority',
                 'items.0.price',
             ], 'data.errors');
 
@@ -167,7 +165,6 @@ class WishlistTypeTest extends TestCase
                     'id' => $item->id,
                     'label' => 'Купить продукты',
                     'urls' => ['https://example.com'],
-                    'priority' => 3,
                     'price' => 500,
                 ]],
             ])
@@ -175,7 +172,6 @@ class WishlistTypeTest extends TestCase
             ->assertJsonPath('data.type', 'todo')
             ->assertJsonPath('data.hideSelections', false)
             ->assertJsonPath('data.items.0.urls', [])
-            ->assertJsonPath('data.items.0.priority', null)
             ->assertJsonPath('data.items.0.price', null);
 
         $this->assertSame(WishlistType::Todo, $wishlist->fresh()->type);

@@ -8,38 +8,80 @@
 //
 // glow — насыщенный оттенок того же цвета для тени карточки (--wishlist-glow):
 // сам фон слишком бледный, тень такого цвета была бы почти не видна.
+//
+// Тёмная тема: $wishlist-colors-dark с теми же ключами — тёмный фон того же
+// оттенка и более светлый glow. У white переменные не задаются и в тёмной
+// теме: компонент берёт свою обычную поверхность (--surface, --surface-solid).
 
 @use 'sass:map';
 
+// Ключи в кавычках: lavender и pink — названия цветов CSS, и без кавычек
+// Sass считал бы их цветами, а не строками для имени класса
 $wishlist-colors: (
-    lavender: (
+    'lavender': (
         bg: #f3eeff,
         glow: #8b5cf6,
     ),
-    pink: (
+    'pink': (
         bg: #fdeef6,
         glow: #ec4899,
     ),
-    peach: (
+    'peach': (
         bg: #fff1e8,
         glow: #f97316,
     ),
-    lemon: (
+    'lemon': (
         bg: #fffae0,
         glow: #ca8a04,
     ),
-    mint: (
+    'mint': (
         bg: #e9f9f1,
         glow: #10b981,
     ),
-    sky: (
+    'sky': (
         bg: #dbeafe,
         glow: #3b82f6,
     ),
 );
 
+$wishlist-colors-dark: (
+    'lavender': (
+        bg: #2a2240,
+        glow: #a78bfa,
+    ),
+    'pink': (
+        bg: #352032,
+        glow: #f472b6,
+    ),
+    'peach': (
+        bg: #35251c,
+        glow: #fb923c,
+    ),
+    'lemon': (
+        bg: #302c18,
+        glow: #facc15,
+    ),
+    'mint': (
+        bg: #172e26,
+        glow: #34d399,
+    ),
+    'sky': (
+        bg: #172a43,
+        glow: #60a5fa,
+    ),
+);
+
 @each $name, $color in $wishlist-colors {
     .wishlist-color--#{$name} {
+        --wishlist-bg: #{map.get($color, bg)};
+        --wishlist-glow: #{map.get($color, glow)};
+    }
+}
+
+// Файл подключается в scoped-стили; атрибут области получает только
+// последний селектор, :root ему не мешает
+@each $name, $color in $wishlist-colors-dark {
+    :root[data-theme='dark'] .wishlist-color--#{$name} {
         --wishlist-bg: #{map.get($color, bg)};
         --wishlist-glow: #{map.get($color, glow)};
     }

@@ -1,13 +1,18 @@
 <script setup lang="ts">
+import { BellRing, PartyPopper } from '@lucide/vue';
 import { onMounted, onUnmounted, ref } from 'vue';
 
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import AppBackgroundPicker from '@/components/user/AppBackgroundPicker.vue';
 import EmailChangeSection from '@/components/user/EmailChangeSection.vue';
-import FriendsEventsToggle from '@/components/user/FriendsEventsToggle.vue';
 import LogoutAllDevicesSection from '@/components/user/LogoutAllDevicesSection.vue';
 import PasswordChangeSection from '@/components/user/PasswordChangeSection.vue';
 import ProfileSection from '@/components/user/ProfileSection.vue';
+import ReminderDaysPicker from '@/components/user/ReminderDaysPicker.vue';
+import ThemePicker from '@/components/user/ThemePicker.vue';
+import UserSettingToggle from '@/components/user/UserSettingToggle.vue';
+import UserStatsSection from '@/components/user/UserStatsSection.vue';
+import { lockBodyScroll, unlockBodyScroll } from '@/lib/bodyScrollLock';
 
 const props = defineProps<{
     isDeletingAccount?: boolean;
@@ -33,25 +38,12 @@ const handleDeleteAccount = (): void => {
     emit('deleteAccount');
 };
 
-const disableBodyScroll = (): void => {
-    document.body.classList.add('modal-open');
-};
+onMounted(lockBodyScroll);
 
-const enableBodyScroll = (): void => {
-    document.body.classList.remove('modal-open');
-};
-
-onMounted(() => {
-    disableBodyScroll();
-});
-
-onUnmounted(() => {
-    enableBodyScroll();
-});
+onUnmounted(unlockBodyScroll);
 
 const closeModal = (): void => {
     hideDeleteConfirm();
-    enableBodyScroll();
     emit('close');
 };
 </script>
@@ -68,8 +60,12 @@ const closeModal = (): void => {
 
                 <ProfileSection />
 
+                <UserStatsSection />
+
                 <section class="background-section">
-                    <h3 class="section-title">Фон приложения</h3>
+                    <h3 class="section-title">Оформление</h3>
+
+                    <ThemePicker />
 
                     <AppBackgroundPicker />
                 </section>
@@ -77,7 +73,25 @@ const closeModal = (): void => {
                 <section class="background-section">
                     <h3 class="section-title">Дашборд</h3>
 
-                    <FriendsEventsToggle />
+                    <UserSettingToggle
+                        setting="showFriendsEvents"
+                        title="Скоро у друзей"
+                        hint="Ближайшие даты чужих списков"
+                        :icon="PartyPopper"
+                    />
+                </section>
+
+                <section class="background-section">
+                    <h3 class="section-title">Уведомления</h3>
+
+                    <UserSettingToggle
+                        setting="emailReminders"
+                        title="Напоминания на почту"
+                        hint="Перед датой своих и сохранённых списков"
+                        :icon="BellRing"
+                    />
+
+                    <ReminderDaysPicker />
                 </section>
 
                 <EmailChangeSection />
@@ -161,7 +175,7 @@ const closeModal = (): void => {
     border: 1.5px solid rgba(225, 29, 72, 0.25);
     border-radius: 18px;
     background: transparent;
-    color: #e11d48;
+    color: var(--danger-strong);
     font-size: 13px;
     font-weight: 600;
     font-family: inherit;
@@ -169,13 +183,13 @@ const closeModal = (): void => {
     transition: all 0.2s ease;
 }
 .delete-account-btn:hover {
-    background: #e11d48;
+    background: var(--danger-strong);
     color: #fff;
     border-color: transparent;
 }
 
 .delete-confirm {
-    color: var(--ink, #241533);
+    color: var(--ink);
     font-size: 13px;
     line-height: 1.5;
 
@@ -186,7 +200,7 @@ const closeModal = (): void => {
     .warning-text {
         font-size: 12px;
         font-weight: 600;
-        color: #ec4899;
+        color: var(--brand-pink);
         margin-bottom: 14px;
     }
 }
@@ -204,7 +218,7 @@ const closeModal = (): void => {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, #fb7185, #ec4899);
+    background: linear-gradient(135deg, #fb7185, var(--brand-pink));
     border: none;
     color: #fff;
     border-radius: 18px;

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import {
+    Calendar,
     Check,
     Copy,
+    CreditCardCheck,
     ExternalLink,
     Gift,
+    Hourglass,
+    PartyPopper,
     RefreshCw,
-    Target,
     Users,
     X,
 } from '@lucide/vue';
@@ -34,7 +37,7 @@ import type {
 import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
 import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import UserAvatar from '../ui/UserAvatar.vue';
-import ItemPriorityHearts from './ItemPriorityHearts.vue';
+import ItemPriorityIcons from './ItemPriorityIcons.vue';
 import JointGiftFields from './JointGiftFields.vue';
 import TodoCheckedBy from './TodoCheckedBy.vue';
 import TodoGuestNameModal from './TodoGuestNameModal.vue';
@@ -584,51 +587,93 @@ const allSelected = computed(() => {
     return items.length > 0 && items.every((item) => item.isSelected);
 });
 
-// «Выполнено 2 из 5» под заголовком списка дел
-const todoProgressLabel = computed(() => {
-    const items = wishlist.value?.items ?? [];
-    const done = items.filter((item) => item.isSelected).length;
+// Число выполненных дел для прогресса над кнопкой
+const todoDoneCount = computed(
+    () =>
+        (wishlist.value?.items ?? []).filter((item) => item.isSelected).length,
+);
 
-    return `Выполнено ${done} из ${items.length}`;
+// «2 из 5», как на карточке в дашборде
+const todoProgressLabel = computed(
+    () => `${todoDoneCount.value} из ${wishlist.value?.items.length ?? 0}`,
+);
+
+// Целые проценты, как на карточке в дашборде
+const todoProgress = computed(() => {
+    const total = wishlist.value?.items.length ?? 0;
+
+    if (!total) return 0;
+
+    return Math.round((todoDoneCount.value / total) * 100);
 });
 
-// «Сделать до 31 декабря 2026 г. · осталось 5 дней» или
-// «Дата события: 31 декабря 2026 г. · через 12 дней». После события
-// списка желаний строка не показывается, а у выполненного списка дел
-// остаётся только дата
-const dueDateLine = computed(() => {
+// Сколько осталось до срока списка дел или до события списка желаний, как
+// на карточке в дашборде. У выполненного списка дел и после события списка
+// желаний счётчика нет
+const dueStatus = computed(() => {
     const dueDate = wishlist.value?.dueDate;
 
-    if (!dueDate) return '';
+    if (!dueDate) return null;
 
-    const type = wishlist.value?.type ?? 'gift';
-    const status = getDueDateStatus(type, dueDate, allSelected.value);
-
-    if (!status && type !== 'todo') return '';
-
-    // «Сделать до 31 декабря», «Сбор до 31 декабря», «Дата события: 31 декабря»
-    const title = dueDateTitle(type);
-    const date = formatDueDate(dueDate);
-    const line = type === 'gift' ? `${title}: ${date}` : `${title} ${date}`;
-
-    if (!status) return line;
-
-    return `${line} · ${status.text.charAt(0).toLowerCase()}${status.text.slice(1)}`;
-});
-
-// Срок списка дел прошёл, а дела не выполнены: строка выделяется красным
-const isDueDateOverdue = computed(() => {
-    const dueDate = wishlist.value?.dueDate;
-
-    if (!dueDate || !isTodo.value) return false;
-
-    return (
-        getDueDateStatus('todo', dueDate, allSelected.value)?.tone === 'overdue'
+    return getDueDateStatus(
+        wishlist.value?.type ?? 'gift',
+        dueDate,
+        allSelected.value,
     );
 });
 
-// Порядок позиций: заданный владельцем, по приоритету (сначала «очень хочу»)
-// или по стоимости
+// «Сделать до: 31 декабря 2026 г.»: подсказка и подпись для экранных дикторов
+const dueDateLabel = computed(() => {
+    const dueDate = wishlist.value?.dueDate;
+
+    return dueDate
+        ? `${dueDateTitle(wishlist.value?.type ?? 'gift')}: ${formatDueDate(dueDate)}`
+        : '';
+});
+
+// Первые три буквы месяца, как на карточке в дашборде: Intl с month: 'short'
+// даёт «сент.» и «мая» с точкой и разной длиной
+const SHORT_MONTHS = [
+    'янв',
+    'фев',
+    'мар',
+    'апр',
+    'май',
+    'июн',
+    'июл',
+    'авг',
+    'сен',
+    'окт',
+    'ноя',
+    'дек',
+];
+
+// «12 сен 2026»: дата создания внизу карточки
+const createdAtDate = computed(() => {
+    const createdAt = wishlist.value?.createdAt;
+
+    if (!createdAt) return '';
+
+    const date = new Date(createdAt);
+
+    return `${date.getDate()} ${SHORT_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+});
+
+// «Создан 12 сентября 2026 г.»: подсказка и подпись для экранных дикторов
+const createdAtLabel = computed(() => {
+    const createdAt = wishlist.value?.createdAt;
+
+    return createdAt
+        ? `Создан ${new Date(createdAt).toLocaleDateString('ru-RU', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+          })}`
+        : '';
+});
+
+// Порядок позиций: заданный владельцем, по приоритету (сначала «очень хочу»,
+// у дел — «очень важно») или по стоимости
 type ItemOrder = 'owner' | 'priority' | 'price-asc' | 'price-desc';
 
 const itemOrder = ref<ItemOrder>('owner');
@@ -648,7 +693,12 @@ const hasPrices = computed(() =>
 const itemOrderOptions = computed(() => [
     { value: 'owner' as const, label: 'По порядку' },
     ...(hasPriorities.value
-        ? [{ value: 'priority' as const, label: 'По приоритету' }]
+        ? [
+              {
+                  value: 'priority' as const,
+                  label: isTodo.value ? 'По важности' : 'По приоритету',
+              },
+          ]
         : []),
     ...(hasPrices.value && !isFund.value
         ? [
@@ -764,23 +814,8 @@ onMounted(getWishlist);
                     </h1>
                 </div>
 
-                <p v-if="isTodo" class="intro-note">
-                    {{ allSelected ? 'Все дела выполнены' : todoProgressLabel }}
-                </p>
-
-                <p v-else-if="isGift && allSelected" class="intro-note">
+                <p v-if="isGift && allSelected" class="intro-note">
                     Все подарки из этого списка уже выбраны
-                </p>
-
-                <p
-                    v-if="dueDateLine"
-                    :class="[
-                        'intro-note',
-                        'intro-due-date',
-                        { 'intro-due-date--overdue': isDueDateOverdue },
-                    ]"
-                >
-                    {{ dueDateLine }}
                 </p>
 
                 <!-- Вошедший пользователь добавляет чужой список в раздел «Чужие списки» -->
@@ -906,7 +941,7 @@ onMounted(getWishlist);
                          Перевод выполняется там, поэтому выбирать здесь нечего -->
                     <div v-if="isFund" class="item item--fund">
                         <span class="fund-icon" aria-hidden="true">
-                            <Target :size="12" />
+                            <CreditCardCheck :size="12" />
                         </span>
 
                         <span class="fund-text">
@@ -1017,7 +1052,8 @@ onMounted(getWishlist);
                             </span>
                         </label>
 
-                        <!-- Справа от выполненного дела — кто его отметил -->
+                        <!-- Справа от выполненного дела — кто его отметил.
+                             У дела с важностью имя стоит в колонке справа под молниями -->
                         <span class="item-text">
                             <span
                                 :class="[
@@ -1030,7 +1066,7 @@ onMounted(getWishlist);
                             <!-- Отметки владельца подписываются его именем,
                                  отметки из этого браузера — словом «Вы» -->
                             <TodoCheckedBy
-                                v-if="isTodo"
+                                v-if="isTodo && !item.priority"
                                 :checked-by="item.checkedBy"
                                 :owner-name="wishlist.username ?? 'Владелец'"
                                 :is-own="guestTodoChecks.isOwnCheck(item)"
@@ -1048,10 +1084,20 @@ onMounted(getWishlist);
                             "
                             class="item-meta"
                         >
-                            <ItemPriorityHearts
+                            <ItemPriorityIcons
                                 v-if="item.priority"
                                 :priority="item.priority"
+                                :todo="isTodo"
                                 :muted="item.isSelected"
+                            />
+
+                            <!-- Кто отметил дело — второй строкой под важностью -->
+                            <TodoCheckedBy
+                                v-if="isTodo"
+                                :checked-by="item.checkedBy"
+                                :owner-name="wishlist.username ?? 'Владелец'"
+                                :is-own="guestTodoChecks.isOwnCheck(item)"
+                                class="item-meta-checked-by"
                             />
 
                             <!-- Стоимость 0 ₽ тоже выводится: null — не указана -->
@@ -1276,6 +1322,66 @@ onMounted(getWishlist);
                     }}). Наш сервис денег не получает и не хранит реквизиты.
                 </p>
 
+                <!-- Прогресс списка дел над кнопкой: подпись, проценты и полоска,
+                     как на карточке в дашборде -->
+                <div
+                    v-if="isTodo && wishlist.items.length"
+                    class="todo-progress"
+                >
+                    <div class="todo-progress-info">
+                        <span class="todo-progress-label">
+                            {{ todoProgressLabel }}
+                        </span>
+                        <span class="todo-progress-percent">
+                            {{ todoProgress }}%
+                        </span>
+                    </div>
+                    <div
+                        class="todo-progress-bar"
+                        role="progressbar"
+                        :aria-valuenow="todoProgress"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        :aria-label="`Выполнено ${todoProgressLabel}`"
+                    >
+                        <div
+                            class="todo-progress-fill"
+                            :style="{ width: `${todoProgress}%` }"
+                        ></div>
+                    </div>
+                </div>
+
+                <!-- Дата создания слева, счётчик до даты списка справа, как на
+                     карточке в дашборде; сама дата списка — в подсказке -->
+                <div v-if="createdAtDate || dueStatus" class="card-dates">
+                    <time
+                        v-if="createdAtDate"
+                        class="card-created-at"
+                        :datetime="wishlist.createdAt"
+                        :title="createdAtLabel"
+                    >
+                        <Calendar :size="12" aria-hidden="true" />
+                        <span class="sr-only">{{ createdAtLabel }}</span>
+                        <span aria-hidden="true">{{ createdAtDate }}</span>
+                    </time>
+
+                    <time
+                        v-if="dueStatus"
+                        :class="['card-due', `card-due--${dueStatus.tone}`]"
+                        :datetime="wishlist.dueDate ?? undefined"
+                        :title="dueDateLabel"
+                    >
+                        <Hourglass
+                            v-if="isTodo || isFund"
+                            :size="12"
+                            aria-hidden="true"
+                        />
+                        <PartyPopper v-else :size="12" aria-hidden="true" />
+                        <span class="sr-only">{{ dueDateLabel }}.</span>
+                        {{ dueStatus.text }}
+                    </time>
+                </div>
+
                 <button
                     v-if="(isGift || canCheckTodo) && !allSelected"
                     type="button"
@@ -1298,7 +1404,6 @@ onMounted(getWishlist);
                 >
                     Вы отмечаете как
                     <b>{{ guestName }}</b>
-                    ·
                     <button
                         type="button"
                         class="guest-name-change"
@@ -1330,6 +1435,7 @@ onMounted(getWishlist);
 <style scoped lang="scss">
 @use '../../../scss/ui/checkboxCard.scss';
 @use '../../../scss/ui/createButton.scss';
+@use '../../../scss/ui/dueDateBadge.scss';
 @use '../../../scss/ui/wishlistColors.scss';
 
 .wishlist-view {
@@ -1352,7 +1458,7 @@ onMounted(getWishlist);
     font-size: 20px;
     font-weight: 700;
     line-height: 1.3;
-    color: var(--app-ink, var(--ink, #241533));
+    color: var(--app-ink, var(--ink));
     overflow-wrap: anywhere;
 }
 
@@ -1368,7 +1474,7 @@ onMounted(getWishlist);
 .intro-author-avatar {
     width: 52px;
     height: 52px;
-    border: 3px solid #fff;
+    border: 3px solid var(--surface-solid);
     background: var(--brand-gradient);
     font-size: 22px;
     font-weight: 700;
@@ -1389,39 +1495,95 @@ onMounted(getWishlist);
 .intro-author-name {
     font-size: 24px;
     line-height: 1.2;
-    color: var(--app-accent, #8b5cf6);
+    color: var(--app-accent, var(--brand-violet));
 }
 
 .intro-subtitle {
     font-size: 15px;
     font-weight: 500;
-    color: var(--app-ink-soft, var(--ink-soft, #6b5878));
+    color: var(--app-ink-soft, var(--ink-soft));
 }
 
 .intro-note {
     margin: 0;
     font-size: 12px;
-    color: var(--app-ink-soft, var(--ink-soft, #6b5878));
+    color: var(--app-ink-soft, var(--ink-soft));
 }
 
-.intro-due-date {
+// Дата создания слева, счётчик до даты списка справа — как на карточке в дашборде
+.card-dates {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 10px;
+    margin-top: 12px;
+}
+
+.card-created-at {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    line-height: normal;
+    color: var(--ink-faint);
+
+    // Значок опущен на уровень цифр даты, как в WishlistCard
+    svg {
+        flex-shrink: 0;
+        transform: translateY(1px);
+    }
+}
+
+// Прогресс списка дел над кнопкой — как у списка дел на карточке в дашборде
+.todo-progress {
+    margin-top: 16px;
+}
+
+.todo-progress-info {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.todo-progress-label {
+    font-size: 11px;
     font-weight: 600;
+    color: var(--ink-soft);
 }
 
-.intro-due-date--overdue {
-    color: #be123c;
+.todo-progress-percent {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--success);
+}
+
+.todo-progress-bar {
+    width: 100%;
+    height: 5px;
+    background: rgba(16, 185, 129, 0.12);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.todo-progress-fill {
+    height: 100%;
+    background: linear-gradient(135deg, #6ee7b7, var(--success-bright));
+    border-radius: 999px;
+    transition: width 0.3s ease;
 }
 
 .loader,
 .error,
 .empty-state {
     text-align: center;
-    color: var(--app-ink-soft, #6b7280);
+    color: var(--app-ink-soft, var(--ink-muted));
     font-size: 16px;
 }
 
 .error p {
-    color: #dc2626;
+    color: var(--danger);
 }
 
 .card {
@@ -1430,8 +1592,11 @@ onMounted(getWishlist);
     justify-content: center;
     flex-direction: column;
     // Цвет списка; без него (white) — прежний белый с розовым отливом
-    background: var(--wishlist-bg, linear-gradient(145deg, #fff 60%, #fff7fd));
-    border: 1px solid rgba(226, 195, 211, 0.5);
+    background: var(
+        --wishlist-bg,
+        linear-gradient(145deg, var(--surface-solid) 60%, var(--surface-blush))
+    );
+    border: 1px solid var(--surface-border);
     border-radius: 18px;
     padding: 18px;
     min-width: 300px;
@@ -1449,7 +1614,7 @@ onMounted(getWishlist);
     height: 28px;
     border: none;
     border-radius: 9px;
-    background: rgba(139, 92, 246, 0.08);
+    background: var(--tint);
     color: var(--brand-violet);
     cursor: pointer;
     transition: all 0.18s ease;
@@ -1495,7 +1660,7 @@ onMounted(getWishlist);
 .card-title {
     font-size: 16px;
     font-weight: 600;
-    color: #3b2146;
+    color: var(--ink);
 }
 
 // Переключатель порядка позиций: по порядку владельца, по приоритету или по стоимости.
@@ -1509,7 +1674,7 @@ onMounted(getWishlist);
     margin-bottom: 12px;
     padding: 3px;
     border-radius: 12px;
-    background: rgba(139, 92, 246, 0.06);
+    background: var(--tint);
 }
 
 .item-order-btn {
@@ -1520,7 +1685,7 @@ onMounted(getWishlist);
     font-family: inherit;
     font-size: 12px;
     font-weight: 500;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
     cursor: pointer;
     transition: all 0.18s ease;
 
@@ -1530,7 +1695,7 @@ onMounted(getWishlist);
 }
 
 .item-order-btn--active {
-    background: #fff;
+    background: var(--surface-solid);
     font-weight: 600;
     color: var(--brand-violet);
     box-shadow: 0 1px 4px rgba(139, 92, 246, 0.15);
@@ -1545,7 +1710,7 @@ onMounted(getWishlist);
     align-items: center;
     gap: 10px;
     padding: 5px 0;
-    border-bottom: 1px solid rgba(226, 195, 211, 0.25);
+    border-bottom: 1px solid var(--surface-border);
     cursor: pointer;
     user-select: none;
 }
@@ -1576,16 +1741,18 @@ onMounted(getWishlist);
     margin: 10px 0 0;
     font-size: 12px;
     text-align: center;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
     overflow-wrap: anywhere;
 
     b {
         font-weight: 600;
-        color: var(--ink, #241533);
+        color: var(--ink);
     }
 }
 
+// Промежуток после имени: пробел между <b> и кнопкой Vue при сборке убирает
 .guest-name-change {
+    margin-left: 4px;
     padding: 0;
     border: none;
     background: none;
@@ -1611,7 +1778,7 @@ onMounted(getWishlist);
     // Как в карточке на дашборде: чуть плотнее обычного текста.
     // На Windows 10 у Segoe UI нет начертания 500, там текст остаётся обычным
     font-weight: 500;
-    color: #4a3356;
+    color: var(--ink);
     transition: color 0.15s;
     line-height: 1.35;
     overflow-wrap: anywhere;
@@ -1633,11 +1800,17 @@ onMounted(getWishlist);
     }
 }
 
+// Имя отметившего под важностью дела занимает всю ширину колонки: собственное
+// ограничение TodoCheckedBy (45% строки) здесь сузило бы его вдвое
+.item-meta > .item-meta-checked-by {
+    max-width: 100%;
+}
+
 .item-price {
     flex-shrink: 0;
     font-size: 12px;
     font-weight: 600;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
     white-space: nowrap;
 }
 
@@ -1663,7 +1836,7 @@ onMounted(getWishlist);
         flex-shrink: 0;
     }
     border-radius: 8px;
-    background: rgba(139, 92, 246, 0.08);
+    background: var(--tint);
     font-size: 11px;
     font-weight: 600;
     color: var(--brand-violet);
@@ -1681,10 +1854,10 @@ onMounted(getWishlist);
 .item-link.item-link--muted {
     background: rgba(148, 163, 184, 0.12);
     font-weight: 500;
-    color: #94a3b8;
+    color: var(--ink-muted);
 
     &:hover {
-        color: #64748b;
+        color: var(--ink-muted);
         background: rgba(148, 163, 184, 0.22);
     }
 }
@@ -1726,12 +1899,12 @@ onMounted(getWishlist);
     width: 19px;
     height: 19px;
     border-radius: 7px;
-    background: linear-gradient(135deg, #dbe2ea, #64748b);
+    background: linear-gradient(135deg, #dbe2ea, var(--ink-muted));
     color: #fff;
 }
 
 .reserved-text {
-    color: #94a3b8;
+    color: var(--ink-muted);
 }
 
 /* Дело в списке только для просмотра: значок того же размера, что чекбокс
@@ -1749,7 +1922,7 @@ onMounted(getWishlist);
 
 .todo-status--done {
     border-color: transparent;
-    background: linear-gradient(135deg, #6ee7b7, #10b981);
+    background: linear-gradient(135deg, #6ee7b7, var(--success-bright));
 }
 
 /* Дело, отмеченное гостем, но ещё не сохранённое: зелёный фон строки и чекбокса
@@ -1762,17 +1935,17 @@ onMounted(getWishlist);
     border-color: rgba(16, 185, 129, 0.45);
 
     &:hover {
-        border-color: #10b981;
+        border-color: var(--success-bright);
     }
 }
 
 .item--todo .checkbox-input:checked + .checkbox-custom,
 .item--todo .checkbox-input:disabled:checked + .checkbox-custom {
-    background: linear-gradient(135deg, #6ee7b7, #10b981);
+    background: linear-gradient(135deg, #6ee7b7, var(--success-bright));
 }
 
 .item.item--done .item-label {
-    color: #94a3b8;
+    color: var(--ink-muted);
     text-decoration: line-through;
 }
 
@@ -1795,8 +1968,9 @@ onMounted(getWishlist);
     width: 19px;
     height: 19px;
     border-radius: 7px;
-    background: rgba(236, 72, 153, 0.12);
-    color: #db2777;
+    // Как значок цели на карточке в дашборде
+    background: linear-gradient(135deg, #fbcfe8, var(--brand-pink));
+    color: #fff;
 }
 
 .fund-text {
@@ -1810,7 +1984,7 @@ onMounted(getWishlist);
 .fund-target {
     font-size: 12px;
     font-weight: 600;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 
 // Кнопка перехода к сбору: название платформы под текстом, чтобы гость видел,
@@ -1864,7 +2038,7 @@ onMounted(getWishlist);
     font-size: 11px;
     line-height: 1.4;
     text-align: center;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 
 /* Отмеченный чекбокс: вместо символа «✓» из checkboxCard.scss — иконка Check,
@@ -1893,13 +2067,13 @@ onMounted(getWishlist);
     border-radius: 8px;
     font-size: 11px;
     font-weight: 600;
-    color: #db2777;
+    color: var(--pink-strong);
     cursor: pointer;
     transition: all 0.18s ease;
 
     &:hover:not(:disabled) {
         color: #fff;
-        background: #ec4899;
+        background: var(--brand-pink);
     }
 
     &:disabled {
@@ -1929,12 +2103,12 @@ onMounted(getWishlist);
     width: 24px;
     height: 24px;
     border-radius: 8px;
-    color: #b08cbe;
+    color: var(--ink-faint);
     cursor: pointer;
 
     &:hover {
-        color: var(--ink, #241533);
-        background: rgba(139, 92, 246, 0.08);
+        color: var(--ink);
+        background: var(--tint);
     }
 }
 
@@ -1943,14 +2117,14 @@ onMounted(getWishlist);
     padding-right: 24px;
     font-size: 13px;
     font-weight: 600;
-    color: var(--ink, #241533);
+    color: var(--ink);
 }
 
 .reservation-notice-text {
     margin: 0;
     font-size: 12px;
     line-height: 1.45;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 
 .reservation-notice-link {
@@ -1964,9 +2138,9 @@ onMounted(getWishlist);
         padding: 6px 10px;
         border: 1px solid rgba(139, 92, 246, 0.2);
         border-radius: 10px;
-        background: #fff;
+        background: var(--surface-solid);
         font-size: 12px;
-        color: var(--ink-soft, #6b5878);
+        color: var(--ink-soft);
     }
 }
 
@@ -1985,7 +2159,7 @@ onMounted(getWishlist);
 }
 
 .reservation-notice-copy--error {
-    background: #ef4444;
+    background: var(--danger);
 }
 
 // Блок совместного подарка продолжает строку позиции: разделитель выводится под ним
@@ -2005,7 +2179,7 @@ onMounted(getWishlist);
     gap: 6px;
     // Блок и форма начинаются под названием подарка, а не под значком позиции
     padding: 4px 0 8px 29px;
-    border-bottom: 1px solid rgba(226, 195, 211, 0.25);
+    border-bottom: 1px solid var(--surface-border);
 }
 
 // Три строки совместного подарка слева, кнопка «Изменить» справа по центру блока
@@ -2036,7 +2210,7 @@ onMounted(getWishlist);
     padding: 3px 10px;
     border: 1px solid transparent;
     border-radius: 9px;
-    background: linear-gradient(135deg, #c4b5fd, #8b5cf6);
+    background: linear-gradient(135deg, #c4b5fd, var(--brand-violet));
     font-size: 11px;
     font-weight: 600;
     color: #fff;
@@ -2053,7 +2227,7 @@ onMounted(getWishlist);
     font-size: 12px;
     font-weight: 600;
     line-height: 1.4;
-    color: var(--ink, #241533);
+    color: var(--ink);
     overflow-wrap: anywhere;
 }
 
@@ -2061,7 +2235,7 @@ onMounted(getWishlist);
     margin: 0;
     font-size: 12px;
     line-height: 1.4;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
     overflow-wrap: anywhere;
 }
 
@@ -2080,7 +2254,7 @@ onMounted(getWishlist);
     transition: all 0.18s ease;
 
     &:hover:not(:disabled) {
-        background: rgba(139, 92, 246, 0.08);
+        background: var(--tint);
     }
 
     &:disabled {
@@ -2116,7 +2290,7 @@ onMounted(getWishlist);
     transition: all 0.18s ease;
 
     &:hover:not(:disabled) {
-        background: rgba(139, 92, 246, 0.08);
+        background: var(--tint);
     }
 
     &:disabled {
@@ -2156,6 +2330,6 @@ onMounted(getWishlist);
     margin: 0 0 10px;
     font-size: 12px;
     text-align: center;
-    color: #dc2626;
+    color: var(--danger);
 }
 </style>

@@ -48,11 +48,34 @@ use OpenApi\Attributes as OA;
                                 example: true
                             ),
                             new OA\Property(
+                                property: 'emailReminders',
+                                description: 'Присылать письма перед датой своих и сохранённых чужих списков',
+                                type: 'boolean',
+                                example: true
+                            ),
+                            new OA\Property(
+                                property: 'reminderDays',
+                                description: 'За сколько дней до даты списка приходит напоминание, 1–7 (по умолчанию 3)',
+                                type: 'integer',
+                                example: 3
+                            ),
+                            new OA\Property(
                                 property: 'avatarUrl',
                                 description: 'Адрес фотографии пользователя; null — фотографии нет, показывается первая буква имени',
                                 type: 'string',
                                 nullable: true,
                                 example: 'https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp'
+                            ),
+                            new OA\Property(
+                                property: 'stats',
+                                description: 'Сколько карточек каждого типа пользователь создал за всё время, включая удалённые и дубликаты',
+                                properties: [
+                                    new OA\Property(property: 'gift', type: 'integer', example: 4),
+                                    new OA\Property(property: 'todo', type: 'integer', example: 7),
+                                    new OA\Property(property: 'note', type: 'integer', example: 2),
+                                    new OA\Property(property: 'fund', type: 'integer', example: 1),
+                                ],
+                                type: 'object'
                             ),
                             new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
@@ -73,7 +96,7 @@ use OpenApi\Attributes as OA;
 #[OA\Patch(
     path: '/v1/user',
     summary: 'Изменить настройки текущего пользователя',
-    description: 'Сохраняет фон приложения и показ строки «Скоро у друзей» в дашборде. Можно передать одну или обе настройки, непереданная не меняется; запрос без них отклоняется (422). Фон по умолчанию — blossom, строка по умолчанию показывается. Возвращает пользователя в том же виде, что GET /v1/user.',
+    description: 'Сохраняет фон приложения, показ строки «Скоро у друзей» в дашборде и письма-напоминания о сроке списков и их срок (reminderDays, 1–7 дней, по умолчанию 3). Можно передать одну или несколько настроек, непереданная не меняется; запрос без них отклоняется (422). Фон по умолчанию — blossom, строка и напоминания по умолчанию включены. Возвращает пользователя в том же виде, что GET /v1/user.',
     tags: ['User'],
     security: [['bearerAuth' => []]],
     requestBody: new OA\RequestBody(
@@ -87,8 +110,22 @@ use OpenApi\Attributes as OA;
                     example: false
                 ),
                 new OA\Property(
+                    property: 'emailReminders',
+                    description: 'Присылать письма перед датой своих и сохранённых чужих списков',
+                    type: 'boolean',
+                    example: false
+                ),
+                new OA\Property(
+                    property: 'reminderDays',
+                    description: 'За сколько дней до даты списка приходит напоминание, 1–7; о каждом списке с данной датой — один раз',
+                    type: 'integer',
+                    minimum: 1,
+                    maximum: 7,
+                    example: 3
+                ),
+                new OA\Property(
                     property: 'background',
-                    description: 'Обязателен, если не передан showFriendsEvents',
+                    description: 'Обязателен, если не переданы showFriendsEvents, emailReminders и reminderDays',
                     type: 'string',
                     enum: ['blossom', 'ocean', 'mint', 'sand', 'mist', 'stone', 'cobalt'],
                     example: 'ocean'
@@ -120,7 +157,10 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'email', type: 'string', example: 'john@example.com'),
                             new OA\Property(property: 'background', type: 'string', example: 'ocean'),
                             new OA\Property(property: 'showFriendsEvents', type: 'boolean', example: true),
+                            new OA\Property(property: 'emailReminders', type: 'boolean', example: true),
+                            new OA\Property(property: 'reminderDays', type: 'integer', example: 3),
                             new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
+                            new OA\Property(property: 'stats', type: 'object', example: ['gift' => 4, 'todo' => 7, 'note' => 2, 'fund' => 1]),
                             new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
                         type: 'object'
@@ -137,7 +177,7 @@ use OpenApi\Attributes as OA;
 
         new OA\Response(
             response: 422,
-            description: 'Ошибка валидации: не передана ни одна настройка, такого фона нет или showFriendsEvents не логическое значение',
+            description: 'Ошибка валидации: не передана ни одна настройка, такого фона нет или showFriendsEvents/emailReminders не логическое значение или reminderDays вне 1–7',
             content: new OA\JsonContent(
                 properties: [
                     new OA\Property(property: 'success', type: 'boolean', example: false),
@@ -203,10 +243,23 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'email', type: 'string', example: 'john@example.com'),
                             new OA\Property(property: 'background', type: 'string', example: 'blossom'),
                             new OA\Property(property: 'showFriendsEvents', type: 'boolean', example: true),
+                            new OA\Property(property: 'emailReminders', type: 'boolean', example: true),
+                            new OA\Property(property: 'reminderDays', type: 'integer', example: 3),
                             new OA\Property(
                                 property: 'avatarUrl',
                                 type: 'string',
                                 example: 'https://example.com/storage/avatars/01jq3v7x8k2m4n6p8r0t2w4y6z/01jq4a2b3c4d5e6f7g8h9j0k1m.webp'
+                            ),
+                            new OA\Property(
+                                property: 'stats',
+                                description: 'Сколько карточек каждого типа пользователь создал за всё время, включая удалённые и дубликаты',
+                                properties: [
+                                    new OA\Property(property: 'gift', type: 'integer', example: 4),
+                                    new OA\Property(property: 'todo', type: 'integer', example: 7),
+                                    new OA\Property(property: 'note', type: 'integer', example: 2),
+                                    new OA\Property(property: 'fund', type: 'integer', example: 1),
+                                ],
+                                type: 'object'
                             ),
                             new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
@@ -275,7 +328,10 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'email', type: 'string', example: 'john@example.com'),
                             new OA\Property(property: 'background', type: 'string', example: 'blossom'),
                             new OA\Property(property: 'showFriendsEvents', type: 'boolean', example: true),
+                            new OA\Property(property: 'emailReminders', type: 'boolean', example: true),
+                            new OA\Property(property: 'reminderDays', type: 'integer', example: 3),
                             new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
+                            new OA\Property(property: 'stats', type: 'object', example: ['gift' => 4, 'todo' => 7, 'note' => 2, 'fund' => 1]),
                             new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
                         type: 'object'
@@ -517,7 +573,10 @@ use OpenApi\Attributes as OA;
                             new OA\Property(property: 'email', type: 'string', example: 'new@example.com'),
                             new OA\Property(property: 'background', type: 'string', example: 'blossom'),
                             new OA\Property(property: 'showFriendsEvents', type: 'boolean', example: true),
+                            new OA\Property(property: 'emailReminders', type: 'boolean', example: true),
+                            new OA\Property(property: 'reminderDays', type: 'integer', example: 3),
                             new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
+                            new OA\Property(property: 'stats', type: 'object', example: ['gift' => 4, 'todo' => 7, 'note' => 2, 'fund' => 1]),
                             new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
                         ],
                         type: 'object'

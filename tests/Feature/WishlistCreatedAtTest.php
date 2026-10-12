@@ -53,13 +53,14 @@ class WishlistCreatedAtTest extends TestCase
             ->assertJsonPath('data.createdAt', $original);
     }
 
-    public function test_created_at_is_not_returned_in_shared_wishlist(): void
+    // Общая страница выводит дату создания внизу карточки, как дашборд
+    public function test_created_at_is_returned_in_shared_wishlist(): void
     {
         $user = User::factory()->create();
         $wishlist = $this->createWishlist($user);
 
         $this->getJson("/api/v1/shared-wishlists/{$wishlist->id}")
             ->assertOk()
-            ->assertJsonMissingPath('data.createdAt');
+            ->assertJsonPath('data.createdAt', $wishlist->created_at->toIso8601String());
     }
 }

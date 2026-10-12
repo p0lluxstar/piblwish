@@ -1,0 +1,104 @@
+# Образ для прод-сервера: код, vendor и собранный фронтенд запекаются в образ.
+# Для локальной разработки используется _docker/app/Dockerfile.
+
+# ============================================================
+# 1. FRONTEND BUILD
+# ============================================================
+FROM node:24-alpine AS frontend
+
+WORKDIR /app
+
+# Сначала зависимости — это позволяет Docker кешировать npm ci
+COPY package*.json ./
+
+RUN npm ci
+
+COPY . .
+
+# .env в образ не попадает (.dockerignore), поэтому адрес API для фронтенда
+# передаётся аргументом сборки из docker-compose.prod.yml
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
+
+RUN npm run build
+
+
+# ============================================================
+# 2. COMPOSER DEPENDENCIES
+# ============================================================
+FROM composer:2 AS composer
+
+WORKDIR /app
+
+COPY composer.json composer.lock ./
+
+RUN composer install \
+    --no-interaction \
+    --no-dev \
+    --prefer-dist \
+    --optimize-autoloader \
+    --no-scripts
+
+
+# ============================================================
+# 3. FINAL PHP IMAGE
+# ============================================================
+FROM php:8.4-fpm
+
+# Системные зависимости
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libwebp-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    libzip-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-webp \
+    && docker-php-ext-install \
+        pdo_mysql \
+        mbstring \
+        exif \
+        pcntl \
+        bcmath \
+        gd \
+        zip \
+        opcache \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Прод-настройки PHP (display_errors выключен, expose_php выключен)
+RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
+# Лимит загрузки файла: фотография пользователя до 2 МБ проверяется в Laravel,
+# а PHP по умолчанию отклоняет файлы больше 2M ещё до проверки
+RUN echo 'upload_max_filesize = 3M' > /usr/local/etc/php/conf.d/uploads.ini
+
+# OPcache: скомпилированные PHP-файлы хранятся в памяти между запросами
+RUN { \
+        echo 'opcache.enable = 1'; \
+        echo 'opcache.memory_consumption = 128'; \
+        echo 'opcache.max_accelerated_files = 20000'; \
+        echo 'opcache.interned_strings_buffer = 16'; \
+    } > /usr/local/etc/php/conf.d/opcache.ini
+
+WORKDIR /var/www
+
+# Копируем приложение сразу с правильным владельцем
+COPY --chown=www-data:www-data . /var/www
+
+# Копируем vendor из Composer stage
+COPY --from=composer --chown=www-data:www-data /app/vendor /var/www/vendor
+
+# Копируем результат npm run build
+COPY --from=frontend --chown=www-data:www-data /app/public/build /var/www/public/build
+
+RUN chmod -R 775 /var/www/storage \
+    && chmod -R 775 /var/www/bootstrap/cache
+
+EXPOSE 9000
+
+CMD ["php-fpm"]

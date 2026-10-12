@@ -2,6 +2,7 @@ import 'normalize.css';
 // Рукописный шрифт текста заметок; браузер загружает только нужные наборы символов
 import '@fontsource-variable/shantell-sans';
 import '../scss/app.scss';
+import '@/composables/useTheme';
 
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
 import { createPinia } from 'pinia';

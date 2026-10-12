@@ -1,3 +1,6 @@
+@use 'ui/appBackgroundGradients';
+@use 'ui/cardGridTransition';
+
 .content {
     max-width: 530px;
     animation: fadeInUp 0.6s ease;
@@ -17,8 +20,8 @@
     gap: 6px;
     padding: 5px 14px;
     border-radius: 999px;
-    background: rgba(139, 92, 246, 0.1);
-    color: var(--brand-violet, #8b5cf6);
+    background: var(--tint);
+    color: var(--brand-violet);
     font-size: 13px;
     font-weight: 800;
     text-transform: uppercase;
@@ -33,13 +36,13 @@
     font-weight: 800;
     line-height: 1.02;
     letter-spacing: -0.04em;
-    color: var(--ink, #241533);
+    color: var(--ink);
 }
 
 .description {
     max-width: 460px;
     margin: 24px 0 0;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
     font-size: 19px;
     line-height: 1.35;
 }
@@ -55,12 +58,12 @@
     max-width: 420px;
     margin-top: 24px;
     text-align: center;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 
 .auth-link a {
     margin-left: 6px;
-    color: var(--brand-pink, #ec4899);
+    color: var(--brand-pink);
     font-weight: 700;
     text-decoration: none;
 }

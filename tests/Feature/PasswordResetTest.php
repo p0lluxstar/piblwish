@@ -15,7 +15,7 @@ use Tests\TestCase;
 /**
  * Восстановление пароля: POST /v1/forgot-password и POST /v1/reset-password.
  *
- * Код из письма действует 10 минут. Ответы не должны раскрывать,
+ * Код из письма действует 2 минуты. Ответы не должны раскрывать,
  * зарегистрирован ли email.
  */
 class PasswordResetTest extends TestCase
@@ -202,7 +202,7 @@ class PasswordResetTest extends TestCase
         $user = User::factory()->create();
         $code = $this->requestCode($user);
 
-        $this->travel(11)->minutes();
+        $this->travel(3)->minutes();
 
         $this->resetPassword($user->email, $code)->assertStatus(400);
 

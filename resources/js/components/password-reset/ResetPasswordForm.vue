@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 
 import BackOnMainPage from '@/components/ui/BackOnMainPage.vue';
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
@@ -7,9 +7,7 @@ import InputRegistationForms from '@/components/ui/InputRegistationForms.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import PrimaryButton from '@/components/ui/PrimaryButton.vue';
 import { useForgotPassword, useResetPassword } from '@/composables/useAuth';
-
-// Повторный запрос кода для одного email сервер принимает не чаще раза в минуту
-const RESEND_COOLDOWN_SECONDS = 60;
+import { useCodeTimer } from '@/composables/useCodeTimer';
 
 const props = defineProps<{
     email: string;
@@ -43,38 +41,14 @@ const {
     isError: isResendError,
     errorMessage: resendErrorMessage,
 } = resendMutation;
-const resendSent = ref(false);
 
-// Обратный отсчёт до возможности повторной отправки кода
-const resendIn = ref(0);
-let timer: number | null = null;
-
-function startCooldown(): void {
-    stopCooldown();
-    resendIn.value = RESEND_COOLDOWN_SECONDS;
-
-    timer = window.setInterval(() => {
-        resendIn.value--;
-
-        if (resendIn.value <= 0) {
-            stopCooldown();
-        }
-    }, 1000);
-}
-
-function stopCooldown(): void {
-    if (timer) {
-        window.clearInterval(timer);
-        timer = null;
-    }
-}
-
-onMounted(startCooldown);
-onUnmounted(stopCooldown);
+const { isExpired, formattedTime, restart: restartTimer } = useCodeTimer();
 
 async function submitForm(): Promise<void> {
     resetPasswordMutation.reset();
     isPasswordVisible.value = false;
+
+    if (isExpired.value) return;
 
     try {
         await resetPassword({
@@ -90,20 +64,24 @@ async function submitForm(): Promise<void> {
     }
 }
 
+// Повторная отправка: новый код заменяет истёкший, поэтому поле кода
+// очищается, прежняя ошибка снимается и отсчёт запускается заново.
+// Введённый новый пароль сохраняется
 async function resendCode(): Promise<void> {
     if (isResendPending.value) return;
 
     resendMutation.reset();
-    resendSent.value = false;
 
     try {
         await resendMutation.mutateAsync({ email: props.email });
-
-        resendSent.value = true;
-        startCooldown();
     } catch (error) {
         console.error(error);
+        return;
     }
+
+    resetPasswordMutation.reset();
+    form.code = '';
+    restartTimer();
 }
 </script>
 
@@ -119,56 +97,70 @@ async function resendCode(): Promise<void> {
     <p class="hint">
         Если аккаунт с адресом
         <strong>{{ email }}</strong>
-        существует, на него отправлен код. Код действует 10 минут.
+        существует, на него отправлен код.
     </p>
 
     <form class="auth-form" @submit.prevent="submitForm">
-        <InputRegistationForms
-            v-model="form.code"
-            autocomplete="one-time-code"
-            placeholder="Код из письма"
-        />
+        <!-- После истечения срока код не принимается, поэтому форма
+             скрывается до отправки нового кода -->
+        <template v-if="!isExpired">
+            <InputRegistationForms
+                v-model="form.code"
+                autocomplete="one-time-code"
+                placeholder="Код из письма"
+            />
 
-        <InputRegistationForms
-            v-model="form.password"
-            v-model:revealed="isPasswordVisible"
-            type="password"
-            autocomplete="new-password"
-            placeholder="Новый пароль"
-        />
+            <p class="timer-text">Код действует: {{ formattedTime }}</p>
 
-        <InputRegistationForms
-            v-model="form.passwordConfirmation"
-            v-model:revealed="isPasswordVisible"
-            type="password"
-            :toggle="false"
-            autocomplete="new-password"
-            placeholder="Подтверждение пароля"
-        />
+            <InputRegistationForms
+                v-model="form.password"
+                v-model:revealed="isPasswordVisible"
+                type="password"
+                autocomplete="new-password"
+                placeholder="Новый пароль"
+            />
 
-        <PrimaryButton :disabled="isPending">
-            <LoaderButtonSpinner v-if="isPending" />
-            <span v-else>Сменить пароль</span>
-        </PrimaryButton>
+            <InputRegistationForms
+                v-model="form.passwordConfirmation"
+                v-model:revealed="isPasswordVisible"
+                type="password"
+                :toggle="false"
+                autocomplete="new-password"
+                placeholder="Подтверждение пароля"
+            />
 
-        <FormErrorMessage
-            :show="isError"
-            :message="errorMessage ?? undefined"
-        />
+            <PrimaryButton :disabled="isPending">
+                <LoaderButtonSpinner v-if="isPending" />
+                <span v-else>Сменить пароль</span>
+            </PrimaryButton>
+
+            <FormErrorMessage
+                :show="isError"
+                :message="errorMessage ?? undefined"
+            />
+        </template>
+
+        <template v-else>
+            <p class="expired-text">
+                Срок действия кода истёк. Запросите новый код, он придёт на
+                {{ email }}.
+            </p>
+
+            <PrimaryButton
+                type="button"
+                :disabled="isResendPending"
+                @click="resendCode"
+            >
+                <LoaderButtonSpinner v-if="isResendPending" />
+                <span v-else>Отправить новый код</span>
+            </PrimaryButton>
+
+            <FormErrorMessage
+                :show="isResendError"
+                :message="resendErrorMessage ?? undefined"
+            />
+        </template>
     </form>
-
-    <p class="auth-link">
-        <span v-if="resendIn > 0">
-            <template v-if="resendSent">Новый код отправлен.</template>
-            Повторная отправка через {{ resendIn }} с
-        </span>
-        <a v-else href="#" @click.prevent="resendCode">Отправить код ещё раз</a>
-    </p>
-
-    <FormErrorMessage
-        :show="isResendError"
-        :message="resendErrorMessage ?? undefined"
-    />
 
     <p class="auth-link">
         <a href="#" @click.prevent="emit('changeEmail')">
@@ -181,15 +173,35 @@ async function resendCode(): Promise<void> {
 .hint {
     max-width: 420px;
     margin-top: 12px;
-    color: var(--muted, #7a6278);
+    color: var(--muted, var(--ink-muted));
     line-height: 1.5;
 }
 
 .auth-form {
+    position: relative;
     margin-top: 32px;
     max-width: 420px;
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+.expired-text {
+    margin: 0;
+    color: var(--muted, var(--ink-muted));
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.timer-text {
+    position: absolute;
+    max-width: 420px;
+    top: -20px;
+    right: 10px;
+    color: var(--brand-violet);
+    font-weight: 600;
+    font-size: 13px;
+    text-align: right;
 }
 </style>

@@ -7,36 +7,45 @@ import InputRegistationForms from '@/components/ui/InputRegistationForms.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import PrimaryButton from '@/components/ui/PrimaryButton.vue';
 import { useRegister } from '@/composables/useAuth';
+import { useFormErrors } from '@/composables/useFormErrors';
+import { validateRegistration } from '@/lib/authValidation';
+import type { RegisterPayload } from '@/types/auth';
 
 const emit = defineEmits<{
     success: [email: string];
 }>();
 
-const form = reactive({
-    login: '',
+// Поля названы как в запросе, чтобы подсвечивать их и по ошибкам сервера
+const form = reactive<RegisterPayload>({
+    username: '',
     email: '',
     password: '',
-    passwordConfirmation: '',
+    password_confirmation: '',
 });
 
 // Одна кнопка-глаз открывает и пароль, и подтверждение, чтобы их было удобно сверить
 const isPasswordVisible = ref(false);
 
 const registerMutation = useRegister();
-const { mutateAsync: register, isPending, isError } = registerMutation;
+const { mutateAsync: register, isPending, errorMessage } = registerMutation;
+
+const { invalidField, message, validate } = useFormErrors({
+    form,
+    serverError: registerMutation.error,
+    serverMessage: errorMessage,
+    resetServerError: registerMutation.reset,
+});
 
 async function submitForm(): Promise<void> {
     // Сбрасываем прошлую ошибку и статус mutation перед новой отправкой формы
     registerMutation.reset();
     isPasswordVisible.value = false;
 
+    // С ошибкой проверки на клиенте запрос на сервер не отправляется
+    if (!validate(validateRegistration(form))) return;
+
     try {
-        await register({
-            username: form.login,
-            email: form.email,
-            password: form.password,
-            password_confirmation: form.passwordConfirmation,
-        });
+        await register({ ...form });
 
         emit?.('success', form.email);
     } catch (error) {
@@ -52,15 +61,17 @@ async function submitForm(): Promise<void> {
     </div>
 
     <h2>Создать аккаунт</h2>
-    <form class="registration-form" @submit.prevent="submitForm">
+    <form class="registration-form" novalidate @submit.prevent="submitForm">
         <InputRegistationForms
-            v-model="form.login"
+            v-model="form.username"
+            :invalid="invalidField === 'username'"
             autocomplete="username"
             placeholder="Логин"
         />
 
         <InputRegistationForms
             v-model="form.email"
+            :invalid="invalidField === 'email'"
             type="email"
             autocomplete="email"
             placeholder="Email"
@@ -69,14 +80,16 @@ async function submitForm(): Promise<void> {
         <InputRegistationForms
             v-model="form.password"
             v-model:revealed="isPasswordVisible"
+            :invalid="invalidField === 'password'"
             type="password"
             autocomplete="new-password"
             placeholder="Пароль"
         />
 
         <InputRegistationForms
-            v-model="form.passwordConfirmation"
+            v-model="form.password_confirmation"
             v-model:revealed="isPasswordVisible"
+            :invalid="invalidField === 'password_confirmation'"
             type="password"
             :toggle="false"
             autocomplete="new-password"
@@ -88,7 +101,10 @@ async function submitForm(): Promise<void> {
             <span v-else>Продолжить</span>
         </PrimaryButton>
 
-        <FormErrorMessage :show="isError" />
+        <FormErrorMessage
+            :show="Boolean(message)"
+            :message="message ?? undefined"
+        />
     </form>
 </template>
 

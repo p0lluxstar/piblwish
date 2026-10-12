@@ -2,12 +2,12 @@
 import {
     Archive,
     ArchiveRestore,
-    BadgeRussianRuble,
     Calendar,
     Check,
     CopyPlus,
+    CreditCardCheck,
     ExternalLink,
-    EyeOff,
+    Eye,
     FileEdit,
     Gift,
     Hourglass,
@@ -15,11 +15,17 @@ import {
     ListChecks,
     PartyPopper,
     StickyNote,
-    Target,
     Trash2,
     Users,
 } from '@lucide/vue';
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    watch,
+} from 'vue';
 
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
 import { copyToClipboard } from '../../lib/clipboard';
@@ -33,7 +39,7 @@ import { formatPrice } from '../../lib/itemPrice';
 import { getItemUrlHost } from '../../lib/itemUrl';
 import { getSharedWishlistUrl } from '../../lib/sharedLink';
 import type { Wishlist, WishlistItem } from '../../types/wishlist';
-import ItemPriorityHearts from './ItemPriorityHearts.vue';
+import ItemPriorityIcons from './ItemPriorityIcons.vue';
 import TodoCheckedBy from './TodoCheckedBy.vue';
 
 const props = defineProps<{
@@ -238,6 +244,34 @@ const finishNoteEditing = (): void => {
     }
 };
 
+// Текст заметки не помещается и продолжается ниже видимой части поля:
+// низ поля затухает. В развёрнутой карточке высота поля не ограничена,
+// поэтому затухания там нет
+const noteTextRef = ref<HTMLTextAreaElement | null>(null);
+const isNoteClipped = ref(false);
+
+const updateNoteFade = (): void => {
+    const el = noteTextRef.value;
+
+    isNoteClipped.value =
+        el !== null && el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+};
+
+// Ширина карточки меняется вместе с сеткой, а с ней и число строк текста
+let noteResizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+    if (!noteTextRef.value) return;
+
+    updateNoteFade();
+    noteResizeObserver = new ResizeObserver(updateNoteFade);
+    noteResizeObserver.observe(noteTextRef.value);
+});
+
+watch(noteDraft, () => void nextTick(updateNoteFade));
+
+onBeforeUnmount(() => noteResizeObserver?.disconnect());
+
 // Карточка может исчезнуть до истечения задержки (фильтр, переход на другую
 // страницу): набранный текст сохраняется сразу
 onBeforeUnmount(saveNote);
@@ -397,7 +431,7 @@ const dueDateLabel = computed(() =>
         <div class="card-watermark" aria-hidden="true">
             <StickyNote v-if="isNote" :size="100" :stroke-width="1.5" />
             <ListChecks v-else-if="isTodo" :size="100" :stroke-width="1.5" />
-            <BadgeRussianRuble
+            <CreditCardCheck
                 v-else-if="isFund"
                 :size="100"
                 :stroke-width="1.5"
@@ -417,7 +451,7 @@ const dueDateLabel = computed(() =>
                     Заметка
                 </span>
                 <span v-else-if="isFund" class="card-type card-type--fund">
-                    <BadgeRussianRuble :size="12" />
+                    <CreditCardCheck :size="12" />
                     Сбор
                 </span>
                 <span
@@ -432,15 +466,17 @@ const dueDateLabel = computed(() =>
                     {{ isTodo ? 'Дела' : 'Желания' }}
                 </span>
 
-                <!-- Режим сюрприза: выбор гостей скрыт от владельца -->
+                <!-- Режим сюрприза выключен: владелец видит выбор гостей. Значок
+                 ставится у выключенного, а не у включённого: у нового списка
+                 желаний режим включён по умолчанию -->
                 <span
-                    v-if="wishlist.hideSelections"
-                    class="card-surprise"
+                    v-if="isGift && !wishlist.hideSelections"
+                    class="card-selections-visible"
                     role="img"
-                    aria-label="Режим сюрприза: выбор гостей скрыт"
-                    title="Режим сюрприза: выбор гостей скрыт"
+                    aria-label="Режим сюрприза выключен: выбор гостей виден"
+                    title="Режим сюрприза выключен: выбор гостей виден"
                 >
-                    <EyeOff :size="14" />
+                    <Eye :size="14" />
                 </span>
 
                 <!-- Список дел открыт по ссылке. Значок не ссылки, а людей: значок
@@ -566,8 +602,10 @@ const dueDateLabel = computed(() =>
              через NOTE_SAVE_DELAY после ввода или при уходе из поля -->
         <textarea
             v-if="isNote"
+            ref="noteTextRef"
             v-model="noteDraft"
             class="note-text"
+            :class="{ 'note-text--clipped': isNoteClipped }"
             rows="3"
             :maxlength="NOTE_CONTENT_MAX_LENGTH"
             :readonly="isArchived"
@@ -575,16 +613,20 @@ const dueDateLabel = computed(() =>
             @focus="isNoteFocused = true"
             @input="scheduleNoteSave"
             @blur="finishNoteEditing"
+            @scroll="updateNoteFade"
         ></textarea>
 
         <div v-else class="card-header">
-            <span class="card-title">
+            <span
+                class="card-title"
+                :title="expanded ? undefined : (wishlist.title ?? undefined)"
+            >
                 {{ wishlist.title }}
             </span>
         </div>
 
         <!-- Длинный список прокручивается внутри карточки, как текст заметки,
-             а не растягивает весь ряд -->
+             а не растягивает её -->
         <div v-if="!isNote" ref="cardItemsRef" class="card-items">
             <div
                 v-for="(item, itemIndex) in wishlist.items"
@@ -621,9 +663,13 @@ const dueDateLabel = computed(() =>
                     <Check v-if="item.isSelected" :size="12" />
                 </button>
 
-                <!-- Цель сбора: гости её не отмечают, поэтому вместо чекбокса значок цели -->
-                <span v-else-if="isFund" class="item-bullet" aria-hidden="true">
-                    <Target :size="11" />
+                <!-- Цель сбора: гости её не отмечают, поэтому вместо чекбокса значок -->
+                <span
+                    v-else-if="isFund"
+                    class="item-bullet item-bullet--fund"
+                    aria-hidden="true"
+                >
+                    <CreditCardCheck :size="11" />
                 </span>
 
                 <!-- Позицию выбрал гость: вместо чекбокса значок подарка -->
@@ -648,8 +694,8 @@ const dueDateLabel = computed(() =>
 
                 <label v-else class="checkbox-wrapper-disabled">
                     <input
-                        type="checkbox"
                         v-model="item.isSelected"
+                        type="checkbox"
                         disabled
                         class="checkbox-input"
                     />
@@ -657,19 +703,26 @@ const dueDateLabel = computed(() =>
                     <span class="checkbox-custom"></span>
                 </label>
 
-                <!-- Справа от выполненного дела — кто его отметил: имя гостя или «Вы» -->
+                <!-- Справа от выполненного дела — кто его отметил: имя гостя или «Вы».
+                     У дела с важностью имя стоит в колонке справа под молниями -->
                 <span class="item-text">
-                    <span class="item-label">
+                    <!-- В карточке дашборда название обрезается до двух строк,
+                         полный текст — в подсказке и в развёрнутой карточке -->
+                    <span
+                        class="item-label"
+                        :title="expanded ? undefined : item.label"
+                    >
                         {{ item.label }}
                     </span>
                     <TodoCheckedBy
-                        v-if="isTodo"
+                        v-if="isTodo && !item.priority"
                         :checked-by="item.checkedBy"
                         :owner-name="ownCheckLabel"
                         :is-own="
                             ownCheckLabel !== null &&
                             item.checkedBy?.guest === false
                         "
+                        :truncate="!expanded"
                     />
                 </span>
 
@@ -679,12 +732,26 @@ const dueDateLabel = computed(() =>
                     v-if="
                         item.priority || item.price != null || item.urls?.length
                     "
-                    class="item-meta"
+                    :class="['item-meta', { 'item-meta--todo': isTodo }]"
                 >
-                    <ItemPriorityHearts
+                    <ItemPriorityIcons
                         v-if="item.priority"
                         :priority="item.priority"
+                        :todo="isTodo"
                         :muted="item.isSelected"
+                    />
+
+                    <!-- Кто отметил дело — второй строкой под важностью -->
+                    <TodoCheckedBy
+                        v-if="isTodo"
+                        :checked-by="item.checkedBy"
+                        :owner-name="ownCheckLabel"
+                        :is-own="
+                            ownCheckLabel !== null &&
+                            item.checkedBy?.guest === false
+                        "
+                        :truncate="!expanded"
+                        class="item-meta-checked-by"
                     />
 
                     <!-- Стоимость 0 ₽ тоже выводится: null — не указана.
@@ -826,11 +893,16 @@ const dueDateLabel = computed(() =>
 @use '../../../scss/ui/dueDateBadge.scss';
 @use '../../../scss/ui/wishlistColors.scss';
 
+// Высота карточки в сетке, одинаковая у всех карточек. Позиции и текст
+// заметки занимают место между шапкой и низом карточки и прокручиваются внутри
+$card-height: 280px;
+
 .card {
     position: relative;
-    // Колонка, чтобы .card-footer прижимался к низу; высоту карточек в ряду выравнивает grid
+    // Колонка, чтобы содержимое занимало свободное место, а .card-footer прижимался к низу
     display: flex;
     flex-direction: column;
+    height: $card-height;
     // Цвет списка; без него (white) — прежний полупрозрачный белый фон
     background: var(--wishlist-bg, var(--surface));
     backdrop-filter: blur(10px);
@@ -840,7 +912,11 @@ const dueDateLabel = computed(() =>
     padding: 20px;
     // Тень в тон цвету списка; без цвета (white) — нейтральная серо-голубая
     box-shadow: 0 8px 24px -14px
-        color-mix(in srgb, var(--wishlist-glow, #64748b) 25%, transparent);
+        color-mix(
+            in srgb,
+            var(--wishlist-glow, var(--ink-muted)) 25%,
+            transparent
+        );
     transition:
         transform 0.25s ease,
         box-shadow 0.25s ease;
@@ -852,7 +928,11 @@ const dueDateLabel = computed(() =>
 .card:hover {
     transform: translateY(-6px) scale(1.015);
     box-shadow: 0 22px 48px -16px
-        color-mix(in srgb, var(--wishlist-glow, #64748b) 40%, transparent);
+        color-mix(
+            in srgb,
+            var(--wishlist-glow, var(--ink-muted)) 40%,
+            transparent
+        );
 }
 
 // Слой на всю карточку центрирует значок; значок не перехватывает клики
@@ -866,7 +946,7 @@ const dueDateLabel = computed(() =>
     pointer-events: none;
 
     svg {
-        color: var(--wishlist-glow, #64748b);
+        color: var(--wishlist-glow, var(--ink-muted));
         opacity: 0.04;
         transform: rotate(-15deg);
         transition: transform 0.35s ease;
@@ -901,7 +981,7 @@ const dueDateLabel = computed(() =>
     // Справа и в своей строке, если ряд перенёсся
     margin-left: auto;
     font-size: 10px;
-    color: #b3b3b3;
+    color: var(--ink-faint);
 
     .card-actions-btn {
         display: grid;
@@ -941,7 +1021,7 @@ const dueDateLabel = computed(() =>
 }
 
 .copy-tooltip--error {
-    background: #ef4444;
+    background: var(--danger);
 }
 
 .copy-tooltip-enter-active,
@@ -965,14 +1045,19 @@ const dueDateLabel = computed(() =>
     margin-bottom: 10px;
 }
 
+// Не больше двух строк: длинное название отнимало бы место у позиций.
+// Полное название — в подсказке и в развёрнутой карточке
 .card-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
     font-size: 15px;
     font-weight: 700;
     color: var(--ink);
 }
-
-// Высота позиций и текста заметки, после которой появляется полоса прокрутки
-$card-content-max-height: 150px;
 
 // Тонкая полоса прокрутки в фирменных цветах, как у модалки (wishlistModal.scss).
 // В Chrome 121+ стандартные scrollbar-width и scrollbar-color отключают
@@ -996,15 +1081,20 @@ $card-content-max-height: 150px;
         background: rgba(139, 92, 246, 0.3);
 
         &:hover {
-            background: linear-gradient(180deg, #8b5cf6, #ec4899);
+            background: linear-gradient(
+                180deg,
+                var(--brand-violet),
+                var(--brand-pink)
+            );
         }
     }
 }
 
-// Позиции списка: та же высота, что у текста заметки. Полоса прокрутки
+// Позиции списка занимают свободное место карточки. Полоса прокрутки
 // вынесена в правый отступ карточки и не наезжает на цену и ссылку
 .card-items {
-    max-height: $card-content-max-height;
+    flex: 1 1 0;
+    min-height: 0;
     overflow-y: auto;
     margin-right: -12px;
     padding-right: 12px;
@@ -1060,6 +1150,16 @@ $card-content-max-height: 150px;
     }
 }
 
+// У дела в колонке важность и под ней имя отметившего: колонка не шире 45%
+// строки, как подпись с именем без важности, и длинное имя обрезается в ней
+.item-meta--todo {
+    max-width: 45%;
+
+    > .item-meta-checked-by {
+        max-width: 100%;
+    }
+}
+
 // Название слева, имя того, кто отметил дело (TodoCheckedBy), справа в той же строке
 .item-text {
     display: flex;
@@ -1083,19 +1183,25 @@ $card-content-max-height: 150px;
     transition: color 0.15s;
     line-height: 1.35;
     overflow-wrap: anywhere;
+    // Длинное название не занимает всю высоту карточки: не больше двух строк
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
 }
 
 .item-price {
     flex-shrink: 0;
     font-size: 12px;
     font-weight: 600;
-    color: #6b5b7b;
+    color: var(--ink-soft);
     white-space: nowrap;
 }
 
 // Выполненное дело: серый зачёркнутый текст, без фона забронированного подарка
 .item.item--done .item-label {
-    color: #94a3b8;
+    color: var(--ink-muted);
     text-decoration: line-through;
 }
 
@@ -1111,14 +1217,14 @@ $card-content-max-height: 150px;
     // Серые текст, цена и ссылка в тон значку подарка и сердечкам, как на общей странице
     .item-label,
     .item-price {
-        color: #94a3b8;
+        color: var(--ink-muted);
     }
 
     .item-link {
-        color: #94a3b8;
+        color: var(--ink-muted);
 
         &:hover {
-            color: #64748b;
+            color: var(--ink-muted);
             background: rgba(148, 163, 184, 0.22);
         }
     }
@@ -1147,8 +1253,9 @@ $card-content-max-height: 150px;
     width: 19px;
     height: 19px;
     border-radius: 7px;
-    // Фирменный градиент, как у отмеченного чекбокса на общей странице
-    background: var(--brand-gradient);
+    // Фирменный градиент, как у отмеченного чекбокса на общей странице;
+    // не меняется вместе с фоном приложения
+    background: var(--brand-gradient-fixed);
     color: #fff;
 }
 
@@ -1169,14 +1276,14 @@ $card-content-max-height: 150px;
     // Выполненное дело: форма значка выбранного подарка, но зелёный градиент,
     // как у полосы прогресса списка дел
     &.reserved-icon {
-        background: linear-gradient(135deg, #6ee7b7, #10b981);
+        background: linear-gradient(135deg, #6ee7b7, var(--success-bright));
     }
 
     &.checkbox-custom {
         border-color: rgba(16, 185, 129, 0.45);
 
         &:hover {
-            border-color: #10b981;
+            border-color: var(--success-bright);
         }
     }
 }
@@ -1216,7 +1323,7 @@ $card-content-max-height: 150px;
     padding: 3px 10px;
     border: 1px solid rgba(139, 92, 246, 0.25);
     border-radius: 7px;
-    background: #fff;
+    background: var(--surface-solid);
     font-size: 12px;
     font-weight: 600;
     color: var(--ink);
@@ -1230,12 +1337,12 @@ $card-content-max-height: 150px;
 
 .uncheck-confirm-btn--danger {
     border-color: transparent;
-    background: #ef4444;
+    background: var(--danger);
     color: #fff;
 
     &:hover {
         border-color: transparent;
-        background: #dc2626;
+        background: var(--danger);
     }
 }
 
@@ -1247,8 +1354,14 @@ $card-content-max-height: 150px;
     width: 19px;
     height: 19px;
     border-radius: 7px;
-    background: linear-gradient(135deg, #ddd6fe, #8b5cf6);
+    background: linear-gradient(135deg, #ddd6fe, var(--brand-violet));
     color: #fff;
+}
+
+// В тон метке «Сбор», чтобы цель не путалась с выбранным подарком;
+// фон насыщенный, чтобы на нём был виден белый значок
+.item-bullet--fund {
+    background: linear-gradient(135deg, #fbcfe8, var(--brand-pink));
 }
 
 .card-badges {
@@ -1270,23 +1383,23 @@ $card-content-max-height: 150px;
 }
 
 .card-type--gift {
-    background: rgba(139, 92, 246, 0.12);
+    background: var(--tint-strong);
     color: var(--brand-violet);
 }
 
 .card-type--todo {
     background: rgba(16, 185, 129, 0.14);
-    color: #059669;
+    color: var(--success);
 }
 
 .card-type--note {
     background: rgba(245, 158, 11, 0.16);
-    color: #b45309;
+    color: var(--warning);
 }
 
 .card-type--fund {
     background: rgba(236, 72, 153, 0.13);
-    color: #be185d;
+    color: var(--fund);
 }
 
 // Поле без рамки и фона выглядит как обычный текст карточки. Высота растёт
@@ -1298,7 +1411,9 @@ $card-content-max-height: 150px;
     // Отступ под метками типа
     margin: 1px 0 0;
     padding: 0;
-    max-height: $card-content-max-height;
+    // Текст заметки занимает свободное место карточки
+    flex: 1 1 0;
+    min-height: 0;
     overflow-y: auto;
     border: none;
     border-radius: 6px;
@@ -1321,6 +1436,22 @@ $card-content-max-height: 150px;
         box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
     }
 
+    // Текст продолжается ниже: последние строки плавно затухают. Второй слой
+    // маски оставляет непрозрачной полосу прокрутки справа. В фокусе затухания
+    // нет: маска обрезала бы рамку фокуса, а набираемый текст должен быть виден
+    &.note-text--clipped:not(:focus) {
+        mask-image:
+            linear-gradient(to bottom, #000 calc(100% - 32px), transparent),
+            linear-gradient(#000, #000);
+        mask-size:
+            calc(100% - 8px) 100%,
+            8px 100%;
+        mask-position:
+            left top,
+            right top;
+        mask-repeat: no-repeat;
+    }
+
     // Заметка в архиве только для просмотра: поле не подсвечивается
     &:read-only {
         cursor: inherit;
@@ -1331,7 +1462,7 @@ $card-content-max-height: 150px;
     }
 }
 
-.card-surprise,
+.card-selections-visible,
 .card-shared,
 .card-hidden {
     display: grid;
@@ -1343,7 +1474,7 @@ $card-content-max-height: 150px;
 
 // В тон метке «Дела»
 .card-shared {
-    color: #059669;
+    color: var(--success);
 }
 
 .card-hidden {
@@ -1372,14 +1503,14 @@ $card-content-max-height: 150px;
 .card-progress {
     width: 100%;
     height: 5px;
-    background: rgba(139, 92, 246, 0.1);
+    background: var(--tint);
     border-radius: 999px;
     overflow: hidden;
 }
 
 .card-progress-fill {
     height: 100%;
-    background: var(--brand-gradient);
+    background: var(--brand-gradient-fixed);
     border-radius: 999px;
     transition: width 0.3s ease;
 }
@@ -1406,7 +1537,7 @@ $card-content-max-height: 150px;
 // Прогресс списка дел — зелёный, списка желаний — фирменный градиент
 .card--todo {
     .progress-percent {
-        color: #059669;
+        color: var(--success);
     }
 
     .card-progress {
@@ -1414,7 +1545,7 @@ $card-content-max-height: 150px;
     }
 
     .card-progress-fill {
-        background: linear-gradient(135deg, #6ee7b7, #10b981);
+        background: linear-gradient(135deg, #6ee7b7, var(--success-bright));
     }
 }
 
@@ -1435,7 +1566,7 @@ $card-content-max-height: 150px;
     gap: 4px;
     font-size: 11px;
     line-height: normal;
-    color: #baa7c7;
+    color: var(--ink-faint);
 
     // Flex выравнивает значок по центру строки, в которую входит место под
     // выносные элементы букв (у, р), поэтому сами цифры и буквы даты стоят
@@ -1449,6 +1580,7 @@ $card-content-max-height: 150px;
 // Карточка в окне просмотра: крупнее, без подъёма при наведении и без прокрутки
 // внутри; длинное содержимое прокручивает само окно
 .card--expanded {
+    height: auto;
     min-height: 280px;
     padding: 28px;
     // Края карточки задаёт подложка окна. Рамка рядом с полосой прокрутки окна
@@ -1458,7 +1590,11 @@ $card-content-max-height: 150px;
     &:hover {
         transform: none;
         box-shadow: 0 8px 24px -14px
-            color-mix(in srgb, var(--wishlist-glow, #64748b) 25%, transparent);
+            color-mix(
+                in srgb,
+                var(--wishlist-glow, var(--ink-muted)) 25%,
+                transparent
+            );
     }
 
     // Отступы ряда 14px сверху и 18px слева. Справа от кнопок — крестик
@@ -1475,11 +1611,14 @@ $card-content-max-height: 150px;
     .card-title {
         font-size: 20px;
         line-height: 1.3;
+        -webkit-line-clamp: unset;
+        line-clamp: unset;
     }
 
+    // Высота по содержимому: длинное содержимое прокручивает само окно
     .card-items,
     .note-text {
-        max-height: none;
+        flex: none;
         overflow-y: visible;
     }
 
@@ -1498,6 +1637,8 @@ $card-content-max-height: 150px;
 
     .item-label {
         font-size: 15px;
+        -webkit-line-clamp: unset;
+        line-clamp: unset;
     }
 
     .item-price {

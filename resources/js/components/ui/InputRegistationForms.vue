@@ -12,6 +12,8 @@ interface Props {
     // Кнопка-глаз у поля пароля; у поля подтверждения её отключают и
     // связывают его с основным полем через v-model:revealed
     toggle?: boolean;
+    // Поле не прошло проверку: подсвечивается красной рамкой
+    invalid?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -20,6 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
     code: '',
     autocomplete: undefined,
     toggle: true,
+    invalid: false,
 });
 
 const emit = defineEmits<{
@@ -46,7 +49,11 @@ function updateValue(event: Event): void {
     <div class="field">
         <input
             class="input"
-            :class="{ 'input--with-toggle': hasToggle }"
+            :class="{
+                'input--with-toggle': hasToggle,
+                'input--invalid': invalid,
+            }"
+            :aria-invalid="invalid || undefined"
             :value="modelValue"
             :type="inputType"
             :placeholder="placeholder"
@@ -66,11 +73,11 @@ function updateValue(event: Event): void {
 
 .input {
     width: 100%;
-    border: 1.5px solid var(--surface-border, rgba(139, 92, 246, 0.14));
+    border: 1.5px solid var(--surface-border);
     border-radius: 16px;
     padding: 16px 18px;
-    background: rgba(255, 255, 255, 0.78);
-    color: var(--ink, #241533);
+    background: var(--surface);
+    color: var(--ink);
     font-size: 16px;
     outline: none;
     box-shadow: 0 12px 28px rgba(92, 62, 97, 0.06);
@@ -85,12 +92,22 @@ function updateValue(event: Event): void {
 }
 
 .input::placeholder {
-    color: #a1849f;
+    color: var(--ink-muted);
 }
 
 .input:focus {
-    border-color: var(--brand-violet, #8b5cf6);
-    background: #ffffff;
+    border-color: var(--brand-violet);
+    background: var(--surface-solid);
     box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.14);
+}
+
+/* Цвет как у текста ошибки в FormErrorMessage */
+.input--invalid,
+.input--invalid:focus {
+    border-color: var(--danger);
+}
+
+.input--invalid:focus {
+    box-shadow: 0 0 0 4px rgba(209, 67, 67, 0.14);
 }
 </style>

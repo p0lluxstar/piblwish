@@ -13,9 +13,16 @@
 //     тёмному фону (ключи ink, ink-soft, accent в карте); сейчас все фоны
 //     светлые, и компоненты берут обычные --ink, --ink-soft и фирменный
 //     фиолетовый: color: var(--app-ink, var(--ink)).
-// Карточки, окна, шапка и подвал сайта светлые при любом фоне.
+// Карточки, окна, шапка и подвал сайта светлые при любом фоне светлой темы.
 // Их использует DashboardLayout и превью в выборе фона.
-// Новый фон нужно добавить и сюда, и в enum, и в тип AppBackground.
+//
+// Тёмная тема: у каждого фона есть тёмная версия (карта $app-backgrounds-dark
+// ниже, те же ключи), она действует под :root[data-theme='dark']. Текст
+// в тёмной теме и так светлый (--ink из css/app.css), поэтому ключи ink,
+// ink-soft и accent тёмным версиям не нужны.
+// Градиент кнопок и переключателей для фона задаётся в appBackgroundGradients.scss.
+// Новый фон нужно добавить и сюда (в обе карты), и в appBackgroundGradients.scss, и в enum,
+// и в тип AppBackground.
 //
 // blossom — прежний фон, mist — нейтральный серо-голубой, stone — серый,
 // cobalt — то же, что stone, но с синим оттенком
@@ -77,26 +84,107 @@ $app-backgrounds: (
         ),
 );
 
+// Тёмные версии фонов: тот же оттенок, приглушённые пятна. Превью
+// в выборе фона получает свои, более светлые цвета пятен: пятна страницы
+// там выводятся без размытия и прозрачности и почти не видны
+$app-backgrounds-dark: (
+    blossom: (
+        bg: linear-gradient(160deg, #1a1326 0%, #221220 45%, #1d1712 100%),
+        glow-1: #7c3aed,
+        glow-2: #db2777,
+        glow-3: #b45309,
+        glow-opacity: 0.22,
+        preview-glow-1: #4c2d80,
+        preview-glow-2: #6d2350,
+    ),
+    ocean: (
+        bg: linear-gradient(160deg, #0f1626 0%, #0d1b27 45%, #0e1f1f 100%),
+        glow-1: #2563eb,
+        glow-2: #0891b2,
+        glow-3: #4f46e5,
+        glow-opacity: 0.22,
+        preview-glow-1: #1e3a7a,
+        preview-glow-2: #135066,
+    ),
+    mint: (
+        bg: linear-gradient(160deg, #0e1c17 0%, #0f1b14 45%, #1a1b10 100%),
+        glow-1: #059669,
+        glow-2: #047857,
+        glow-3: #a16207,
+        glow-opacity: 0.2,
+        preview-glow-1: #155c45,
+        preview-glow-2: #1c4a35,
+    ),
+    sand: (
+        bg: linear-gradient(160deg, #1e1812 0%, #21160f 45%, #1b1815 100%),
+        glow-1: #c2410c,
+        glow-2: #b45309,
+        glow-3: #78573a,
+        glow-opacity: 0.2,
+        preview-glow-1: #6b3014,
+        preview-glow-2: #614012,
+    ),
+    mist: (
+        bg: linear-gradient(160deg, #13161c 0%, #161a21 50%, #14171e 100%),
+        glow-1: #475569,
+        glow-2: #4338ca,
+        glow-3: #334155,
+        glow-opacity: 0.24,
+        preview-glow-1: #36404f,
+        preview-glow-2: #343070,
+    ),
+    stone: (
+        bg: linear-gradient(160deg, #161618 0%, #1a1a1c 50%, #151516 100%),
+        glow-1: #52525b,
+        glow-2: #57534e,
+        glow-3: #3f3f46,
+        glow-opacity: 0.3,
+        preview-glow-1: #3a3a40,
+        preview-glow-2: #3d3a37,
+    ),
+    cobalt: (
+        bg: linear-gradient(160deg, #0f1523 0%, #121a2b 50%, #0f1522 100%),
+        glow-1: #1e3a8a,
+        glow-2: #2f4f8f,
+        glow-3: #3b5b9a,
+        glow-opacity: 0.34,
+        preview-glow-1: #1f3363,
+        preview-glow-2: #2a4170,
+    ),
+);
+
+@mixin app-background-vars($values) {
+    --app-bg: #{map.get($values, bg)};
+    --app-glow-1: #{map.get($values, glow-1)};
+    --app-glow-2: #{map.get($values, glow-2)};
+    --app-glow-3: #{map.get($values, glow-3)};
+
+    @if map.has-key($values, glow-opacity) {
+        --app-glow-opacity: #{map.get($values, glow-opacity)};
+    }
+
+    @if map.has-key($values, preview-glow-1) {
+        --app-preview-glow-1: #{map.get($values, preview-glow-1)};
+        --app-preview-glow-2: #{map.get($values, preview-glow-2)};
+    }
+
+    @if map.has-key($values, ink) {
+        --app-ink: #{map.get($values, ink)};
+        --app-ink-soft: #{map.get($values, ink-soft)};
+        --app-accent: #{map.get($values, accent)};
+    }
+}
+
 @each $name, $values in $app-backgrounds {
     .app-bg--#{$name} {
-        --app-bg: #{map.get($values, bg)};
-        --app-glow-1: #{map.get($values, glow-1)};
-        --app-glow-2: #{map.get($values, glow-2)};
-        --app-glow-3: #{map.get($values, glow-3)};
+        @include app-background-vars($values);
+    }
+}
 
-        @if map.has-key($values, glow-opacity) {
-            --app-glow-opacity: #{map.get($values, glow-opacity)};
-        }
-
-        @if map.has-key($values, preview-glow-1) {
-            --app-preview-glow-1: #{map.get($values, preview-glow-1)};
-            --app-preview-glow-2: #{map.get($values, preview-glow-2)};
-        }
-
-        @if map.has-key($values, ink) {
-            --app-ink: #{map.get($values, ink)};
-            --app-ink-soft: #{map.get($values, ink-soft)};
-            --app-accent: #{map.get($values, accent)};
-        }
+// Файл подключается в scoped-стили компонентов; атрибут области
+// добавляется только к последнему селектору, поэтому :root ему не мешает
+@each $name, $values in $app-backgrounds-dark {
+    :root[data-theme='dark'] .app-bg--#{$name} {
+        @include app-background-vars($values);
     }
 }

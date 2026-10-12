@@ -48,7 +48,7 @@ defineProps<{ disabled?: boolean }>();
     margin: 0;
     font-size: 11px;
     line-height: 1.4;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 
 .joint-gift-input {
@@ -56,10 +56,10 @@ defineProps<{ disabled?: boolean }>();
     padding: 6px 10px;
     border: 1px solid rgba(139, 92, 246, 0.2);
     border-radius: 10px;
-    background: #fff;
+    background: var(--surface-solid);
     font-family: inherit;
     font-size: 12px;
-    color: var(--ink, #241533);
+    color: var(--ink);
 
     &:focus {
         outline: none;

@@ -213,7 +213,7 @@ const confirmDelete = (): void => {
 .profile-avatar {
     width: 44px;
     height: 44px;
-    background: linear-gradient(135deg, #a78bfa, #ec4899);
+    background: linear-gradient(135deg, #a78bfa, var(--brand-pink));
     color: #fff;
     font-size: 18px;
     font-weight: 700;
@@ -228,21 +228,21 @@ const confirmDelete = (): void => {
 
 .profile-label {
     font-size: 12px;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 
 .profile-username {
     overflow: hidden;
     font-size: 15px;
     font-weight: 700;
-    color: var(--ink, #241533);
+    color: var(--ink);
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .profile-registered {
     font-size: 12px;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 
 // Действия с фотографией — компактные текстовые кнопки под именем
@@ -257,7 +257,7 @@ const confirmDelete = (): void => {
     padding: 0;
     border: none;
     background: none;
-    color: #8b5cf6;
+    color: var(--brand-violet);
     font-size: 12px;
     font-weight: 600;
     font-family: inherit;
@@ -269,7 +269,7 @@ const confirmDelete = (): void => {
 }
 
 .avatar-action-danger {
-    color: #e11d48;
+    color: var(--danger-strong);
 }
 
 .visually-hidden {
@@ -295,7 +295,7 @@ const confirmDelete = (): void => {
     font-size: 13px;
     font-weight: 600;
     line-height: 1.5;
-    color: var(--ink, #241533);
+    color: var(--ink);
 }
 
 // Как кнопка подтверждения удаления аккаунта в UserSettingsModal
@@ -307,7 +307,7 @@ const confirmDelete = (): void => {
     padding: 11px;
     border: none;
     border-radius: 18px;
-    background: linear-gradient(135deg, #fb7185, #ec4899);
+    background: linear-gradient(135deg, #fb7185, var(--brand-pink));
     color: #fff;
     font-size: 13px;
     font-weight: 700;

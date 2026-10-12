@@ -9,6 +9,7 @@ use OpenApi\Attributes as OA;
 #[OA\Post(
     path: '/api/register',
     summary: 'Регистрация пользователя',
+    description: 'Если email принадлежит неподтверждённому аккаунту, он получает новые логин и пароль, а на адрес уходит новый код.',
     tags: ['Auth'],
     requestBody: new OA\RequestBody(
         required: true,
@@ -67,6 +68,40 @@ use OpenApi\Attributes as OA;
 )]
 
 #[OA\Post(
+    path: '/v1/verify-registration/resend',
+    summary: 'Повторная отправка кода регистрации',
+    description: 'Новый код заменяет прежний и действует 2 минуты. Отправляется только неподтверждённому и не удалённому аккаунту. Ответ одинаков для любого email.',
+    tags: ['Auth'],
+    requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['email'],
+            properties: [
+                new OA\Property(
+                    property: 'email',
+                    type: 'string',
+                    example: 'test@example.com'
+                ),
+            ]
+        )
+    ),
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Запрос принят'
+        ),
+        new OA\Response(
+            response: 422,
+            description: 'Ошибка валидации'
+        ),
+        new OA\Response(
+            response: 429,
+            description: 'Слишком частые запросы (не чаще одного в минуту для email)'
+        ),
+    ]
+)]
+
+#[OA\Post(
     path: '/v1/login',
     summary: 'Авторизация',
     tags: ['Auth'],
@@ -105,7 +140,7 @@ use OpenApi\Attributes as OA;
         ),
         new OA\Response(
             response: 403,
-            description: 'Аккаунт не подтверждён (email не подтверждён)'
+            description: 'Email не подтверждён; на него отправлен новый код регистрации (действует 2 минуты)'
         ),
     ]
 )]
@@ -147,7 +182,7 @@ use OpenApi\Attributes as OA;
 #[OA\Post(
     path: '/v1/reset-password',
     summary: 'Установка нового пароля по коду',
-    description: 'Код действует 10 минут. После смены пароля все сессии и токены пользователя завершаются.',
+    description: 'Код действует 2 минуты. После смены пароля все сессии и токены пользователя завершаются.',
     tags: ['Auth'],
     requestBody: new OA\RequestBody(
         required: true,

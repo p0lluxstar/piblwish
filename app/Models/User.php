@@ -4,24 +4,27 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\AppBackground;
+use App\Enums\WishlistType;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['username', 'email', 'password', 'is_active', 'email_verified_at', 'deactivated_at', 'background', 'show_friends_events', 'avatar_path'])]
+#[Fillable(['username', 'email', 'password', 'is_active', 'email_verified_at', 'deactivated_at', 'background', 'show_friends_events', 'email_reminders', 'reminder_days', 'avatar_path'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens, HasUlids;
+    use HasApiTokens, HasFactory, HasUlids, Notifiable;
 
     /**
      * Get the attributes that should be cast.
@@ -37,7 +40,23 @@ class User extends Authenticatable
             'password' => 'hashed',
             'background' => AppBackground::class,
             'show_friends_events' => 'boolean',
+            'email_reminders' => 'boolean',
+            'reminder_days' => 'integer',
+            'created_gift_count' => 'integer',
+            'created_todo_count' => 'integer',
+            'created_note_count' => 'integer',
+            'created_fund_count' => 'integer',
         ];
+    }
+
+    // Аккаунты, которые зарегистрированы, но ещё не подтвердили email
+    // кодом из письма (и не удалены)
+    #[Scope]
+    protected function pendingVerification(Builder $query): void
+    {
+        $query->where('is_active', false)
+            ->whereNull('email_verified_at')
+            ->whereNull('deactivated_at');
     }
 
     public function verificationRegistrationCodes(): HasMany
@@ -60,6 +79,12 @@ class User extends Authenticatable
     public function savedWishlists(): HasMany
     {
         return $this->hasMany(SavedWishlist::class);
+    }
+
+    // Колонка счётчика списков данного типа, созданных за всё время
+    public static function createdCountColumn(WishlistType $type): string
+    {
+        return "created_{$type->value}_count";
     }
 
     // Адрес фотографии на диске public или null, если фотографии нет

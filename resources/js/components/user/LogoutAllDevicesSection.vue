@@ -85,7 +85,7 @@ const hideConfirm = (): void => {
 .devices-hint {
     white-space: normal;
     font-size: 13px;
-    color: var(--ink-soft, #6b5878);
+    color: var(--ink-soft);
 }
 
 .confirm-text {
@@ -93,6 +93,6 @@ const hideConfirm = (): void => {
     font-size: 13px;
     font-weight: 600;
     line-height: 1.5;
-    color: var(--ink, #241533);
+    color: var(--ink);
 }
 </style>

@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { reactive } from 'vue';
 
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue';
 import InputRegistationForms from '@/components/ui/InputRegistationForms.vue';
 import LoaderButtonSpinner from '@/components/ui/LoaderButtonSpinner.vue';
 import PrimaryButton from '@/components/ui/PrimaryButton.vue';
-import { useVerifyRegistration } from '@/composables/useAuth';
+import {
+    useResendVerificationCode,
+    useVerifyRegistration,
+} from '@/composables/useAuth';
+import { useCodeTimer } from '@/composables/useCodeTimer';
+import { useFormErrors } from '@/composables/useFormErrors';
+import { validateVerificationCode } from '@/lib/authValidation';
 
 const props = defineProps<{
     email: string;
@@ -13,56 +19,35 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     success: [];
-    resend: []; // 👈 добавим событие для повторной отправки
 }>();
 
 const form = reactive({
     code: '',
 });
 
-// таймер
-const timeLeft = ref(120);
-const timer = ref<number | null>(null);
-
-const isExpired = computed(() => timeLeft.value <= 0);
-
-function startTimer(): void {
-    timeLeft.value = 120; // 2 минуты
-
-    timer.value = setInterval(() => {
-        if (timeLeft.value > 0) {
-            timeLeft.value--;
-        } else {
-            stopTimer();
-        }
-    }, 1000);
-}
-
-function stopTimer(): void {
-    if (timer.value) {
-        clearInterval(timer.value);
-        timer.value = null;
-    }
-}
-
-// формат mm:ss
-const formattedTime = computed(() => {
-    const minutes = Math.floor(timeLeft.value / 60);
-    const seconds = timeLeft.value % 60;
-
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-});
-
-onMounted(startTimer);
-onUnmounted(stopTimer);
+const { isExpired, formattedTime, restart: restartTimer } = useCodeTimer();
 
 const VerifyRegistrationMutation = useVerifyRegistration();
-const { mutateAsync: verifyRegistration, isPending, isError } = VerifyRegistrationMutation;
+const {
+    mutateAsync: verifyRegistration,
+    isPending,
+    errorMessage,
+} = VerifyRegistrationMutation;
+
+const { invalidField, message, validate } = useFormErrors({
+    form,
+    serverError: VerifyRegistrationMutation.error,
+    serverMessage: errorMessage,
+    resetServerError: VerifyRegistrationMutation.reset,
+});
 
 async function submitForm(): Promise<void> {
     VerifyRegistrationMutation.reset();
 
     if (isExpired.value) return; // защита
+
+    // С ошибкой проверки на клиенте запрос на сервер не отправляется
+    if (!validate(validateVerificationCode(form.code))) return;
 
     try {
         await verifyRegistration({
@@ -76,10 +61,26 @@ async function submitForm(): Promise<void> {
     }
 }
 
-// повторная отправка
-function resendCode(): void {
-    emit('resend');
-    startTimer(); // перезапускаем таймер
+const resendMutation = useResendVerificationCode();
+const { isPending: isResending, errorMessage: resendErrorMessage } =
+    resendMutation;
+
+// Повторная отправка: новый код заменяет истёкший, поэтому поле
+// очищается, прежние ошибки снимаются и таймер запускается заново
+async function resendCode(): Promise<void> {
+    resendMutation.reset();
+
+    try {
+        await resendMutation.mutateAsync({ email: props.email });
+    } catch (error) {
+        console.error(error);
+        return;
+    }
+
+    VerifyRegistrationMutation.reset();
+    validate(null);
+    form.code = '';
+    restartTimer();
 }
 </script>
 
@@ -89,25 +90,49 @@ function resendCode(): void {
     </div>
 
     <h2>Введите код подтверждения</h2>
-    <form class="verification-form" @submit.prevent="submitForm">
-        <InputRegistationForms v-model="form.code" placeholder="Введите код" />
+    <form class="verification-form" novalidate @submit.prevent="submitForm">
+        <!-- После истечения срока код не принимается, поэтому поле
+             скрывается до отправки нового кода -->
+        <template v-if="!isExpired">
+            <InputRegistationForms
+                v-model="form.code"
+                :invalid="invalidField === 'code'"
+                placeholder="Введите код"
+            />
 
-        <p v-if="!isExpired" class="timer-text">
-            Код действует: {{ formattedTime }}
-        </p>
+            <p class="timer-text">Код действует: {{ formattedTime }}</p>
 
-        <PrimaryButton v-if="!isExpired" :disabled="isPending">
-            <LoaderButtonSpinner v-if="isPending" />
-            <span v-else>Подтвердить</span>
-        </PrimaryButton>
+            <PrimaryButton :disabled="isPending">
+                <LoaderButtonSpinner v-if="isPending" />
+                <span v-else>Подтвердить</span>
+            </PrimaryButton>
 
-        <PrimaryButton v-else @click.prevent="resendCode">
-            Отправить новый код
-        </PrimaryButton>
+            <FormErrorMessage
+                :show="Boolean(message)"
+                :message="message ?? undefined"
+            />
+        </template>
 
-        <FormErrorMessage :show="isError">
-            Не удалось подтвердить код. Попробуйте позже.
-        </FormErrorMessage>
+        <template v-else>
+            <p class="expired-text">
+                Срок действия кода истёк. Запросите новый код, он придёт на
+                {{ email }}.
+            </p>
+
+            <PrimaryButton
+                type="button"
+                :disabled="isResending"
+                @click="resendCode"
+            >
+                <LoaderButtonSpinner v-if="isResending" />
+                <span v-else>Отправить новый код</span>
+            </PrimaryButton>
+
+            <FormErrorMessage
+                :show="Boolean(resendErrorMessage)"
+                :message="resendErrorMessage ?? undefined"
+            />
+        </template>
     </form>
 </template>
 
@@ -119,6 +144,14 @@ function resendCode(): void {
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+.expired-text {
+    margin: 0;
+    color: var(--muted, var(--ink-muted));
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: center;
 }
 
 .timer-text {
