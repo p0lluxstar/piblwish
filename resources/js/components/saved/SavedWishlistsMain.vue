@@ -2,7 +2,7 @@
 import { RefreshCcw } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
-import LaoderPageSpinner from '@/components/ui/LaoderPageSpinner.vue';
+import CardSkeletonGrid from '@/components/ui/CardSkeletonGrid.vue';
 import ShowMoreButtons from '@/components/ui/ShowMoreButtons.vue';
 import WishlistSortBar from '@/components/wishlist/WishlistSortBar.vue';
 import { useCardPaging } from '@/composables/useCardPaging';
@@ -16,6 +16,7 @@ import {
     type WishlistSortField,
 } from '@/composables/useWishlistSort';
 import { useWishlistTypeFilter } from '@/composables/useWishlistTypeFilter';
+import { pinLeavingCard } from '@/lib/gridTransition';
 import type { SavedWishlist } from '@/types/savedWishlist';
 
 import SavedWishlistCard from './SavedWishlistCard.vue';
@@ -143,9 +144,8 @@ const refresh = (): void => {
         @reset="resetFilters"
     />
 
-    <div v-if="isLoading" class="state">
-        <LaoderPageSpinner />
-    </div>
+    <!-- Карточки раздела ниже карточек дашборда и без фиксированной высоты -->
+    <CardSkeletonGrid v-if="isLoading" :count="4" :height="180" />
 
     <div v-else-if="error" class="state">
         <p>Ошибка при загрузке</p>
@@ -168,7 +168,14 @@ const refresh = (): void => {
         </button>
     </div>
 
-    <div v-else class="grid">
+    <TransitionGroup
+        v-else
+        tag="div"
+        name="card-grid"
+        class="grid card-grid"
+        appear
+        @before-leave="pinLeavingCard"
+    >
         <SavedWishlistCard
             v-for="wishlist in visibleWishlists"
             :key="wishlist.id"
@@ -176,7 +183,7 @@ const refresh = (): void => {
             :is-removing="removingId === wishlist.id"
             @remove="removeWishlist"
         />
-    </div>
+    </TransitionGroup>
 
     <ShowMoreButtons
         v-if="!isLoading && !error"

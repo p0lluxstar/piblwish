@@ -1241,8 +1241,9 @@ $card-height: 280px;
     width: 19px;
     height: 19px;
     border-radius: 7px;
-    // Фирменный градиент, как у отмеченного чекбокса на общей странице
-    background: var(--brand-gradient);
+    // Фирменный градиент, как у отмеченного чекбокса на общей странице;
+    // не меняется вместе с фоном приложения
+    background: var(--brand-gradient-fixed);
     color: #fff;
 }
 
@@ -1497,7 +1498,7 @@ $card-height: 280px;
 
 .card-progress-fill {
     height: 100%;
-    background: var(--brand-gradient);
+    background: var(--brand-gradient-fixed);
     border-radius: 999px;
     transition: width 0.3s ease;
 }

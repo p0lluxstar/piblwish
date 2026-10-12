@@ -15,7 +15,9 @@
 //     фиолетовый: color: var(--app-ink, var(--ink)).
 // Карточки, окна, шапка и подвал сайта светлые при любом фоне.
 // Их использует DashboardLayout и превью в выборе фона.
-// Новый фон нужно добавить и сюда, и в enum, и в тип AppBackground.
+// Градиент кнопок и переключателей для фона задаётся в appBackgroundGradients.scss.
+// Новый фон нужно добавить и сюда, и в appBackgroundGradients.scss, и в enum,
+// и в тип AppBackground.
 //
 // blossom — прежний фон, mist — нейтральный серо-голубой, stone — серый,
 // cobalt — то же, что stone, но с синим оттенком

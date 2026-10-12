@@ -20,6 +20,7 @@ import {
 } from '@/composables/useWishlistSort';
 import { useWishlistTypeFilter } from '@/composables/useWishlistTypeFilter';
 import { api } from '@/lib/api';
+import { pinLeavingCard } from '@/lib/gridTransition';
 import { useAuthStore } from '@/stores/auth';
 import type { ApiErrorResponse } from '@/types/api';
 
@@ -32,7 +33,7 @@ import type {
     WishlistUpdatePayload,
 } from '../../types/wishlist';
 import ActionToast from '../ui/ActionToast.vue';
-import LaoderPageSpinner from '../ui/LaoderPageSpinner.vue';
+import CardSkeletonGrid from '../ui/CardSkeletonGrid.vue';
 import ShowMoreButtons from '../ui/ShowMoreButtons.vue';
 import WishlistArchiveClearModal from './WishlistArchiveClearModal.vue';
 import WishlistCard from './WishlistCard.vue';
@@ -608,9 +609,15 @@ onMounted(generateRandomPhrase);
                 <Plus :size="12" />
                 <span class="btn-text">Новая карточка</span>
             </button>
+            <!-- Фоновое обновление не скрывает карточки: о нём говорит
+                 только вращающаяся иконка -->
             <button
-                class="update-btn"
+                :class="[
+                    'update-btn',
+                    { 'update-btn--spinning': isFetching && !isLoading },
+                ]"
                 aria-label="Обновить"
+                :disabled="isFetching"
                 @click="updateWishlists"
             >
                 <RefreshCcw :size="12" />
@@ -665,12 +672,7 @@ onMounted(generateRandomPhrase);
         </div>
     </WishlistSortBar>
 
-    <div
-        v-if="isLoading || isFetching"
-        class="flex items-center justify-center min-h-[400px]"
-    >
-        <LaoderPageSpinner />
-    </div>
+    <CardSkeletonGrid v-if="isLoading" />
 
     <div
         v-else-if="error"
@@ -720,7 +722,14 @@ onMounted(generateRandomPhrase);
     </div>
 
     <template v-else>
-        <div class="grid" id="grid">
+        <TransitionGroup
+            id="grid"
+            tag="div"
+            name="card-grid"
+            class="grid card-grid"
+            appear
+            @before-leave="pinLeavingCard"
+        >
             <WishlistCard
                 v-for="wishlist in visibleWishlists"
                 :key="wishlist.id"
@@ -734,7 +743,7 @@ onMounted(generateRandomPhrase);
                 @update-content="updateNoteContent"
                 @expand="openPreview"
             />
-        </div>
+        </TransitionGroup>
 
         <ShowMoreButtons
             :hidden-count="hiddenCount"
@@ -850,6 +859,22 @@ onMounted(generateRandomPhrase);
         opacity: 0.6;
         cursor: not-allowed;
         transform: none;
+    }
+}
+
+.update-btn--spinning svg {
+    animation: update-spin 0.8s linear infinite;
+}
+
+@keyframes update-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .update-btn--spinning svg {
+        animation: none;
     }
 }
 

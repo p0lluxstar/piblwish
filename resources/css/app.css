@@ -18,6 +18,10 @@
     --brand-coral: #fb7185;
     --brand-amber: #fbbf24;
     --brand-gradient: linear-gradient(135deg, #ff7aa8, #a78bfa);
+    /* Тот же градиент, но не зависящий от фона приложения: --brand-gradient
+       переопределяется под фон (scss/ui/appBackgroundGradients.scss), а значок
+       выбранного подарка и прогресс списка желаний на карточке остаются такими */
+    --brand-gradient-fixed: linear-gradient(135deg, #ff7aa8, #a78bfa);
     --logo-gradient: linear-gradient(
         135deg,
         var(--brand-violet) 0%,

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\SavedWishlistController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\EmailReminderController;
+use App\Http\Controllers\SharedWishlistPageController;
 use App\Http\Middleware\RenewRememberCookie;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
@@ -84,6 +85,12 @@ Route::middleware('signed:relative')->group(function () {
     Route::post('/email-reminders/unsubscribe/{user}', [EmailReminderController::class, 'unsubscribe'])
         ->withoutMiddleware(ValidateCsrfToken::class);
 });
+
+// Общая страница списка: SPA с мета-тегами списка для превью ссылки в мессенджерах.
+// Прежние адреса (/shared, /shared-wishlists, /shared-todolists) SPA перенаправляет
+// сама, но боты не выполняют JavaScript, поэтому теги нужны и на них
+Route::get('/{prefix}/{id}', SharedWishlistPageController::class)
+    ->where('prefix', 'shared|shared-wishlists?|shared-todolists?|shared-fund');
 
 /**
  * SPA Fallback
