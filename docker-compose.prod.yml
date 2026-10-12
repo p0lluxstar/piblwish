@@ -1,0 +1,85 @@
+# Конфигурация прод-сервера. nginx работает на самом сервере, а не в контейнере:
+# PHP-FPM доступен ему на 127.0.0.1:9090, public/build и storage он отдаёт с диска.
+# На сервере файл выбирается строкой COMPOSE_FILE=docker-compose.prod.yml в .env.
+# Для локальной разработки используется docker-compose.yml.
+
+# Общие настройки контейнеров с кодом приложения (app, queue, scheduler)
+x-app: &app
+    image: piblwish-app
+    restart: unless-stopped
+    env_file:
+        - .env
+    volumes:
+        # Laravel storage должен сохраняться между пересозданиями контейнера
+        - ./storage:/var/www/storage
+        # PHP logs
+        - ./_docker/app/logs:/var/log/php
+    depends_on:
+        db:
+            condition: service_healthy
+    networks:
+        - piblwish
+
+services:
+    app:
+        <<: *app
+        build:
+            context: .
+            dockerfile: _docker/app/Dockerfile.prod
+            args:
+                VITE_API_URL: ${VITE_API_URL}
+        container_name: piblwish_app
+        ports:
+            # Только локальный адрес: снаружи PHP-FPM недоступен
+            - '127.0.0.1:9090:9000'
+
+    # queue и scheduler используют образ, собранный для app
+    queue:
+        <<: *app
+        pull_policy: never
+        container_name: piblwish_queue
+        command: php artisan queue:work --verbose --tries=3 --timeout=90
+
+    # Планировщик Laravel: напоминания о сроке (wishlists:send-due-reminders)
+    scheduler:
+        <<: *app
+        pull_policy: never
+        container_name: piblwish_scheduler
+        command: php artisan schedule:work
+
+    db:
+        image: mysql:8.0
+        container_name: piblwish_db
+        restart: unless-stopped
+        environment:
+            MYSQL_DATABASE: ${DB_DATABASE}
+            MYSQL_USER: ${DB_USERNAME}
+            MYSQL_PASSWORD: ${DB_PASSWORD}
+            MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+        volumes:
+            - ./_docker/db/data:/var/lib/mysql
+        ports:
+            # Только локальный адрес: для подключения с сервера или через SSH-туннель
+            - '127.0.0.1:3307:3306'
+        networks:
+            - piblwish
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'mysqladmin',
+                    'ping',
+                    '-h',
+                    'localhost',
+                    '-u',
+                    'root',
+                    '-p${DB_ROOT_PASSWORD}',
+                ]
+            timeout: 20s
+            retries: 10
+            interval: 5s
+            start_period: 120s
+
+networks:
+    piblwish:
+        driver: bridge

@@ -1,0 +1,30 @@
+# Секреты: на сервере переменные передаются контейнерам через env_file,
+# а сборке фронтенда — аргументом VITE_API_URL
+.env
+.env.*
+
+# Данные и логи хранятся на сервере и подключаются томами
+_docker/db/data
+_docker/**/logs
+storage/**
+!storage/**/.gitignore
+!storage/api-docs
+bootstrap/cache/*.php
+
+# Зависимости и сборка создаются внутри образа
+node_modules
+vendor
+public/build
+public/hot
+public/storage
+
+# Не нужно приложению
+.git
+.claude
+.idea
+.vscode
+docs
+scripts
+tests
+*.log
+.phpunit.result.cache
