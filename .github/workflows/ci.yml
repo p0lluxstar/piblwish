@@ -111,6 +111,10 @@ jobs:
                   printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
                   chmod 600 ~/.ssh/deploy_key
                   printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+                  # ServerAliveInterval: сборка на сервере идёт долго и временами
+                  # ничего не выводит, без проверки связи соединение может
+                  # оборваться по таймауту
                   ssh -i ~/.ssh/deploy_key -p "${SSH_PORT:-22}" \
                       -o BatchMode=yes -o StrictHostKeyChecking=yes \
+                      -o ServerAliveInterval=30 -o ServerAliveCountMax=10 \
                       "deploy@$SSH_HOST"
