@@ -3,17 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\Wishlist\WishlistCollection;
-use Illuminate\Http\Request;
-use App\Http\Resources\Wishlist\WishlistResource;
-use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Wishlist\ClearItemSelectionRequest;
 use App\Http\Requests\Wishlist\CreateWishlistRequest;
 use App\Http\Requests\Wishlist\DeleteArchivedWishlistsRequest;
-use App\Services\Wishlist\WishlistService;
-use Illuminate\Support\Facades\Log;
 use App\Http\Requests\Wishlist\UpdateWishlistItemRequest;
 use App\Http\Requests\Wishlist\UpdateWishlistRequest;
+use App\Http\Resources\Wishlist\WishlistCollection;
+use App\Http\Resources\Wishlist\WishlistResource;
+use App\Services\Wishlist\WishlistService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class WishlistController extends Controller
 {
@@ -68,7 +67,7 @@ class WishlistController extends Controller
     public function getSelectedItems(
         Request $request,
         string $id
-    ): \Illuminate\Http\JsonResponse {
+    ): JsonResponse {
         $selections = $this->wishlistService->getSelections(
             $request->user(),
             $id,
@@ -140,15 +139,29 @@ class WishlistController extends Controller
         return new WishlistResource($wishlist);
     }
 
+    // Сменить общую ссылку списка: прежняя перестаёт открывать список
+    public function regenerateShareToken(
+        Request $request,
+        string $id
+    ): WishlistResource {
+        $wishlist = $this->wishlistService->regenerateShareToken(
+            $request->user(),
+            $id
+        );
+
+        return new WishlistResource($wishlist);
+    }
+
     // Удалить список желаний
     public function deleteWishlist(
         Request $request,
         string $id
-    ): \Illuminate\Http\JsonResponse {
+    ): JsonResponse {
         $this->wishlistService->deleteWishlist(
             $request->user(),
             $id
         );
+
         return response()->json([
             'message' => 'Wishlist deleted successfully',
         ]);
@@ -157,7 +170,7 @@ class WishlistController extends Controller
     // Удалить списки из архива: только переданные и всё ещё архивные
     public function deleteArchivedWishlists(
         DeleteArchivedWishlistsRequest $request
-    ): \Illuminate\Http\JsonResponse {
+    ): JsonResponse {
         $deletedCount = $this->wishlistService->deleteArchivedWishlists(
             $request->user(),
             $request->validated()['ids']

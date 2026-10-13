@@ -784,6 +784,7 @@ onMounted(generateRandomPhrase);
         @close="closeEditModal"
         @update="updateWishlist"
         @selection-cleared="setCachedWishlist"
+        @link-changed="setCachedWishlist"
     />
 
     <WishlistDeleteModal

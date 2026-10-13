@@ -45,6 +45,14 @@ use OpenApi\Attributes as OA;
                                 ),
 
                                 new OA\Property(
+                                    property: 'shareToken',
+                                    description: 'Токен общей ссылки (/shared-wishlist/{shareToken}); совпадает с id, пока владелец не сменил ссылку. У заметки null',
+                                    type: 'string',
+                                    nullable: true,
+                                    example: '01jq3v7x8k2m4n6p8r0t2w4y6z'
+                                ),
+
+                                new OA\Property(
                                     property: 'type',
                                     description: 'Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Список желаний, список дел и сбор открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке',
                                     type: 'string',
@@ -361,6 +369,14 @@ use OpenApi\Attributes as OA;
                                 property: 'id',
                                 type: 'integer',
                                 example: 1
+                            ),
+
+                            new OA\Property(
+                                property: 'shareToken',
+                                description: 'Токен общей ссылки; совпадает с id, пока владелец не сменил ссылку. У заметки null',
+                                type: 'string',
+                                nullable: true,
+                                example: '01jq3v7x8k2m4n6p8r0t2w4y6z'
                             ),
 
                             new OA\Property(
@@ -733,6 +749,43 @@ use OpenApi\Attributes as OA;
         new OA\Response(
             response: 404,
             description: 'Список не найден'
+        ),
+
+        new OA\Response(
+            response: 401,
+            description: 'Не авторизован'
+        ),
+    ]
+)]
+
+#[OA\Post(
+    path: '/v1/wishlists/{id}/share-token',
+    summary: 'Сменить общую ссылку списка',
+    description: 'Список получает новый shareToken: прежняя ссылка, ссылки для отмены брони и закладки «Чужие списки», добавленные по ней, перестают открывать список (404, закладки — available = false). Выбор гостей, брони, совместные подарки и isShared сохраняются',
+    tags: ['Wishlists'],
+    security: [['bearerAuth' => []]],
+    parameters: [
+        new OA\Parameter(name: 'id', description: 'ID списка', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+    ],
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Список целиком с новым shareToken, в том же формате, что и в GET /v1/wishlists'
+        ),
+
+        new OA\Response(
+            response: 404,
+            description: 'Список не найден'
+        ),
+
+        new OA\Response(
+            response: 409,
+            description: 'Список в архиве'
+        ),
+
+        new OA\Response(
+            response: 422,
+            description: 'У заметки нет общей ссылки'
         ),
 
         new OA\Response(

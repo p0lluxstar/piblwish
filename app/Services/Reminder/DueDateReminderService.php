@@ -56,7 +56,11 @@ class DueDateReminderService
                 ->where('reminder_days', $days)
                 ->where(function (Builder $query) use ($from, $to): void {
                     $query->whereHas('wishlists', fn (Builder $query) => $this->ownDue($query, $from, $to))
-                        ->orWhereHas('savedWishlists.wishlist', fn (Builder $query) => $this->savedDue($query, $from, $to));
+                        ->orWhereHas('savedWishlists', fn (Builder $query) => $query->whereHas(
+                            'wishlist',
+                            fn (Builder $query) => $this->savedDue($query, $from, $to)
+                                ->whereColumn('wishlists.share_token', 'saved_wishlists.share_token')
+                        ));
                 })
                 ->chunkById(100, function ($users) use ($today, $from, $to, &$sent): void {
                     foreach ($users as $user) {
@@ -81,7 +85,9 @@ class DueDateReminderService
             ->get();
 
         $saved = Wishlist::query()
-            ->whereIn('id', $user->savedWishlists()->select('wishlist_id'))
+            // Токен ссылки уникален: после смены ссылки владельцем закладка
+            // с прежним токеном списка не находит
+            ->whereIn('share_token', $user->savedWishlists()->select('share_token'))
             ->where(fn (Builder $query) => $this->savedDue($query, $from, $to))
             ->with('user')
             ->withCount($this->itemCounts())
@@ -158,9 +164,9 @@ class DueDateReminderService
     }
 
     // Сохранённый чужой список с датой от $from до $to, который открывается по ссылке
-    private function savedDue(Builder $query, string $from, string $to): void
+    private function savedDue(Builder $query, string $from, string $to): Builder
     {
-        $query->openByLink()
+        return $query->openByLink()
             ->whereDate('due_date', '>=', $from)
             ->whereDate('due_date', '<=', $to)
             ->where(fn (Builder $query) => $this->notCompletedTodo($query));
@@ -249,9 +255,9 @@ class DueDateReminderService
     private function sharedPath(Wishlist $wishlist): string
     {
         return match ($wishlist->type) {
-            WishlistType::Todo => "/shared-todolist/{$wishlist->id}",
-            WishlistType::Fund => "/shared-fund/{$wishlist->id}",
-            default => "/shared-wishlist/{$wishlist->id}",
+            WishlistType::Todo => "/shared-todolist/{$wishlist->share_token}",
+            WishlistType::Fund => "/shared-fund/{$wishlist->share_token}",
+            default => "/shared-wishlist/{$wishlist->share_token}",
         };
     }
 }

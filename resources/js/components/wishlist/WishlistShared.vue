@@ -5,6 +5,7 @@ import {
     Copy,
     CreditCardCheck,
     ExternalLink,
+    Eye,
     Gift,
     Hourglass,
     PartyPopper,
@@ -1382,6 +1383,16 @@ onMounted(getWishlist);
                     </time>
                 </div>
 
+                <!-- Список дел только для просмотра: без пояснения гость не понимает,
+                     почему у дел нет чекбоксов и кнопки «Отметить выполненными» -->
+                <p
+                    v-if="isTodo && !canCheckTodo && !allSelected"
+                    class="view-only-note"
+                >
+                    <Eye :size="14" aria-hidden="true" />
+                    Список открыт только для просмотра
+                </p>
+
                 <button
                     v-if="(isGift || canCheckTodo) && !allSelected"
                     type="button"
@@ -2031,6 +2042,28 @@ onMounted(getWishlist);
     opacity: 0.9;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+// Пояснение под списком дел, который гости не могут отмечать
+.view-only-note {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 6px;
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--surface-soft);
+    font-size: 12px;
+    line-height: 1.4;
+    text-align: center;
+    color: var(--ink-soft);
+
+    svg {
+        flex-shrink: 0;
+        margin-top: 1px;
+        color: var(--ink-muted);
+    }
 }
 
 .fund-note {

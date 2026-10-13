@@ -372,7 +372,7 @@
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "ID списка",
+                        "description": "Токен общей ссылки списка",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -430,7 +430,7 @@
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "ID списка",
+                        "description": "Токен общей ссылки списка",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -490,10 +490,10 @@
                     {
                         "name": "id",
                         "in": "path",
+                        "description": "Токен общей ссылки (shareToken), а не id списка; после смены ссылки прежний токен отвечает 404",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "ulid"
+                            "type": "string"
                         }
                     }
                 ],
@@ -641,10 +641,10 @@
                     {
                         "name": "wishlist",
                         "in": "path",
+                        "description": "Токен общей ссылки (shareToken)",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "ulid"
+                            "type": "string"
                         }
                     }
                 ],
@@ -746,10 +746,10 @@
                     {
                         "name": "wishlist",
                         "in": "path",
+                        "description": "Токен общей ссылки (shareToken)",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "ulid"
+                            "type": "string"
                         }
                     }
                 ],
@@ -809,10 +809,10 @@
                     {
                         "name": "wishlist",
                         "in": "path",
+                        "description": "Токен общей ссылки (shareToken)",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "ulid"
+                            "type": "string"
                         }
                     }
                 ],
@@ -880,10 +880,10 @@
                     {
                         "name": "wishlist",
                         "in": "path",
+                        "description": "Токен общей ссылки (shareToken)",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "ulid"
+                            "type": "string"
                         }
                     }
                 ],
@@ -960,10 +960,10 @@
                     {
                         "name": "wishlist",
                         "in": "path",
+                        "description": "Токен общей ссылки (shareToken)",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "ulid"
+                            "type": "string"
                         }
                     },
                     {
@@ -2129,6 +2129,12 @@
                                                         "type": "integer",
                                                         "example": 1
                                                     },
+                                                    "shareToken": {
+                                                        "description": "Токен общей ссылки (/shared-wishlist/{shareToken}); совпадает с id, пока владелец не сменил ссылку. У заметки null",
+                                                        "type": "string",
+                                                        "example": "01jq3v7x8k2m4n6p8r0t2w4y6z",
+                                                        "nullable": true
+                                                    },
                                                     "type": {
                                                         "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Список желаний, список дел и сбор открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке",
                                                         "type": "string",
@@ -2437,6 +2443,12 @@
                                                 "id": {
                                                     "type": "integer",
                                                     "example": 1
+                                                },
+                                                "shareToken": {
+                                                    "description": "Токен общей ссылки; совпадает с id, пока владелец не сменил ссылку. У заметки null",
+                                                    "type": "string",
+                                                    "example": "01jq3v7x8k2m4n6p8r0t2w4y6z",
+                                                    "nullable": true
                                                 },
                                                 "type": {
                                                     "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Список желаний, список дел и сбор открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке",
@@ -2888,6 +2900,49 @@
                 ]
             }
         },
+        "/v1/wishlists/{id}/share-token": {
+            "post": {
+                "tags": [
+                    "Wishlists"
+                ],
+                "summary": "Сменить общую ссылку списка",
+                "description": "Список получает новый shareToken: прежняя ссылка, ссылки для отмены брони и закладки «Чужие списки», добавленные по ней, перестают открывать список (404, закладки — available = false). Выбор гостей, брони, совместные подарки и isShared сохраняются",
+                "operationId": "0df73864146c1db2aeb9189afd47bfe5",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID списка",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список целиком с новым shareToken, в том же формате, что и в GET /v1/wishlists"
+                    },
+                    "404": {
+                        "description": "Список не найден"
+                    },
+                    "409": {
+                        "description": "Список в архиве"
+                    },
+                    "422": {
+                        "description": "У заметки нет общей ссылки"
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/v1/wishlists/archived": {
             "delete": {
                 "tags": [
@@ -2972,7 +3027,7 @@
                 "description": "Сводка чужого списка. Если владелец закрыл доступ к списку, available = false и поля списка равны null",
                 "properties": {
                     "id": {
-                        "description": "ID самого списка",
+                        "description": "Токен общей ссылки, с которой список добавили (shareToken); после смены ссылки владельцем available = false",
                         "type": "string",
                         "example": "01jq3v7x8k2m4n6p8r0t2w4y6z"
                     },

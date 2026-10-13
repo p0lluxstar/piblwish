@@ -14,8 +14,10 @@ use Illuminate\Validation\ValidationException;
  * Чужие списки, добавленные пользователем к себе с общей страницы.
  *
  * Добавить можно только список, который открывается по ссылке (Wishlist::openByLink),
- * и только чужой. Если владелец потом закрыл доступ к списку, закладка остаётся,
- * но SavedWishlistResource отдаёт её как недоступную, без содержимого списка.
+ * и только чужой. Если владелец потом закрыл доступ к списку или сменил ссылку,
+ * закладка остаётся, но SavedWishlistResource отдаёт её как недоступную,
+ * без содержимого списка. Закладки адресуются токеном ссылки, а не id списка:
+ * id гостю неизвестен.
  */
 class SavedWishlistService
 {
@@ -33,10 +35,11 @@ class SavedWishlistService
             ->get();
     }
 
-    // Добавить список к себе; повторное добавление возвращает прежнюю закладку
-    public function saveWishlist(User $user, string $wishlistId): SavedWishlist
+    // Добавить список к себе по токену ссылки; повторное добавление возвращает прежнюю
+    // закладку, а добавление по новой ссылке после её смены снова делает закладку доступной
+    public function saveWishlist(User $user, string $shareToken): SavedWishlist
     {
-        $wishlist = Wishlist::query()->openByLink()->findOrFail($wishlistId);
+        $wishlist = Wishlist::query()->openByLink()->byShareToken($shareToken)->firstOrFail();
 
         if ($wishlist->user_id === $user->id) {
             throw ValidationException::withMessages([
@@ -44,18 +47,20 @@ class SavedWishlistService
             ]);
         }
 
-        $saved = $user->savedWishlists()->firstOrCreate([
-            'wishlist_id' => $wishlist->id,
-        ]);
+        $saved = $user->savedWishlists()->updateOrCreate(
+            ['wishlist_id' => $wishlist->id],
+            ['share_token' => $wishlist->share_token],
+        );
 
         return $saved->load(['wishlist' => fn ($query) => $this->withSummary($query)]);
     }
 
-    // Убрать список из своих чужих списков; отсутствующая закладка не считается ошибкой
-    public function removeSavedWishlist(User $user, string $wishlistId): void
+    // Убрать список из своих чужих списков по токену ссылки, с которой его добавили;
+    // отсутствующая закладка не считается ошибкой
+    public function removeSavedWishlist(User $user, string $shareToken): void
     {
         $user->savedWishlists()
-            ->where('wishlist_id', $wishlistId)
+            ->where('share_token', $shareToken)
             ->delete();
     }
 

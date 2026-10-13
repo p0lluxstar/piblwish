@@ -17,16 +17,18 @@ class SharedWishlistService
     // Длина токена брони: 40 символов из [A-Za-z0-9], перебор невозможен
     public const RESERVATION_TOKEN_LENGTH = 40;
 
-    // Получить конкретный вишлист по ID, если владелец открыл его по ссылке. Список дел
-    // открывается только для просмотра: остальные публичные эндпоинты работают
-    // лишь со списками желаний (sharedQuery)
+    // Получить список по токену общей ссылки, если владелец открыл его по ссылке.
+    // Публичные эндпоинты принимают токен, а не id: после смены ссылки владельцем
+    // прежний адрес отвечает 404. Список дел открывается только для просмотра:
+    // остальные публичные эндпоинты работают лишь со списками желаний (sharedQuery)
     public function getWishlistById(
-        string $id
+        string $token
     ): Wishlist {
         return Wishlist::query()
             ->openByLink()
+            ->byShareToken($token)
             ->with(['items.jointGift', 'user'])
-            ->findOrFail($id);
+            ->firstOrFail();
     }
 
     /**
@@ -42,11 +44,11 @@ class SharedWishlistService
      * @return array{wishlist: Wishlist, reservation: array{token: string, itemIds: list<string>}}
      */
     public function updateSharedWishlistItems(
-        string $wishlistId,
+        string $token,
         array $itemIds,
         array $jointGifts = []
     ): array {
-        $wishlist = $this->sharedQuery()->findOrFail($wishlistId);
+        $wishlist = $this->findShared($token);
         $itemIds = array_values(array_unique($itemIds));
         $token = Str::random(self::RESERVATION_TOKEN_LENGTH);
 
@@ -87,7 +89,7 @@ class SharedWishlistService
         });
 
         return [
-            'wishlist' => $this->freshWishlist($wishlist->id),
+            'wishlist' => $this->freshWishlist($wishlist),
             'reservation' => ['token' => $token, 'itemIds' => $itemIds],
         ];
     }
@@ -100,9 +102,9 @@ class SharedWishlistService
      *
      * @return list<array{token: string, itemIds: list<string>}>
      */
-    public function getReservations(string $wishlistId, array $tokens): array
+    public function getReservations(string $shareToken, array $tokens): array
     {
-        $this->sharedQuery()->findOrFail($wishlistId);
+        $wishlistId = $this->findShared($shareToken)->id;
 
         $hashes = collect($tokens)
             ->unique()
@@ -128,9 +130,10 @@ class SharedWishlistService
      *
      * @return array{wishlist: Wishlist, reservation: array{token: string, itemIds: list<string>}}
      */
-    public function cancelReservation(string $wishlistId, string $token, array $itemIds): array
+    public function cancelReservation(string $shareToken, string $token, array $itemIds): array
     {
-        $this->sharedQuery()->findOrFail($wishlistId);
+        $wishlist = $this->findShared($shareToken);
+        $wishlistId = $wishlist->id;
 
         $itemIds = array_values(array_unique($itemIds));
 
@@ -177,7 +180,7 @@ class SharedWishlistService
         });
 
         return [
-            'wishlist' => $this->freshWishlist($wishlistId),
+            'wishlist' => $this->freshWishlist($wishlist),
             'reservation' => ['token' => $token, 'itemIds' => $remainingIds],
         ];
     }
@@ -188,9 +191,10 @@ class SharedWishlistService
      *
      * $jointGift — { name, contact?, comment? } или null, чтобы убрать совместный подарок.
      */
-    public function updateJointGift(string $wishlistId, string $itemId, string $token, ?array $jointGift): Wishlist
+    public function updateJointGift(string $shareToken, string $itemId, string $token, ?array $jointGift): Wishlist
     {
-        $this->sharedQuery()->findOrFail($wishlistId);
+        $wishlist = $this->findShared($shareToken);
+        $wishlistId = $wishlist->id;
 
         DB::transaction(function () use ($wishlistId, $itemId, $token, $jointGift) {
             $reservation = WishlistReservation::query()
@@ -227,7 +231,7 @@ class SharedWishlistService
             );
         });
 
-        return $this->freshWishlist($wishlistId);
+        return $this->freshWishlist($wishlist);
     }
 
     /**
@@ -242,13 +246,14 @@ class SharedWishlistService
      * $name — имя гостя для подписи под делами; если владелец требует имя,
      * без него запрос отклоняется.
      */
-    public function checkTodoItems(string $wishlistId, array $itemIds, ?string $name): Wishlist
+    public function checkTodoItems(string $shareToken, array $itemIds, ?string $name): Wishlist
     {
         $wishlist = Wishlist::query()
             ->openByLink()
+            ->byShareToken($shareToken)
             ->where('type', WishlistType::Todo)
             ->where('guests_can_check', true)
-            ->findOrFail($wishlistId);
+            ->firstOrFail();
 
         $name = $name === null ? null : trim($name);
         $name = $name === '' ? null : $name;
@@ -286,12 +291,18 @@ class SharedWishlistService
                 ]);
         });
 
-        return $this->getWishlistById($wishlistId);
+        return $this->getWishlistById($shareToken);
     }
 
-    private function freshWishlist(string $wishlistId): Wishlist
+    // Список желаний по токену общей ссылки для эндпоинтов выбора (sharedQuery)
+    private function findShared(string $shareToken): Wishlist
     {
-        return $this->sharedQuery()->with(['items.jointGift', 'user'])->findOrFail($wishlistId);
+        return $this->sharedQuery()->byShareToken($shareToken)->firstOrFail();
+    }
+
+    private function freshWishlist(Wishlist $wishlist): Wishlist
+    {
+        return $this->sharedQuery()->with(['items.jointGift', 'user'])->findOrFail($wishlist->id);
     }
 
     // Выбирать позиции, отменять выбор и менять совместный подарок можно только в списке

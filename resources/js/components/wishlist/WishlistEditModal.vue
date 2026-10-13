@@ -51,6 +51,7 @@ import WishlistColorPicker from './WishlistColorPicker.vue';
 import WishlistDueDateField from './WishlistDueDateField.vue';
 import WishlistGuestCheckToggle from './WishlistGuestCheckToggle.vue';
 import WishlistGuestNameToggle from './WishlistGuestNameToggle.vue';
+import WishlistShareLinkReset from './WishlistShareLinkReset.vue';
 import WishlistShareToggle from './WishlistShareToggle.vue';
 import WishlistSurpriseToggle from './WishlistSurpriseToggle.vue';
 
@@ -66,6 +67,8 @@ const emit = defineEmits<{
     update: [payload: WishlistUpdatePayload];
     // Владелец снял выбор гостя: список с сервера, чтобы обновить карточку
     selectionCleared: [wishlist: Wishlist];
+    // Владелец сменил общую ссылку: список с новым shareToken
+    linkChanged: [wishlist: Wishlist];
 }>();
 
 // Тип списка при редактировании не меняется, поэтому в форме его нет
@@ -803,6 +806,14 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                         которые уже выбрали подарки. Их выбор сохранится и
                         вернётся, если снова открыть доступ.
                     </p>
+
+                    <!-- Сменить ссылку можно у списка, уже открытого по ссылке:
+                         запрос выполняется сразу, без сохранения формы -->
+                    <WishlistShareLinkReset
+                        v-if="wishlist.isShared && form.isShared"
+                        :wishlist="wishlist"
+                        @changed="emit('linkChanged', $event)"
+                    />
 
                     <!-- Отмечать дела гости могут только в списке дел, открытом по ссылке -->
                     <WishlistGuestCheckToggle

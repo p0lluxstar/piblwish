@@ -306,15 +306,16 @@ const showCopyFeedback = (status: 'copied' | 'error'): void => {
 };
 
 const copyLink = async (): Promise<void> => {
-    const id = String(props.wishlist.id ?? '');
+    // Ссылка строится по токену, а не по id: владелец мог сменить ссылку
+    const token = props.wishlist.shareToken ?? '';
 
-    if (!id) {
+    if (!token) {
         showCopyFeedback('error');
         return;
     }
 
     const isCopied = await copyToClipboard(
-        getSharedWishlistUrl(id, props.wishlist.type),
+        getSharedWishlistUrl(token, props.wishlist.type),
     );
 
     showCopyFeedback(isCopied ? 'copied' : 'error');
