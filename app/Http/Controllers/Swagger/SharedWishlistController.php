@@ -170,12 +170,14 @@ use OpenApi\Attributes as OA;
                 new OA\Property(
                     property: 'item_ids',
                     type: 'array',
-                    items: new OA\Items(type: 'string', format: 'ulid')
+                    items: new OA\Items(type: 'string', format: 'ulid'),
+                    maxItems: 100
                 ),
                 new OA\Property(
                     property: 'joint_gifts',
                     description: 'Совместные подарки; item_id каждого должен входить в item_ids',
                     type: 'array',
+                    maxItems: 100,
                     items: new OA\Items(
                         required: ['item_id', 'name'],
                         properties: [
@@ -230,7 +232,8 @@ use OpenApi\Attributes as OA;
                 new OA\Property(
                     property: 'item_ids',
                     type: 'array',
-                    items: new OA\Items(type: 'string', format: 'ulid')
+                    items: new OA\Items(type: 'string', format: 'ulid'),
+                    maxItems: 100
                 ),
                 new OA\Property(
                     property: 'name',
@@ -311,7 +314,8 @@ use OpenApi\Attributes as OA;
                 new OA\Property(
                     property: 'item_ids',
                     type: 'array',
-                    items: new OA\Items(type: 'string', format: 'ulid')
+                    items: new OA\Items(type: 'string', format: 'ulid'),
+                    maxItems: 100
                 ),
             ],
             type: 'object'

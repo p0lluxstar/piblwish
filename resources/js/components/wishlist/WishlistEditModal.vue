@@ -26,6 +26,7 @@ import { useEscapeKey } from '../../composables/useEscapeKey';
 import { useItemReorder } from '../../composables/useItemReorder';
 import { FUND_PLATFORMS_TEXT } from '../../constants/fundHosts';
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
+import { MAX_WISHLIST_ITEMS } from '../../constants/wishlistLimits';
 import { lockBodyScroll, unlockBodyScroll } from '../../lib/bodyScrollLock';
 import { getFundPlatformOfInput, getFundUrlError } from '../../lib/fundUrl';
 import {
@@ -434,7 +435,14 @@ const toggleConfirm = (itemId: string): void => {
 
 const { itemKey, moveItem } = useItemReorder(() => form.value.items, urlErrors);
 
+// Позиций не больше, чем принимает сервер: кнопка добавления отключается
+const isItemsLimitReached = computed(
+    () => form.value.items.length >= MAX_WISHLIST_ITEMS,
+);
+
 const addItem = (): void => {
+    if (isItemsLimitReached.value) return;
+
     form.value.items.push({
         isSelected: false,
         label: '',
@@ -1321,6 +1329,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                         <button
                             class="add-item-btn"
                             type="button"
+                            :disabled="isItemsLimitReached"
                             @click="addItem"
                         >
                             {{
@@ -1331,6 +1340,10 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                                       : '+ Добавить желание'
                             }}
                         </button>
+                        <p v-if="isItemsLimitReached" class="items-limit-hint">
+                            В списке может быть не больше
+                            {{ MAX_WISHLIST_ITEMS }} позиций
+                        </p>
                     </template>
                 </div>
 

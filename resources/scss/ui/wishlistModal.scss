@@ -515,7 +515,20 @@ $item-price-height: 26px;
     border-radius: 12px;
     transition: all 0.18s ease;
 
-    &:hover {
+    &:hover:not(:disabled) {
         background: var(--tint-strong);
     }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
+// Подсказка под кнопкой добавления, когда позиций уже столько, сколько принимает сервер
+.items-limit-hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--ink-soft);
 }

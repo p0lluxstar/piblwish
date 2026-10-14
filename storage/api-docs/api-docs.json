@@ -662,7 +662,8 @@
                                         "items": {
                                             "type": "string",
                                             "format": "ulid"
-                                        }
+                                        },
+                                        "maxItems": 100
                                     },
                                     "joint_gifts": {
                                         "description": "Совместные подарки; item_id каждого должен входить в item_ids",
@@ -693,7 +694,8 @@
                                                 }
                                             },
                                             "type": "object"
-                                        }
+                                        },
+                                        "maxItems": 100
                                     }
                                 },
                                 "type": "object"
@@ -767,7 +769,8 @@
                                         "items": {
                                             "type": "string",
                                             "format": "ulid"
-                                        }
+                                        },
+                                        "maxItems": 100
                                     },
                                     "name": {
                                         "description": "Имя гостя для подписи под делами. Обязательно, если guestNameRequired = true",
@@ -907,7 +910,8 @@
                                         "items": {
                                             "type": "string",
                                             "format": "ulid"
-                                        }
+                                        },
+                                        "maxItems": 100
                                     }
                                 },
                                 "type": "object"
@@ -2381,7 +2385,7 @@
                                         "example": false
                                     },
                                     "items": {
-                                        "description": "Позиции списка, хотя бы одна. Обязательны для списков желаний и дел, у заметки запрещены",
+                                        "description": "Позиции списка, от 1 до 100. Обязательны для списков желаний и дел, у заметки запрещены",
                                         "type": "array",
                                         "items": {
                                             "properties": {
@@ -2423,7 +2427,8 @@
                                                 }
                                             },
                                             "type": "object"
-                                        }
+                                        },
+                                        "maxItems": 100
                                     }
                                 },
                                 "type": "object"
@@ -2593,7 +2598,7 @@
                         }
                     },
                     "422": {
-                        "description": "Ошибка валидации"
+                        "description": "Ошибка валидации или у пользователя уже 100 списков вместе с архивом (ошибка в errors.wishlist)"
                     },
                     "401": {
                         "description": "Не авторизован"
@@ -2961,14 +2966,15 @@
                                 ],
                                 "properties": {
                                     "ids": {
-                                        "description": "ID списков, которые владелец видел в архиве",
+                                        "description": "ID списков, которые владелец видел в архиве, не больше 100",
                                         "type": "array",
                                         "items": {
                                             "type": "string"
                                         },
                                         "example": [
                                             "01J0000000000000000000000A"
-                                        ]
+                                        ],
+                                        "maxItems": 100
                                     }
                                 },
                                 "type": "object"
@@ -3007,7 +3013,7 @@
                         }
                     },
                     "422": {
-                        "description": "Не передан непустой массив ids"
+                        "description": "Не передан непустой массив ids или в нём больше 100 элементов"
                     },
                     "401": {
                         "description": "Не авторизован"

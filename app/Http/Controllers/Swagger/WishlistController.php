@@ -310,8 +310,9 @@ use OpenApi\Attributes as OA;
 
                 new OA\Property(
                     property: 'items',
-                    description: 'Позиции списка, хотя бы одна. Обязательны для списков желаний и дел, у заметки запрещены',
+                    description: 'Позиции списка, от 1 до 100. Обязательны для списков желаний и дел, у заметки запрещены',
                     type: 'array',
+                    maxItems: 100,
                     items: new OA\Items(
                         properties: [
                             new OA\Property(
@@ -529,7 +530,7 @@ use OpenApi\Attributes as OA;
 
         new OA\Response(
             response: 422,
-            description: 'Ошибка валидации'
+            description: 'Ошибка валидации или у пользователя уже 100 списков вместе с архивом (ошибка в errors.wishlist)'
         ),
 
         new OA\Response(
@@ -808,8 +809,9 @@ use OpenApi\Attributes as OA;
             properties: [
                 new OA\Property(
                     property: 'ids',
-                    description: 'ID списков, которые владелец видел в архиве',
+                    description: 'ID списков, которые владелец видел в архиве, не больше 100',
                     type: 'array',
+                    maxItems: 100,
                     items: new OA\Items(type: 'string'),
                     example: ['01J0000000000000000000000A']
                 ),
@@ -837,7 +839,7 @@ use OpenApi\Attributes as OA;
 
         new OA\Response(
             response: 422,
-            description: 'Не передан непустой массив ids'
+            description: 'Не передан непустой массив ids или в нём больше 100 элементов'
         ),
 
         new OA\Response(

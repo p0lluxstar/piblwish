@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { Archive, ArrowLeft, Plus, RefreshCcw, Trash2 } from '@lucide/vue';
+import {
+    Archive,
+    ArrowLeft,
+    CircleAlert,
+    Info,
+    Plus,
+    RefreshCcw,
+    Trash2,
+} from '@lucide/vue';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { isAxiosError } from 'axios';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -19,6 +27,10 @@ import {
     type WishlistSortField,
 } from '@/composables/useWishlistSort';
 import { useWishlistTypeFilter } from '@/composables/useWishlistTypeFilter';
+import {
+    MAX_WISHLISTS,
+    WISHLISTS_WARNING_THRESHOLD,
+} from '@/constants/wishlistLimits';
 import { api } from '@/lib/api';
 import { pinLeavingCard } from '@/lib/gridTransition';
 import { useAuthStore } from '@/stores/auth';
@@ -70,6 +82,39 @@ const wishLists = computed(() => data.value ?? []);
 
 // Число списков в архиве для ссылки «Архив»
 const archivedCount = useArchivedCount();
+
+// Активные списки для лимита карточек. В архиве они загружаются тем же
+// запросом, что и в «Моих карточках», обычно уже из кэша
+const { data: activeData } = props.archived
+    ? useUserWishlists(false)
+    : { data };
+
+// Все карточки пользователя вместе с архивом: сервер ограничивает их число
+// (MAX_WISHLISTS). null — активные списки ещё не загружены
+const totalCount = computed<number | null>(() =>
+    activeData.value === undefined
+        ? null
+        : activeData.value.length + archivedCount.value,
+);
+
+const isWishlistLimitReached = computed(
+    () => totalCount.value !== null && totalCount.value >= MAX_WISHLISTS,
+);
+
+// Строка о лимите видна только вблизи него, чтобы не отвлекать остальных
+const limitNotice = computed<string | null>(() => {
+    if (totalCount.value === null) return null;
+
+    if (isWishlistLimitReached.value) {
+        return `Достигнут лимит: ${MAX_WISHLISTS} карточек, включая архив`;
+    }
+
+    if (totalCount.value >= WISHLISTS_WARNING_THRESHOLD) {
+        return `Карточек: ${totalCount.value} из ${MAX_WISHLISTS}, включая архив`;
+    }
+
+    return null;
+});
 
 // В архиве «По дате» означает время переноса в архив, а сортировки по сроку нет:
 // карточка архива не показывает срок. Сортировка и фильтр архива хранятся
@@ -179,8 +224,19 @@ const openCreateModal = (): void => {
     isCreateModalOpen.value = true;
 };
 
-// Модалка создания с формой, заполненной значениями выбранного списка
+// Модалка создания с формой, заполненной значениями выбранного списка.
+// Кнопка дубликата есть на каждой карточке, поэтому при исчерпанном лимите
+// вместо окна, которое сервер всё равно отклонит, показывается уведомление
 const openDuplicateModal = (wishlist: Wishlist): void => {
+    if (isWishlistLimitReached.value) {
+        showToast({
+            message: `Нельзя создать копию: достигнут лимит в ${MAX_WISHLISTS} карточек, включая архив`,
+            tone: 'error',
+        });
+
+        return;
+    }
+
     duplicateSource.value = JSON.parse(JSON.stringify(wishlist));
     isCreateModalOpen.value = true;
 };
@@ -598,12 +654,16 @@ onMounted(generateRandomPhrase);
     <div class="top">
         <!-- Количество карточек показано в кнопках фильтра по типу -->
         <div class="heading">{{ archived ? 'Архив' : 'Мои карточки' }}</div>
-        <div v-if="wishLists.length > 0 || isLoading" class="flex gap-2">
+        <div
+            v-if="wishLists.length > 0 || isLoading"
+            class="top-actions flex gap-2"
+        >
             <!-- В архиве карточки не создаются: дубликат попадает в «Мои карточки» -->
             <button
                 v-if="!archived"
                 class="add-btn"
                 aria-label="Новая карточка"
+                :disabled="isWishlistLimitReached"
                 @click="openCreateModal"
             >
                 <Plus :size="12" />
@@ -624,6 +684,24 @@ onMounted(generateRandomPhrase);
                 <span class="btn-text">Обновить</span>
             </button>
         </div>
+
+        <!-- Число карточек вблизи лимита и на нём: в отступе под шапкой,
+             над панелью фильтров, не сдвигая её. Полный текст — в подсказке,
+             если на узком экране строка обрезана -->
+        <p
+            v-if="limitNotice"
+            class="limit-notice"
+            :title="limitNotice"
+            role="status"
+        >
+            <CircleAlert
+                v-if="isWishlistLimitReached"
+                :size="12"
+                aria-hidden="true"
+            />
+            <Info v-else :size="12" aria-hidden="true" />
+            <span class="limit-notice-text">{{ limitNotice }}</span>
+        </p>
     </div>
 
     <!-- Сортировка имеет смысл, только когда списков больше одного.
@@ -700,7 +778,12 @@ onMounted(generateRandomPhrase);
         class="flex flex-col items-center justify-center min-h-[300px] text-center"
     >
         <p class="empty-text text-lg mb-4">У вас пока нет карточек</p>
-        <button class="add-btn px-6 py-2" @click="openCreateModal">
+        <!-- Все 100 карточек могут лежать в архиве -->
+        <button
+            class="add-btn px-6 py-2"
+            :disabled="isWishlistLimitReached"
+            @click="openCreateModal"
+        >
             <Plus :size="14" class="mr-1.5" />
             Создать карточку
         </button>
@@ -816,10 +899,17 @@ onMounted(generateRandomPhrase);
 
 <style scoped lang="scss">
 .top {
+    position: relative;
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
     margin-bottom: 20px;
+}
+
+// Строка о лимите заходит на низ шапки: кнопки лежат поверх неё и нажимаются целиком
+.top-actions {
+    position: relative;
+    z-index: 1;
 }
 
 // Заголовок прижат к верху блока: без line-height: 1 над буквами
@@ -920,6 +1010,37 @@ onMounted(generateRandomPhrase);
 .empty-hint {
     font-size: 14px;
     color: var(--app-ink-soft, var(--ink-muted));
+}
+
+// Число карточек вблизи лимита: текст прямо на фоне приложения. Строка лежит
+// в отступе .top (20px) над панелью фильтров и в одну строку, чтобы не налезать на неё
+.limit-notice {
+    position: absolute;
+    top: calc(100% - 8px);
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 14px;
+    color: var(--app-ink, var(--ink));
+
+    // Иконка красная: --danger в тёмной теме светлее, поэтому она заметна на всех фонах.
+    // Состояния различаются иконкой: Info вблизи лимита, CircleAlert на нём
+    svg {
+        flex-shrink: 0;
+        color: var(--danger);
+    }
+}
+
+.limit-notice-text {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 // Ссылка между разделами и «Удалить все» — в конце панели, справа от сортировки

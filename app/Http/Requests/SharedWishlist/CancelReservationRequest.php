@@ -17,7 +17,7 @@ class CancelReservationRequest extends FormRequest
         return [
             'token' => ['required', 'string', 'size:'.SharedWishlistService::RESERVATION_TOKEN_LENGTH],
             // Позиции брони, выбор которых отменяется; остальные остаются за гостем
-            'item_ids' => ['required', 'array', 'min:1'],
+            'item_ids' => ['required', 'array', 'min:1', 'max:'.config('wishlist.max_items')],
             'item_ids.*' => ['required', 'ulid'],
         ];
     }

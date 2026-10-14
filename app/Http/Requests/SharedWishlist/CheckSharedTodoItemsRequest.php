@@ -14,8 +14,8 @@ class CheckSharedTodoItemsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Дела, которые гость отмечает выполненными
-            'item_ids' => ['required', 'array', 'min:1'],
+            // Дела, которые гость отмечает выполненными; не больше, чем позиций в списке
+            'item_ids' => ['required', 'array', 'min:1', 'max:'.config('wishlist.max_items')],
             'item_ids.*' => ['required', 'ulid'],
 
             // Имя гостя для подписи под делами. Обязательно ли оно, зависит

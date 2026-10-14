@@ -63,6 +63,7 @@ php artisan l5-swagger:generate                # пересобрать storage/
 - **Новый фон** — enum `AppBackground`, тип `AppBackground` в `types/user.ts`, `constants/appBackgrounds.ts`, `scss/ui/appBackgrounds.scss` (обе карты) и `scss/ui/appBackgroundGradients.scss` (обе карты). Светлый фон, на котором текст должен быть тёмным, задаёт ещё `ink`, `ink-soft`, `accent`.
 - **Новая настройка пользователя или новое значение по умолчанию у `users`** — `UserService::resetSettings` (проверяет `UserSettingsResetTest`).
 - **Платформы сборов** — `config/wishlist.php` (`fund_hosts`) и `constants/fundHosts.ts`.
+- **Лимиты позиций и списков** — `config/wishlist.php` (`max_items`, `max_wishlists`) и `constants/wishlistLimits.ts`; из этой константы их берут форма списка и справка.
 - **Срок напоминаний по умолчанию** — `DueDateReminderService::DEFAULT_DAYS` и `ReminderDaysPicker`.
 - **Удаление аккаунта** — закладки и каталог фото удаляются явно в `UserService::deleteAccount`, так как запись пользователя остаётся.
 

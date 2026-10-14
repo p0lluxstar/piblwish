@@ -97,6 +97,8 @@ class WishlistService
             $user,
             $data
         ) {
+            $this->ensureWishlistLimitNotReached($user);
+
             // Если тип и цвет не переданы, их задают значения по умолчанию в модели
             $attributes = Arr::only($data, ['type', 'content']) + $this->wishlistAttributes($data);
 
@@ -438,6 +440,22 @@ class WishlistService
             ->where('user_id', $user->id)
             ->where('id', $id)
             ->firstOrFail();
+    }
+
+    // Число списков пользователя вместе с архивом ограничено (config/wishlist.php).
+    // Строка пользователя блокируется до конца транзакции, чтобы параллельные
+    // запросы на создание не прошли проверку одновременно
+    private function ensureWishlistLimitNotReached(User $user): void
+    {
+        User::query()->whereKey($user->id)->lockForUpdate()->value('id');
+
+        $max = config('wishlist.max_wishlists');
+
+        if ($user->wishlists()->count() >= $max) {
+            throw ValidationException::withMessages([
+                'wishlist' => "Можно создать не больше {$max} списков. Удалите ненужные списки или очистите архив",
+            ]);
+        }
     }
 
     // Архивный список доступен только для просмотра: изменить его,

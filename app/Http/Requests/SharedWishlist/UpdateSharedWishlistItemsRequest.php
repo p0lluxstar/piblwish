@@ -15,13 +15,15 @@ class UpdateSharedWishlistItemsRequest extends FormRequest
     public function rules(): array
     {
         $itemIds = $this->input('item_ids');
+        // Гость выбирает не больше позиций, чем может быть в списке
+        $maxItems = config('wishlist.max_items');
 
         return [
-            'item_ids' => ['required', 'array', 'min:1'],
+            'item_ids' => ['required', 'array', 'min:1', 'max:'.$maxItems],
             'item_ids.*' => ['required', 'ulid'],
 
             // Совместные подарки: только для позиций, которые выбираются этим же запросом
-            'joint_gifts' => ['sometimes', 'array'],
+            'joint_gifts' => ['sometimes', 'array', 'max:'.$maxItems],
             'joint_gifts.*' => ['array:item_id,name,contact,comment'],
             'joint_gifts.*.item_id' => [
                 'required',
