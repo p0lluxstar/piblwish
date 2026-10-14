@@ -265,6 +265,30 @@ class ChangeEmailTest extends TestCase
         $this->confirmChange($user, '123456')->assertStatus(404);
     }
 
+    // Попытка засчитывается до проверки кода: запрос, прочитанный до того,
+    // как параллельные запросы израсходовали попытки, код уже не проверяет
+    public function test_code_is_not_checked_when_attempts_are_used_up(): void
+    {
+        $user = User::factory()->create();
+        $this->createChangeRequest($user, ['attempts' => 5]);
+
+        $this->confirmChange($user, '123456')
+            ->assertStatus(400)
+            ->assertJsonPath('data.message', 'Слишком много неверных попыток. Запросите новый код');
+
+        $this->assertNotSame(self::NEW_EMAIL, $user->fresh()->email);
+    }
+
+    public function test_correct_code_works_after_four_wrong_attempts(): void
+    {
+        $user = User::factory()->create();
+        $this->createChangeRequest($user, ['attempts' => 4]);
+
+        $this->confirmChange($user, '123456')->assertOk();
+
+        $this->assertSame(self::NEW_EMAIL, $user->fresh()->email);
+    }
+
     public function test_expired_code_is_rejected(): void
     {
         $user = User::factory()->create();

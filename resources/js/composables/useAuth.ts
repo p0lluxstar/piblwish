@@ -686,12 +686,16 @@ function getApiErrorMessage(
         return null;
     }
 
-    // Для 429 обработчик исключений отдаёт английский текст фреймворка
-    if (error.response?.status === 429) {
-        return 'Слишком много попыток. Подождите минуту и попробуйте снова';
-    }
-
     const data = error.response?.data?.data;
+
+    // Для 429 лимитера маршрута обработчик исключений отдаёт английский
+    // текст фреймворка. Свой текст и срок отдаёт лимит попыток входа
+    // в аккаунт (AuthService::login)
+    if (error.response?.status === 429) {
+        return data?.message && data.message !== 'Too Many Attempts.'
+            ? data.message
+            : 'Слишком много попыток. Подождите минуту и попробуйте снова';
+    }
     const firstFieldError = Object.values(data?.errors ?? {})[0]?.[0];
 
     return firstFieldError ?? data?.message ?? fallback;

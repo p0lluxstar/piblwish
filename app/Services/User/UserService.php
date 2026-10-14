@@ -264,16 +264,27 @@ class UserService
             abort(400, 'Код истёк. Запросите новый');
         }
 
-        if (! Hash::check($code, $changeRequest->code_hash)) {
-            $changeRequest->increment('attempts');
+        // Попытка засчитывается до проверки кода одним запросом с условием,
+        // поэтому параллельные запросы не проверят код больше
+        // EMAIL_CHANGE_MAX_ATTEMPTS раз. Условие по code_hash не даёт
+        // израсходовать попытку нового кода, если тот запросили во время проверки
+        $sameRequest = fn () => $user->emailChangeRequest()
+            ->whereKey($changeRequest->getKey())
+            ->where('code_hash', $changeRequest->code_hash);
 
-            if ($changeRequest->attempts >= self::EMAIL_CHANGE_MAX_ATTEMPTS) {
-                $changeRequest->delete();
+        $isAttemptTaken = $sameRequest()
+            ->where('attempts', '<', self::EMAIL_CHANGE_MAX_ATTEMPTS)
+            ->increment('attempts') > 0;
 
-                abort(400, 'Слишком много неверных попыток. Запросите новый код');
-            }
+        if (! $isAttemptTaken || ! Hash::check($code, $changeRequest->code_hash)) {
+            // Запрос, у которого закончились попытки, удаляется
+            $isExhausted = ! $isAttemptTaken || $sameRequest()
+                ->where('attempts', '>=', self::EMAIL_CHANGE_MAX_ATTEMPTS)
+                ->delete() > 0;
 
-            abort(400, 'Неверный код');
+            abort(400, $isExhausted
+                ? 'Слишком много неверных попыток. Запросите новый код'
+                : 'Неверный код');
         }
 
         $oldEmail = $user->email;

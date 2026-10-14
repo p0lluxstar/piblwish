@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Rules\NoControlCharacters;
 use Illuminate\Foundation\Http\FormRequest;
 
 class VerifyRegistrationCodeRequest extends FormRequest
@@ -14,7 +15,7 @@ class VerifyRegistrationCodeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email', 'exists:users,email'],
+            'email' => ['required', 'email', new NoControlCharacters, 'exists:users,email'],
             'code' => ['required', 'digits:6'],
         ];
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Rules\NoControlCharacters;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ResendVerificationCodeRequest extends FormRequest
@@ -16,7 +17,7 @@ class ResendVerificationCodeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email', 'max:255'],
+            'email' => ['required', 'string', 'email', new NoControlCharacters, 'max:255'],
         ];
     }
 
