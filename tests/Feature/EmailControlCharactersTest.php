@@ -14,7 +14,9 @@ use Tests\TestCase;
  * Email с переводом строки внутри кавычек проходит правило 'email',
  * а в заголовке письма превращается в лишнюю строку (например, Bcc со
  * списком чужих адресов). Правило NoControlCharacters отклоняет такие
- * адреса во всех запросах с полем email.
+ * адреса во всех запросах с полем email. С Laravel 13.10 такой адрес отклоняет
+ * и само правило 'email' (CVE-2026-48019), поэтому здесь проверяется только
+ * отказ по полю email, а работа NoControlCharacters — отдельными тестами ниже.
  */
 class EmailControlCharactersTest extends TestCase
 {
@@ -49,7 +51,7 @@ class EmailControlCharactersTest extends TestCase
 
         $this->postJson($url, ['email' => self::INJECTED_EMAIL, ...$data])
             ->assertStatus(422)
-            ->assertJsonPath('data.errors.email.0', 'Email содержит недопустимые символы');
+            ->assertJsonValidationErrors('email', 'data.errors');
 
         Mail::assertNothingQueued();
         $this->assertDatabaseCount('users', 0);
@@ -67,7 +69,7 @@ class EmailControlCharactersTest extends TestCase
                 'current_password' => 'password',
             ])
             ->assertStatus(422)
-            ->assertJsonPath('data.errors.email.0', 'Email содержит недопустимые символы');
+            ->assertJsonValidationErrors('email', 'data.errors');
 
         Mail::assertNothingQueued();
         $this->assertDatabaseCount('email_change_requests', 0);

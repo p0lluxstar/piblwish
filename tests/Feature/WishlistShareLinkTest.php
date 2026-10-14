@@ -142,7 +142,7 @@ class WishlistShareLinkTest extends TestCase
             ->json('data.shareToken');
 
         $this->get("/shared-wishlist/{$newToken}")->assertOk()->assertSee('Новоселье');
-        $this->get("/shared-wishlist/{$oldToken}")->assertOk()->assertDontSee('Новоселье');
+        $this->get("/shared-wishlist/{$oldToken}")->assertNotFound()->assertDontSee('Новоселье');
     }
 
     public function test_cannot_change_link_of_foreign_archived_or_note(): void
