@@ -15,7 +15,7 @@ use OpenApi\Attributes as OA;
     schema: 'SavedWishlist',
     description: 'Сводка чужого списка. Если владелец закрыл доступ к списку, available = false и поля списка равны null',
     properties: [
-        new OA\Property(property: 'id', description: 'ID самого списка', type: 'string', example: '01jq3v7x8k2m4n6p8r0t2w4y6z'),
+        new OA\Property(property: 'id', description: 'Токен общей ссылки, с которой список добавили (shareToken); после смены ссылки владельцем available = false', type: 'string', example: '01jq3v7x8k2m4n6p8r0t2w4y6z'),
         new OA\Property(property: 'available', description: 'Открывается ли список по ссылке', type: 'boolean', example: true),
         new OA\Property(property: 'savedAt', description: 'Когда список добавлен', type: 'string', format: 'date-time', example: '2026-10-10T09:15:00+00:00'),
         new OA\Property(property: 'username', description: 'Имя владельца', type: 'string', nullable: true, example: 'anna'),
@@ -63,7 +63,7 @@ use OpenApi\Attributes as OA;
     tags: ['Saved wishlists'],
     security: [['bearerAuth' => []]],
     parameters: [
-        new OA\Parameter(name: 'id', description: 'ID списка', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+        new OA\Parameter(name: 'id', description: 'Токен общей ссылки списка', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
     ],
     responses: [
         new OA\Response(
@@ -103,7 +103,7 @@ use OpenApi\Attributes as OA;
     tags: ['Saved wishlists'],
     security: [['bearerAuth' => []]],
     parameters: [
-        new OA\Parameter(name: 'id', description: 'ID списка', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+        new OA\Parameter(name: 'id', description: 'Токен общей ссылки списка', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
     ],
     responses: [
         new OA\Response(

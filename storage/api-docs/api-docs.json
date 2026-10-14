@@ -372,7 +372,7 @@
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "ID списка",
+                        "description": "Токен общей ссылки списка",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -430,7 +430,7 @@
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "ID списка",
+                        "description": "Токен общей ссылки списка",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -490,10 +490,10 @@
                     {
                         "name": "id",
                         "in": "path",
+                        "description": "Токен общей ссылки (shareToken), а не id списка; после смены ссылки прежний токен отвечает 404",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "ulid"
+                            "type": "string"
                         }
                     }
                 ],
@@ -641,10 +641,10 @@
                     {
                         "name": "wishlist",
                         "in": "path",
+                        "description": "Токен общей ссылки (shareToken)",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "ulid"
+                            "type": "string"
                         }
                     }
                 ],
@@ -662,7 +662,8 @@
                                         "items": {
                                             "type": "string",
                                             "format": "ulid"
-                                        }
+                                        },
+                                        "maxItems": 100
                                     },
                                     "joint_gifts": {
                                         "description": "Совместные подарки; item_id каждого должен входить в item_ids",
@@ -693,7 +694,8 @@
                                                 }
                                             },
                                             "type": "object"
-                                        }
+                                        },
+                                        "maxItems": 100
                                     }
                                 },
                                 "type": "object"
@@ -746,10 +748,10 @@
                     {
                         "name": "wishlist",
                         "in": "path",
+                        "description": "Токен общей ссылки (shareToken)",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "ulid"
+                            "type": "string"
                         }
                     }
                 ],
@@ -767,7 +769,8 @@
                                         "items": {
                                             "type": "string",
                                             "format": "ulid"
-                                        }
+                                        },
+                                        "maxItems": 100
                                     },
                                     "name": {
                                         "description": "Имя гостя для подписи под делами. Обязательно, если guestNameRequired = true",
@@ -809,10 +812,10 @@
                     {
                         "name": "wishlist",
                         "in": "path",
+                        "description": "Токен общей ссылки (shareToken)",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "ulid"
+                            "type": "string"
                         }
                     }
                 ],
@@ -880,10 +883,10 @@
                     {
                         "name": "wishlist",
                         "in": "path",
+                        "description": "Токен общей ссылки (shareToken)",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "ulid"
+                            "type": "string"
                         }
                     }
                 ],
@@ -907,7 +910,8 @@
                                         "items": {
                                             "type": "string",
                                             "format": "ulid"
-                                        }
+                                        },
+                                        "maxItems": 100
                                     }
                                 },
                                 "type": "object"
@@ -960,10 +964,10 @@
                     {
                         "name": "wishlist",
                         "in": "path",
+                        "description": "Токен общей ссылки (shareToken)",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "ulid"
+                            "type": "string"
                         }
                     },
                     {
@@ -1345,6 +1349,101 @@
                                 }
                             }
                         }
+                    },
+                    "429": {
+                        "description": "Слишком много запросов"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/v1/user/settings/reset": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Вернуть настройки по умолчанию",
+                "description": "Возвращает настройки, которые меняет PATCH /v1/user, к значениям нового пользователя: фон blossom, строка «Скоро у друзей» и напоминания на почту включены, срок напоминаний — 3 дня. Фото, email, пароль и статистика не меняются; тема оформления хранится в браузере и сбрасывается на клиенте. Возвращает пользователя в том же виде, что GET /v1/user.",
+                "operationId": "b7c34562b20e61d380971398f2a128cc",
+                "responses": {
+                    "200": {
+                        "description": "Настройки сброшены",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "statusCode": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "example": "01jq3v7x8k2m4n6p8r0t2w4y6z"
+                                                },
+                                                "username": {
+                                                    "type": "string",
+                                                    "example": "john_doe"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "example": "john@example.com"
+                                                },
+                                                "background": {
+                                                    "type": "string",
+                                                    "example": "blossom"
+                                                },
+                                                "showFriendsEvents": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "emailReminders": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "reminderDays": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
+                                                "avatarUrl": {
+                                                    "type": "string",
+                                                    "example": null,
+                                                    "nullable": true
+                                                },
+                                                "stats": {
+                                                    "type": "object",
+                                                    "example": {
+                                                        "gift": 4,
+                                                        "todo": 7,
+                                                        "note": 2,
+                                                        "fund": 1
+                                                    }
+                                                },
+                                                "createdAt": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "example": "2026-09-12T10:15:00+00:00"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован"
                     },
                     "429": {
                         "description": "Слишком много запросов"
@@ -2034,6 +2133,12 @@
                                                         "type": "integer",
                                                         "example": 1
                                                     },
+                                                    "shareToken": {
+                                                        "description": "Токен общей ссылки (/shared-wishlist/{shareToken}); совпадает с id, пока владелец не сменил ссылку. У заметки null",
+                                                        "type": "string",
+                                                        "example": "01jq3v7x8k2m4n6p8r0t2w4y6z",
+                                                        "nullable": true
+                                                    },
                                                     "type": {
                                                         "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Список желаний, список дел и сбор открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке",
                                                         "type": "string",
@@ -2138,7 +2243,7 @@
                                                                     "maxItems": 3
                                                                 },
                                                                 "priority": {
-                                                                    "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан",
+                                                                    "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; у списка дел — важность (1 — можно отложить, 2 — важно, 3 — очень важно); у сбора всегда null; null — не указан",
                                                                     "type": "integer",
                                                                     "example": 3,
                                                                     "nullable": true,
@@ -2217,7 +2322,7 @@
                             "schema": {
                                 "properties": {
                                     "type": {
-                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать urls, priority и price. У позиций сбора (целей) обязательна ровно одна ссылка https на разрешённую платформу (Т-Банк, ЮMoney, CloudTips), price — целевая сумма до 100 000 000, priority запрещён. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний",
+                                        "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Необязателен, по умолчанию gift. Задаётся только при создании. У позиций списка дел нельзя указать urls и price, priority означает важность дела. У позиций сбора (целей) обязательна ровно одна ссылка https на разрешённую платформу (Т-Банк, ЮMoney, CloudTips), price — целевая сумма до 100 000 000, priority запрещён. У заметки нет title и items, вместо них передаётся content. hideSelections может быть true только у списка желаний",
                                         "type": "string",
                                         "example": "gift",
                                         "enum": [
@@ -2280,7 +2385,7 @@
                                         "example": false
                                     },
                                     "items": {
-                                        "description": "Позиции списка, хотя бы одна. Обязательны для списков желаний и дел, у заметки запрещены",
+                                        "description": "Позиции списка, от 1 до 100. Обязательны для списков желаний и дел, у заметки запрещены",
                                         "type": "array",
                                         "items": {
                                             "properties": {
@@ -2302,7 +2407,7 @@
                                                     "maxItems": 3
                                                 },
                                                 "priority": {
-                                                    "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан",
+                                                    "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; у списка дел — важность (1 — можно отложить, 2 — важно, 3 — очень важно); у сбора всегда null; null — не указан",
                                                     "type": "integer",
                                                     "example": 3,
                                                     "nullable": true,
@@ -2322,7 +2427,8 @@
                                                 }
                                             },
                                             "type": "object"
-                                        }
+                                        },
+                                        "maxItems": 100
                                     }
                                 },
                                 "type": "object"
@@ -2342,6 +2448,12 @@
                                                 "id": {
                                                     "type": "integer",
                                                     "example": 1
+                                                },
+                                                "shareToken": {
+                                                    "description": "Токен общей ссылки; совпадает с id, пока владелец не сменил ссылку. У заметки null",
+                                                    "type": "string",
+                                                    "example": "01jq3v7x8k2m4n6p8r0t2w4y6z",
+                                                    "nullable": true
                                                 },
                                                 "type": {
                                                     "description": "Тип списка: gift — список желаний, todo — список дел, note — заметка, fund — сбор. Список желаний, список дел и сбор открываются по общей ссылке только при isShared = true, отмечать дела в списке дел гости могут при guestsCanCheck = true, заметка недоступна по ссылке",
@@ -2440,7 +2552,7 @@
                                                                 "maxItems": 3
                                                             },
                                                             "priority": {
-                                                                "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; null — не указан",
+                                                                "description": "Приоритет: 1 — было бы неплохо, 2 — хочу, 3 — очень хочу; у списка дел — важность (1 — можно отложить, 2 — важно, 3 — очень важно); у сбора всегда null; null — не указан",
                                                                 "type": "integer",
                                                                 "example": 3,
                                                                 "nullable": true,
@@ -2486,7 +2598,7 @@
                         }
                     },
                     "422": {
-                        "description": "Ошибка валидации"
+                        "description": "Ошибка валидации или у пользователя уже 100 списков вместе с архивом (ошибка в errors.wishlist)"
                     },
                     "401": {
                         "description": "Не авторизован"
@@ -2793,6 +2905,49 @@
                 ]
             }
         },
+        "/v1/wishlists/{id}/share-token": {
+            "post": {
+                "tags": [
+                    "Wishlists"
+                ],
+                "summary": "Сменить общую ссылку списка",
+                "description": "Список получает новый shareToken: прежняя ссылка, ссылки для отмены брони и закладки «Чужие списки», добавленные по ней, перестают открывать список (404, закладки — available = false). Выбор гостей, брони, совместные подарки и isShared сохраняются",
+                "operationId": "0df73864146c1db2aeb9189afd47bfe5",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID списка",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список целиком с новым shareToken, в том же формате, что и в GET /v1/wishlists"
+                    },
+                    "404": {
+                        "description": "Список не найден"
+                    },
+                    "409": {
+                        "description": "Список в архиве"
+                    },
+                    "422": {
+                        "description": "У заметки нет общей ссылки"
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/v1/wishlists/archived": {
             "delete": {
                 "tags": [
@@ -2811,14 +2966,15 @@
                                 ],
                                 "properties": {
                                     "ids": {
-                                        "description": "ID списков, которые владелец видел в архиве",
+                                        "description": "ID списков, которые владелец видел в архиве, не больше 100",
                                         "type": "array",
                                         "items": {
                                             "type": "string"
                                         },
                                         "example": [
                                             "01J0000000000000000000000A"
-                                        ]
+                                        ],
+                                        "maxItems": 100
                                     }
                                 },
                                 "type": "object"
@@ -2857,7 +3013,7 @@
                         }
                     },
                     "422": {
-                        "description": "Не передан непустой массив ids"
+                        "description": "Не передан непустой массив ids или в нём больше 100 элементов"
                     },
                     "401": {
                         "description": "Не авторизован"
@@ -2877,7 +3033,7 @@
                 "description": "Сводка чужого списка. Если владелец закрыл доступ к списку, available = false и поля списка равны null",
                 "properties": {
                     "id": {
-                        "description": "ID самого списка",
+                        "description": "Токен общей ссылки, с которой список добавили (shareToken); после смены ссылки владельцем available = false",
                         "type": "string",
                         "example": "01jq3v7x8k2m4n6p8r0t2w4y6z"
                     },

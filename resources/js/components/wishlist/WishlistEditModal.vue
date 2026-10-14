@@ -26,6 +26,7 @@ import { useEscapeKey } from '../../composables/useEscapeKey';
 import { useItemReorder } from '../../composables/useItemReorder';
 import { FUND_PLATFORMS_TEXT } from '../../constants/fundHosts';
 import { NOTE_CONTENT_MAX_LENGTH } from '../../constants/note';
+import { MAX_WISHLIST_ITEMS } from '../../constants/wishlistLimits';
 import { lockBodyScroll, unlockBodyScroll } from '../../lib/bodyScrollLock';
 import { getFundPlatformOfInput, getFundUrlError } from '../../lib/fundUrl';
 import {
@@ -51,6 +52,7 @@ import WishlistColorPicker from './WishlistColorPicker.vue';
 import WishlistDueDateField from './WishlistDueDateField.vue';
 import WishlistGuestCheckToggle from './WishlistGuestCheckToggle.vue';
 import WishlistGuestNameToggle from './WishlistGuestNameToggle.vue';
+import WishlistShareLinkReset from './WishlistShareLinkReset.vue';
 import WishlistShareToggle from './WishlistShareToggle.vue';
 import WishlistSurpriseToggle from './WishlistSurpriseToggle.vue';
 
@@ -66,6 +68,8 @@ const emit = defineEmits<{
     update: [payload: WishlistUpdatePayload];
     // Владелец снял выбор гостя: список с сервера, чтобы обновить карточку
     selectionCleared: [wishlist: Wishlist];
+    // Владелец сменил общую ссылку: список с новым shareToken
+    linkChanged: [wishlist: Wishlist];
 }>();
 
 // Тип списка при редактировании не меняется, поэтому в форме его нет
@@ -431,7 +435,14 @@ const toggleConfirm = (itemId: string): void => {
 
 const { itemKey, moveItem } = useItemReorder(() => form.value.items, urlErrors);
 
+// Позиций не больше, чем принимает сервер: кнопка добавления отключается
+const isItemsLimitReached = computed(
+    () => form.value.items.length >= MAX_WISHLIST_ITEMS,
+);
+
 const addItem = (): void => {
+    if (isItemsLimitReached.value) return;
+
     form.value.items.push({
         isSelected: false,
         label: '',
@@ -803,6 +814,14 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                         которые уже выбрали подарки. Их выбор сохранится и
                         вернётся, если снова открыть доступ.
                     </p>
+
+                    <!-- Сменить ссылку можно у списка, уже открытого по ссылке:
+                         запрос выполняется сразу, без сохранения формы -->
+                    <WishlistShareLinkReset
+                        v-if="wishlist.isShared && form.isShared"
+                        :wishlist="wishlist"
+                        @changed="emit('linkChanged', $event)"
+                    />
 
                     <!-- Отмечать дела гости могут только в списке дел, открытом по ссылке -->
                     <WishlistGuestCheckToggle
@@ -1310,6 +1329,7 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                         <button
                             class="add-item-btn"
                             type="button"
+                            :disabled="isItemsLimitReached"
                             @click="addItem"
                         >
                             {{
@@ -1320,6 +1340,10 @@ const closeOnOverlayClick = (event: MouseEvent): void => {
                                       : '+ Добавить желание'
                             }}
                         </button>
+                        <p v-if="isItemsLimitReached" class="items-limit-hint">
+                            В списке может быть не больше
+                            {{ MAX_WISHLIST_ITEMS }} позиций
+                        </p>
                     </template>
                 </div>
 

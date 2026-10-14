@@ -66,8 +66,14 @@ class CreateWishlistRequest extends FormRequest
                 'before:2100-01-01',
             ],
 
-            // У заметки нет позиций
-            'items' => ['prohibited_if:type,note', 'required_unless:type,note', 'array', 'min:1'],
+            // У заметки нет позиций. Число позиций ограничено: см. config/wishlist.php
+            'items' => [
+                'prohibited_if:type,note',
+                'required_unless:type,note',
+                'array',
+                'min:1',
+                'max:'.config('wishlist.max_items'),
+            ],
 
             'items.*.label' => [
                 'required',
@@ -113,10 +119,17 @@ class CreateWishlistRequest extends FormRequest
         return $this->input('type') === WishlistType::Fund->value;
     }
 
+    public static function itemsMaxMessage(): string
+    {
+        return 'В списке может быть не больше '.config('wishlist.max_items').' позиций';
+    }
+
     public function messages(): array
     {
         return ($this->isFund() ? self::fundItemMessages() : []) + [
             'type.enum' => 'Недопустимый тип списка',
+
+            'items.max' => self::itemsMaxMessage(),
 
             'title.required_unless' => 'Название обязательно',
             'title.prohibited_if' => 'У заметки нет названия',

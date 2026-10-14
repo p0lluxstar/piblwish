@@ -39,7 +39,7 @@ class UpdateWishlistRequest extends FormRequest
             'guestNameRequired' => ['sometimes', 'boolean'],
             // Границы — как в CreateWishlistRequest
             'dueDate' => ['sometimes', 'nullable', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before:2100-01-01'],
-            'items' => ['sometimes', 'array'],
+            'items' => ['sometimes', 'array', 'max:'.config('wishlist.max_items')],
             // id существующей позиции: по нему в режиме сюрприза сохраняется выбор гостей
             'items.*.id' => ['sometimes', 'nullable', 'string'],
             'items.*.label' => ['required_with:items', 'string', 'max:1000'],
@@ -97,6 +97,7 @@ class UpdateWishlistRequest extends FormRequest
             'dueDate.after_or_equal' => 'Некорректная дата',
             'dueDate.before' => 'Некорректная дата',
             'items.required' => 'Добавьте хотя бы один элемент',
+            'items.max' => CreateWishlistRequest::itemsMaxMessage(),
             'items.*.label.required_with' => 'Описание элемента обязательно',
             'items.*.urls.array' => 'Некорректный список ссылок на товар',
             'items.*.urls.max' => 'Можно указать не больше трёх ссылок на товар',

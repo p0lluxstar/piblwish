@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\User;
 
+use App\Rules\NoControlCharacters;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -21,6 +22,7 @@ class RequestEmailChangeRequest extends FormRequest
                 'required',
                 'string',
                 'email',
+                new NoControlCharacters,
                 'max:255',
                 // Сравнение без учёта регистра, как в колонке users.email
                 function (string $attribute, mixed $value, Closure $fail): void {

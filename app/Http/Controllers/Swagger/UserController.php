@@ -207,6 +207,53 @@ use OpenApi\Attributes as OA;
 )]
 
 #[OA\Post(
+    path: '/v1/user/settings/reset',
+    summary: 'Вернуть настройки по умолчанию',
+    description: 'Возвращает настройки, которые меняет PATCH /v1/user, к значениям нового пользователя: фон blossom, строка «Скоро у друзей» и напоминания на почту включены, срок напоминаний — 3 дня. Фото, email, пароль и статистика не меняются; тема оформления хранится в браузере и сбрасывается на клиенте. Возвращает пользователя в том же виде, что GET /v1/user.',
+    tags: ['User'],
+    security: [['bearerAuth' => []]],
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Настройки сброшены',
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'success', type: 'boolean', example: true),
+                    new OA\Property(property: 'statusCode', type: 'integer', example: 200),
+                    new OA\Property(
+                        property: 'data',
+                        properties: [
+                            new OA\Property(property: 'id', type: 'string', example: '01jq3v7x8k2m4n6p8r0t2w4y6z'),
+                            new OA\Property(property: 'username', type: 'string', example: 'john_doe'),
+                            new OA\Property(property: 'email', type: 'string', example: 'john@example.com'),
+                            new OA\Property(property: 'background', type: 'string', example: 'blossom'),
+                            new OA\Property(property: 'showFriendsEvents', type: 'boolean', example: true),
+                            new OA\Property(property: 'emailReminders', type: 'boolean', example: true),
+                            new OA\Property(property: 'reminderDays', type: 'integer', example: 3),
+                            new OA\Property(property: 'avatarUrl', type: 'string', nullable: true, example: null),
+                            new OA\Property(property: 'stats', type: 'object', example: ['gift' => 4, 'todo' => 7, 'note' => 2, 'fund' => 1]),
+                            new OA\Property(property: 'createdAt', type: 'string', format: 'date-time', example: '2026-09-12T10:15:00+00:00'),
+                        ],
+                        type: 'object'
+                    ),
+                ],
+                type: 'object'
+            )
+        ),
+
+        new OA\Response(
+            response: 401,
+            description: 'Не авторизован'
+        ),
+
+        new OA\Response(
+            response: 429,
+            description: 'Слишком много запросов'
+        ),
+    ]
+)]
+
+#[OA\Post(
     path: '/v1/user/avatar',
     summary: 'Загрузить фотографию пользователя',
     description: 'Принимает изображение JPEG, PNG, WebP или GIF (у анимации берётся первый кадр) до 2 МБ и до 4096×4096 пикселей. '

@@ -136,6 +136,22 @@ class DueDateReminderTest extends TestCase
         Mail::assertNothingQueued();
     }
 
+    // После смены ссылки закладка с прежним токеном недоступна, и напоминания о ней нет
+    public function test_saved_wishlist_with_changed_link_is_skipped(): void
+    {
+        $owner = User::factory()->create(['email_reminders' => false]);
+        $user = User::factory()->create();
+        $gift = $this->createWishlist($owner);
+        $user->savedWishlists()->create(['wishlist_id' => $gift->id]);
+
+        $gift->share_token = Wishlist::newShareToken();
+        $gift->save();
+
+        $this->runReminders();
+
+        Mail::assertNothingQueued();
+    }
+
     public function test_disabled_and_unverified_users_are_skipped(): void
     {
         $this->createWishlist(User::factory()->create(['email_reminders' => false]));

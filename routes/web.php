@@ -50,6 +50,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard', RenewReme
     Route::post('/logout-all', [AuthController::class, 'logoutAllDevices']);
     Route::get('/user', [UserController::class, 'user']);
     Route::patch('/user', [UserController::class, 'updateUser']);
+    Route::post('/user/settings/reset', [UserController::class, 'resetSettings']);
     Route::delete('/user', [UserController::class, 'deleteAccount']);
     Route::post('/user/avatar', [UserController::class, 'updateAvatar'])
         ->middleware('throttle:avatar-upload');
@@ -71,7 +72,8 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:dashboard', RenewReme
     Route::delete('/wishlists/{id}', [WishlistController::class, 'deleteWishlist']);
     Route::post('/wishlists/{id}/archive', [WishlistController::class, 'archiveWishlist']);
     Route::delete('/wishlists/{id}/archive', [WishlistController::class, 'restoreWishlist']);
-    // Чужие списки, добавленные к себе с общей страницы; {id} — id самого списка
+    Route::post('/wishlists/{id}/share-token', [WishlistController::class, 'regenerateShareToken']);
+    // Чужие списки, добавленные к себе с общей страницы; {id} — токен общей ссылки списка
     Route::get('/saved-wishlists', [SavedWishlistController::class, 'getSavedWishlists']);
     Route::post('/saved-wishlists/{id}', [SavedWishlistController::class, 'saveWishlist']);
     Route::delete('/saved-wishlists/{id}', [SavedWishlistController::class, 'removeSavedWishlist']);

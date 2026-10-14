@@ -15,7 +15,8 @@ class DeleteArchivedWishlistsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'ids' => ['required', 'array', 'min:1'],
+            // Больше, чем списков у пользователя, в архиве быть не может
+            'ids' => ['required', 'array', 'min:1', 'max:'.config('wishlist.max_wishlists')],
             'ids.*' => ['required', 'string', 'distinct'],
         ];
     }
@@ -26,6 +27,7 @@ class DeleteArchivedWishlistsRequest extends FormRequest
             'ids.required' => 'Не указаны списки для удаления',
             'ids.array' => 'Некорректный перечень списков для удаления',
             'ids.min' => 'Не указаны списки для удаления',
+            'ids.max' => 'Слишком много списков для удаления за раз',
             'ids.*.required' => 'Некорректный идентификатор списка',
             'ids.*.string' => 'Некорректный идентификатор списка',
             'ids.*.distinct' => 'Идентификаторы списков повторяются',

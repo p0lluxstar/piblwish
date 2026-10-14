@@ -63,6 +63,32 @@ class WishlistService
         return $wishlist->load('items');
     }
 
+    /**
+     * Сменить общую ссылку списка.
+     *
+     * Список получает новый токен ссылки: прежняя ссылка, ссылки для отмены
+     * брони и закладки «Чужие списки», добавленные по ней, перестают открывать
+     * список. Выбор гостей, брони и совместные подарки сохраняются, доступ
+     * по ссылке (is_shared) не меняется. У заметки ссылки нет (422),
+     * архивный список доступен только для просмотра (409).
+     */
+    public function regenerateShareToken(User $user, string $id): Wishlist
+    {
+        $wishlist = $this->findUserWishlist($user, $id);
+        $this->ensureNotArchived($wishlist);
+
+        if ($wishlist->isNote()) {
+            throw ValidationException::withMessages([
+                'wishlist' => 'У заметки нет общей ссылки',
+            ]);
+        }
+
+        $wishlist->share_token = Wishlist::newShareToken();
+        $wishlist->save();
+
+        return $wishlist->load('items');
+    }
+
     public function createWishlist(
         User $user,
         array $data
@@ -71,6 +97,8 @@ class WishlistService
             $user,
             $data
         ) {
+            $this->ensureWishlistLimitNotReached($user);
+
             // Если тип и цвет не переданы, их задают значения по умолчанию в модели
             $attributes = Arr::only($data, ['type', 'content']) + $this->wishlistAttributes($data);
 
@@ -412,6 +440,22 @@ class WishlistService
             ->where('user_id', $user->id)
             ->where('id', $id)
             ->firstOrFail();
+    }
+
+    // Число списков пользователя вместе с архивом ограничено (config/wishlist.php).
+    // Строка пользователя блокируется до конца транзакции, чтобы параллельные
+    // запросы на создание не прошли проверку одновременно
+    private function ensureWishlistLimitNotReached(User $user): void
+    {
+        User::query()->whereKey($user->id)->lockForUpdate()->value('id');
+
+        $max = config('wishlist.max_wishlists');
+
+        if ($user->wishlists()->count() >= $max) {
+            throw ValidationException::withMessages([
+                'wishlist' => "Можно создать не больше {$max} списков. Удалите ненужные списки или очистите архив",
+            ]);
+        }
     }
 
     // Архивный список доступен только для просмотра: изменить его,

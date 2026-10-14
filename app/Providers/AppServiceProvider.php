@@ -52,7 +52,9 @@ class AppServiceProvider extends ServiceProvider
             Limit::perHour(20)->by($request->ip()),
         ]);
 
-        // Подтверждение кода: перебор 6-значного кода для одного email
+        // Подтверждение кода: перебор 6-значного кода для одного email.
+        // Число проверок одного кода дополнительно ограничивает
+        // AuthService::CODE_MAX_ATTEMPTS, который не зависит от написания email
         RateLimiter::for('verify-code', fn (Request $request): array => [
             Limit::perMinute(5)->by(mb_strtolower((string) $request->input('email'))),
             Limit::perMinute(20)->by($request->ip()),
@@ -75,7 +77,8 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         // Установка пароля по коду: перебор 6-значного кода для одного email.
-        // Код действует 2 минуты, поэтому на один код приходится не больше 10 попыток
+        // Число проверок одного кода дополнительно ограничивает
+        // AuthService::CODE_MAX_ATTEMPTS, который не зависит от написания email
         RateLimiter::for('password-reset', fn (Request $request): array => [
             Limit::perMinute(5)->by(mb_strtolower((string) $request->input('email'))),
             Limit::perMinute(20)->by($request->ip()),

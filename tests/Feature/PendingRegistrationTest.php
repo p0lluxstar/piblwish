@@ -83,6 +83,9 @@ class PendingRegistrationTest extends TestCase
 
         $this->register()->assertSuccessful();
 
+        // Новый код аккаунту выдаётся не чаще раза в минуту
+        $this->travel(61)->seconds();
+
         $this->register([
             'username' => 'otheruser',
             'password' => 'another-password',

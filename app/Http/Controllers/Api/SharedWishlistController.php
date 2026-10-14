@@ -19,7 +19,7 @@ class SharedWishlistController extends Controller
         private readonly SharedWishlistService $sharedWishlistService
     ) {}
 
-    // Получить конкретный вишлист по ID
+    // Получить список по токену общей ссылки ({id} в адресе)
     public function getWishlistById(
         string $id
     ): SharedWishlistResource {
@@ -42,7 +42,7 @@ class SharedWishlistController extends Controller
     ): SharedWishlistResource {
 
         Log::info('Обновление элементов списка желаний', [
-            'wishlist_id' => $wishlistId
+            'wishlist_id' => $wishlistId,
         ]);
 
         $validated = $request->validated();

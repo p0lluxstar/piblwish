@@ -69,9 +69,18 @@ const INTERACTIVE_SELECTOR =
 const handleCardClick = (event: MouseEvent): void => {
     if (props.expanded) return;
 
-    const target = event.target as HTMLElement | null;
+    // Путь события берётся из composedPath(), а не через closest() от target:
+    // обработчик кнопки успевает перерисовать карточку до всплытия события сюда
+    // (например, при снятии отметки исчезает галочка, по которой кликнули),
+    // и отсоединённый от документа элемент уже не находит родительскую кнопку
+    const isInteractive = event
+        .composedPath()
+        .some(
+            (node) =>
+                node instanceof Element && node.matches(INTERACTIVE_SELECTOR),
+        );
 
-    if (target?.closest(INTERACTIVE_SELECTOR)) return;
+    if (isInteractive) return;
     if (window.getSelection()?.toString()) return;
 
     emit('expand', props.wishlist);
@@ -297,15 +306,16 @@ const showCopyFeedback = (status: 'copied' | 'error'): void => {
 };
 
 const copyLink = async (): Promise<void> => {
-    const id = String(props.wishlist.id ?? '');
+    // Ссылка строится по токену, а не по id: владелец мог сменить ссылку
+    const token = props.wishlist.shareToken ?? '';
 
-    if (!id) {
+    if (!token) {
         showCopyFeedback('error');
         return;
     }
 
     const isCopied = await copyToClipboard(
-        getSharedWishlistUrl(id, props.wishlist.type),
+        getSharedWishlistUrl(token, props.wishlist.type),
     );
 
     showCopyFeedback(isCopied ? 'copied' : 'error');
@@ -1021,7 +1031,7 @@ $card-height: 280px;
 }
 
 .copy-tooltip--error {
-    background: var(--danger);
+    background: var(--danger-fill);
 }
 
 .copy-tooltip-enter-active,
@@ -1337,12 +1347,12 @@ $card-height: 280px;
 
 .uncheck-confirm-btn--danger {
     border-color: transparent;
-    background: var(--danger);
+    background: var(--danger-fill);
     color: #fff;
 
     &:hover {
         border-color: transparent;
-        background: var(--danger);
+        background: var(--danger-fill);
     }
 }
 

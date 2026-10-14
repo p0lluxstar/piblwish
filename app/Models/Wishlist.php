@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 #[Fillable(['user_id', 'type', 'title', 'content', 'color', 'hide_selections', 'is_shared', 'guests_can_check', 'guest_name_required', 'due_date', 'archived_at'])]
 class Wishlist extends Model
@@ -33,6 +34,9 @@ class Wishlist extends Model
         // Список желаний и сбор по умолчанию открыты по ссылке, список дел и заметка — нет
         static::creating(function (Wishlist $wishlist) {
             $wishlist->is_shared ??= $wishlist->isGift() || $wishlist->isFund();
+            // Пока владелец не сменил ссылку, токен ссылки совпадает с id
+            // (id к этому моменту уже задан HasUlids)
+            $wishlist->share_token ??= $wishlist->id;
         });
     }
 
@@ -118,6 +122,19 @@ class Wishlist extends Model
     protected function archived(Builder $query): void
     {
         $query->whereNotNull('archived_at');
+    }
+
+    // Новый токен общей ссылки: такой же ULID, как id, 80 случайных бит
+    public static function newShareToken(): string
+    {
+        return Str::lower((string) Str::ulid());
+    }
+
+    // Список по токену общей ссылки
+    #[Scope]
+    protected function byShareToken(Builder $query, string $token): void
+    {
+        $query->where('share_token', $token);
     }
 
     // Могут ли гости по ссылке отмечать дела выполненными: только в списке дел,

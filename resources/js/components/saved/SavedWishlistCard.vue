@@ -390,7 +390,7 @@ const confirmRemove = (): void => {
 
 .card-confirm-btn--danger {
     border-color: transparent;
-    background: linear-gradient(135deg, #fb7185, var(--brand-pink));
+    background: var(--danger-gradient);
     color: #fff;
 }
 </style>

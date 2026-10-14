@@ -67,7 +67,7 @@ use OpenApi\Attributes as OA;
     description: 'Список открывается, только если владелец включил доступ по ссылке (isShared). У позиций списка дел (type = todo) isSelected означает «выполнено», а поля jointGift нет. Отмечать дела гость может, только если guestsCanCheck = true. У позиций списка желаний есть поле jointGift: данные совместного подарка или null',
     tags: ['Shared wishlists'],
     parameters: [
-        new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'ulid')),
+        new OA\Parameter(name: 'id', description: 'Токен общей ссылки (shareToken), а не id списка; после смены ссылки прежний токен отвечает 404', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
     ],
     responses: [
         new OA\Response(
@@ -160,7 +160,7 @@ use OpenApi\Attributes as OA;
     summary: 'Выбрать подарки и получить токен брони',
     tags: ['Shared wishlists'],
     parameters: [
-        new OA\Parameter(name: 'wishlist', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'ulid')),
+        new OA\Parameter(name: 'wishlist', description: 'Токен общей ссылки (shareToken)', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
     ],
     requestBody: new OA\RequestBody(
         required: true,
@@ -170,12 +170,14 @@ use OpenApi\Attributes as OA;
                 new OA\Property(
                     property: 'item_ids',
                     type: 'array',
-                    items: new OA\Items(type: 'string', format: 'ulid')
+                    items: new OA\Items(type: 'string', format: 'ulid'),
+                    maxItems: 100
                 ),
                 new OA\Property(
                     property: 'joint_gifts',
                     description: 'Совместные подарки; item_id каждого должен входить в item_ids',
                     type: 'array',
+                    maxItems: 100,
                     items: new OA\Items(
                         required: ['item_id', 'name'],
                         properties: [
@@ -220,7 +222,7 @@ use OpenApi\Attributes as OA;
     description: 'Только для списка дел с доступом по ссылке, где владелец разрешил гостям отмечать дела (guestsCanCheck). Гость только ставит отметку, снять её может лишь владелец. Уже выполненные дела не изменяются, в том числе не меняется имя того, кто их отметил',
     tags: ['Shared wishlists'],
     parameters: [
-        new OA\Parameter(name: 'wishlist', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'ulid')),
+        new OA\Parameter(name: 'wishlist', description: 'Токен общей ссылки (shareToken)', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
     ],
     requestBody: new OA\RequestBody(
         required: true,
@@ -230,7 +232,8 @@ use OpenApi\Attributes as OA;
                 new OA\Property(
                     property: 'item_ids',
                     type: 'array',
-                    items: new OA\Items(type: 'string', format: 'ulid')
+                    items: new OA\Items(type: 'string', format: 'ulid'),
+                    maxItems: 100
                 ),
                 new OA\Property(
                     property: 'name',
@@ -257,7 +260,7 @@ use OpenApi\Attributes as OA;
     description: 'Неизвестные токены и брони без позиций в ответ не попадают',
     tags: ['Shared wishlists'],
     parameters: [
-        new OA\Parameter(name: 'wishlist', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'ulid')),
+        new OA\Parameter(name: 'wishlist', description: 'Токен общей ссылки (shareToken)', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
     ],
     requestBody: new OA\RequestBody(
         required: true,
@@ -300,7 +303,7 @@ use OpenApi\Attributes as OA;
     description: 'Остальные позиции брони остаются выбранными. Совместные подарки отменённых позиций удаляются. Бронь без позиций удаляется',
     tags: ['Shared wishlists'],
     parameters: [
-        new OA\Parameter(name: 'wishlist', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'ulid')),
+        new OA\Parameter(name: 'wishlist', description: 'Токен общей ссылки (shareToken)', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
     ],
     requestBody: new OA\RequestBody(
         required: true,
@@ -311,7 +314,8 @@ use OpenApi\Attributes as OA;
                 new OA\Property(
                     property: 'item_ids',
                     type: 'array',
-                    items: new OA\Items(type: 'string', format: 'ulid')
+                    items: new OA\Items(type: 'string', format: 'ulid'),
+                    maxItems: 100
                 ),
             ],
             type: 'object'
@@ -346,7 +350,7 @@ use OpenApi\Attributes as OA;
     description: 'Доступно организатору по токену брони, в которую входит позиция. Выбор позиции не меняется',
     tags: ['Shared wishlists'],
     parameters: [
-        new OA\Parameter(name: 'wishlist', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'ulid')),
+        new OA\Parameter(name: 'wishlist', description: 'Токен общей ссылки (shareToken)', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
         new OA\Parameter(name: 'item', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'ulid')),
     ],
     requestBody: new OA\RequestBody(

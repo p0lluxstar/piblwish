@@ -10,6 +10,9 @@ class WishlistResource extends ApiResource
     {
         return [
             'id' => $this->id,
+            // Токен общей ссылки: по нему список открывается гостям (/shared-wishlist/{shareToken}).
+            // Совпадает с id, пока владелец не сменил ссылку; у заметки null
+            'shareToken' => $this->isNote() ? null : $this->share_token,
             // Тип списка: gift — список желаний, todo — список дел, note — заметка,
             // см. App\Enums\WishlistType
             'type' => $this->type->value,

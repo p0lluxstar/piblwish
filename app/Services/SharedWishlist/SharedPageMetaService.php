@@ -17,16 +17,17 @@ class SharedPageMetaService
     /**
      * @return array{title: string, description: string}|null
      */
-    public function getMeta(string $id): ?array
+    public function getMeta(string $token): ?array
     {
         $wishlist = Wishlist::query()
             ->openByLink()
+            ->byShareToken($token)
             ->with('user:id,username')
             ->withCount([
                 'items',
                 'items as selected_items_count' => fn (Builder $query) => $query->where('is_selected', true),
             ])
-            ->find($id);
+            ->first();
 
         if ($wishlist === null) {
             return null;

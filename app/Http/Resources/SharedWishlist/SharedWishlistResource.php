@@ -20,7 +20,8 @@ class SharedWishlistResource extends ApiResource
     public function toArray($request): array
     {
         $data = [
-            'id' => $this->id,
+            // Токен общей ссылки: гость знает список только по нему, id списка не отдаётся
+            'id' => $this->share_token,
             // gift — список желаний; todo — список дел, открытый владельцем только
             // для просмотра: у его позиций isSelected означает «выполнено»
             'type' => $this->type->value,

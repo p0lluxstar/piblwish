@@ -12,7 +12,8 @@ use Tests\TestCase;
  * Мета-теги общей страницы списка (превью ссылки в мессенджерах).
  *
  * Открытый по ссылке список подставляет в HTML своё название и описание,
- * закрытый, архивный и несуществующий — только общие теги сайта.
+ * закрытый, архивный и несуществующий — только общие теги сайта и код 404
+ * (страницу «не найдено» при этом показывает то же SPA).
  */
 class SharedWishlistPageMetaTest extends TestCase
 {
@@ -86,7 +87,7 @@ class SharedWishlistPageMetaTest extends TestCase
         $hidden = $this->createGiftList(['is_shared' => false]);
 
         $this->get("/shared-wishlist/{$hidden->id}")
-            ->assertOk()
+            ->assertNotFound()
             ->assertDontSee('День рождения')
             ->assertSee('<meta property="og:title" content="PiblKit — желания, дела, сборы и заметки в одном месте">', false);
     }
@@ -96,15 +97,32 @@ class SharedWishlistPageMetaTest extends TestCase
         $archived = $this->createGiftList(['archived_at' => now()]);
 
         $this->get("/shared-wishlist/{$archived->id}")
-            ->assertOk()
+            ->assertNotFound()
             ->assertDontSee('День рождения');
     }
 
     public function test_missing_list_page_has_only_site_meta(): void
     {
         $this->get('/shared-wishlist/01JAAAAAAAAAAAAAAAAAAAAAAA')
-            ->assertOk()
-            ->assertSee('<meta property="og:title" content="PiblKit — желания, дела, сборы и заметки в одном месте">', false);
+            ->assertNotFound()
+            ->assertSee('<meta property="og:title" content="PiblKit — желания, дела, сборы и заметки в одном месте">', false)
+            ->assertSee('<meta name="robots" content="noindex">', false)
+            // Это та же оболочка SPA, а не страница ошибки Laravel
+            ->assertSee('id="app"', false);
+    }
+
+    public function test_note_page_is_not_found(): void
+    {
+        $user = User::factory()->create();
+        $note = Wishlist::create([
+            'user_id' => $user->id,
+            'type' => WishlistType::Note,
+            'content' => 'Секретная заметка',
+        ]);
+
+        $this->get("/shared-wishlist/{$note->id}")
+            ->assertNotFound()
+            ->assertDontSee('Секретная заметка');
     }
 
     public function test_landing_page_is_indexable(): void

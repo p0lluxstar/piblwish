@@ -307,18 +307,18 @@ const confirmDelete = (): void => {
     padding: 11px;
     border: none;
     border-radius: 18px;
-    background: linear-gradient(135deg, #fb7185, var(--brand-pink));
+    background: var(--danger-gradient);
     color: #fff;
     font-size: 13px;
     font-weight: 700;
     font-family: inherit;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 14px 30px -12px rgba(236, 72, 153, 0.5);
+    box-shadow: var(--danger-glow);
 
     &:hover:not(:disabled) {
         transform: translateY(-2px);
-        box-shadow: 0 18px 36px -12px rgba(236, 72, 153, 0.55);
+        box-shadow: var(--danger-glow-hover);
     }
 
     &:disabled {

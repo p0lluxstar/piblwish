@@ -6,6 +6,7 @@ use App\Mail\PasswordChangedMail;
 use App\Mail\PasswordResetCodeMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -287,6 +288,153 @@ class PasswordResetTest extends TestCase
         }
 
         $this->resetPassword($user->email, '000000')->assertStatus(429);
+    }
+
+    public function test_code_is_annulled_after_five_wrong_attempts(): void
+    {
+        $user = User::factory()->create();
+        $code = $this->requestCode($user);
+
+        $wrongCode = $code === '111111' ? '222222' : '111111';
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->resetPassword($user->email, $wrongCode)->assertStatus(400);
+        }
+
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => $user->email]);
+
+        // Лимит маршрута по email уже исчерпан, а код ещё не истёк по времени
+        $this->travel(61)->seconds();
+
+        $this->resetPassword($user->email, $code)
+            ->assertStatus(400)
+            ->assertJsonPath('data.message', 'Неверный или просроченный код');
+
+        $this->assertTrue(Hash::check('password', $user->fresh()->password));
+    }
+
+    // Лимит маршрута по email можно обойти другим написанием адреса или
+    // сменой IP, поэтому число проверок кода ограничено независимо от него
+    public function test_attempts_are_limited_per_code_without_route_limiter(): void
+    {
+        $this->withoutMiddleware(ThrottleRequests::class);
+
+        $user = User::factory()->create();
+        $code = $this->requestCode($user);
+
+        $wrongCode = $code === '111111' ? '222222' : '111111';
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->resetPassword($user->email, $wrongCode)->assertStatus(400);
+        }
+
+        $this->resetPassword($user->email, $code)->assertStatus(400);
+
+        $this->assertTrue(Hash::check('password', $user->fresh()->password));
+    }
+
+    public function test_correct_code_works_after_four_wrong_attempts(): void
+    {
+        $user = User::factory()->create();
+        $code = $this->requestCode($user);
+
+        $wrongCode = $code === '111111' ? '222222' : '111111';
+
+        for ($i = 0; $i < 4; $i++) {
+            $this->resetPassword($user->email, $wrongCode)->assertStatus(400);
+        }
+
+        $this->resetPassword($user->email, $code)->assertOk();
+
+        $this->assertTrue(Hash::check('new-password', $user->fresh()->password));
+    }
+
+    public function test_new_code_gets_fresh_attempts(): void
+    {
+        $user = User::factory()->create();
+        $firstCode = $this->requestCode($user);
+
+        $wrongCode = $firstCode === '111111' ? '222222' : '111111';
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->resetPassword($user->email, $wrongCode)->assertStatus(400);
+        }
+
+        $this->travel(61)->seconds();
+        $secondCode = $this->requestCode($user);
+
+        $this->assertSame(0, DB::table('password_reset_tokens')->where('email', $user->email)->value('attempts'));
+
+        $this->resetPassword($user->email, $secondCode)->assertOk();
+    }
+
+    // Лимит маршрута считается по введённому email и обходится написанием
+    // с другой диакритикой, которое MySQL считает тем же адресом. Отключённый
+    // лимитер маршрута моделирует этот обход: лимит на аккаунт должен остаться
+    public function test_codes_are_limited_per_account_once_a_minute(): void
+    {
+        $this->withoutMiddleware(ThrottleRequests::class);
+        Mail::fake();
+
+        $user = User::factory()->create();
+
+        $this->forgotPassword($user->email)->assertOk();
+        $token = DB::table('password_reset_tokens')->where('email', $user->email)->value('token');
+
+        // Ответ тот же, но письмо не отправляется и код не заменяется
+        $this->forgotPassword($user->email)
+            ->assertOk()
+            ->assertJsonPath('data.message', self::FORGOT_MESSAGE);
+
+        Mail::assertQueuedCount(1);
+        $this->assertSame($token, DB::table('password_reset_tokens')->where('email', $user->email)->value('token'));
+
+        $this->travel(61)->seconds();
+
+        $this->forgotPassword($user->email)->assertOk();
+
+        Mail::assertQueuedCount(2);
+    }
+
+    public function test_codes_are_limited_per_account_per_day(): void
+    {
+        $this->withoutMiddleware(ThrottleRequests::class);
+        Mail::fake();
+
+        $user = User::factory()->create();
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->forgotPassword($user->email)->assertOk();
+            $this->travel(61)->seconds();
+        }
+
+        Mail::assertQueuedCount(10);
+
+        $this->forgotPassword($user->email)->assertOk();
+
+        Mail::assertQueuedCount(10);
+
+        $this->travel(1)->days();
+
+        $this->forgotPassword($user->email)->assertOk();
+
+        Mail::assertQueuedCount(11);
+    }
+
+    public function test_account_limit_does_not_affect_other_users(): void
+    {
+        $this->withoutMiddleware(ThrottleRequests::class);
+        Mail::fake();
+
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        $this->forgotPassword($user->email)->assertOk();
+        $this->forgotPassword($user->email)->assertOk();
+        $this->forgotPassword($otherUser->email)->assertOk();
+
+        Mail::assertQueued(PasswordResetCodeMail::class, fn (PasswordResetCodeMail $mail): bool => $mail->hasTo($otherUser->email));
+        Mail::assertQueuedCount(2);
     }
 
     public function test_reset_code_email_renders(): void

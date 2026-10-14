@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\User;
+use App\Rules\NoControlCharacters;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -35,6 +36,7 @@ class RegistrationRequest extends FormRequest
                 'required',
                 'string',
                 'email',
+                new NoControlCharacters,
                 'max:255',
                 Rule::unique('users', 'email')->ignore($pendingUserId),
             ],
