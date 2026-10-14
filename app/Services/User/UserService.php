@@ -202,7 +202,7 @@ class UserService
             ));
         } catch (\Throwable $e) {
             Log::error('Failed to queue password changed email', [
-                'email' => $user->email,
+                'user_id' => $user->getKey(),
                 'exception' => $e,
             ]);
         }

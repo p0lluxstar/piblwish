@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\AssignRequestContext;
 use App\Http\Middleware\TransformApiResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Включает stateful auth для Sanctum SPA, cookie auth + sessions + csrf
         $middleware->statefulApi();
+
+        // Добавляется после запуска сессии, чтобы был известен пользователь
+        $middleware->web(append: [AssignRequestContext::class]);
+        $middleware->api(append: [AssignRequestContext::class]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->shouldRenderJsonWhen(function (Request $request, Throwable $e) {

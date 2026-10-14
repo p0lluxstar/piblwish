@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,6 +28,26 @@ class AppServiceProvider extends ServiceProvider
         JsonResource::withoutWrapping();
 
         $this->configureRateLimiting();
+        $this->configureLogViewer();
+    }
+
+    /**
+     * Доступ к журналам /log-viewer (opcodesio/log-viewer).
+     *
+     * Журналы содержат данные всех пользователей, поэтому страница открыта
+     * только ID из ADMIN_USER_IDS. Скачивать файлы можно, удалять нельзя:
+     * они удаляются сами через LOG_DAILY_DAYS дней, а удаление вручную
+     * стёрло бы записи, нужные для разбора ошибок.
+     */
+    private function configureLogViewer(): void
+    {
+        Gate::define('viewLogViewer', fn (?User $user): bool => $user !== null
+            && in_array(strtolower((string) $user->getKey()), config('app.admin_user_ids'), true));
+
+        Gate::define('downloadLogFile', fn (?User $user): bool => Gate::forUser($user)->allows('viewLogViewer'));
+        Gate::define('downloadLogFolder', fn (?User $user): bool => Gate::forUser($user)->allows('viewLogViewer'));
+        Gate::define('deleteLogFile', fn (?User $user): bool => false);
+        Gate::define('deleteLogFolder', fn (?User $user): bool => false);
     }
 
     /**

@@ -251,7 +251,7 @@ class AuthService
             ));
         } catch (\Throwable $e) {
             Log::error('Failed to queue password reset email', [
-                'email' => $user->email,
+                'user_id' => $user->getKey(),
                 'exception' => $e,
             ]);
         }
@@ -313,7 +313,7 @@ class AuthService
             ));
         } catch (\Throwable $e) {
             Log::error('Failed to queue password changed email', [
-                'email' => $user->email,
+                'user_id' => $user->getKey(),
                 'exception' => $e,
             ]);
         }
@@ -330,7 +330,9 @@ class AuthService
 
         $code = random_int(100000, 999999);
 
-        Log::info("Код регистрации для {$user->email}: {$code}");
+        if (app()->isLocal()) {
+            Log::info("Код регистрации для {$user->email}: {$code}");
+        }
 
         // Действует только последний код, поэтому прежние удаляются
         $user->verificationRegistrationCodes()->delete();
@@ -345,11 +347,11 @@ class AuthService
                 ->queue(new VerificationCodeMail((string) $code));
 
             Log::info('Verification email queued', [
-                'email' => $user->email,
+                'user_id' => $user->getKey(),
             ]);
         } catch (\Throwable $e) {
             Log::error('Failed to queue verification email', [
-                'email' => $user->email,
+                'user_id' => $user->getKey(),
                 'exception' => $e,
             ]);
         }
