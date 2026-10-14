@@ -40,6 +40,7 @@ import LoaderButtonSpinner from '../ui/LoaderButtonSpinner.vue';
 import UserAvatar from '../ui/UserAvatar.vue';
 import ItemPriorityIcons from './ItemPriorityIcons.vue';
 import JointGiftFields from './JointGiftFields.vue';
+import SharedWishlistUnavailable from './SharedWishlistUnavailable.vue';
 import TodoCheckedBy from './TodoCheckedBy.vue';
 import TodoGuestNameModal from './TodoGuestNameModal.vue';
 
@@ -48,6 +49,8 @@ const router = useRouter();
 const wishlist = ref<Wishlist | null>(null);
 const isLoading = ref(true);
 const error = ref<string | null>(null);
+// Сервер ответил 404: список удалён, закрыт или ссылка неверна
+const isNotFound = ref(false);
 const wishlistId = String(route.params.id || '');
 const selectedItems = ref<string[]>([]);
 const isSaving = ref(false);
@@ -216,6 +219,7 @@ const buildReservationLink = (token: string): string =>
 
 const getWishlist = async (): Promise<void> => {
     if (!wishlistId) {
+        isNotFound.value = true;
         error.value = 'Не указан идентификатор списка';
         isLoading.value = false;
         return;
@@ -223,6 +227,7 @@ const getWishlist = async (): Promise<void> => {
 
     isLoading.value = true;
     error.value = null;
+    isNotFound.value = false;
 
     try {
         const response = await api.get<{ data: Wishlist }>(
@@ -256,10 +261,11 @@ const getWishlist = async (): Promise<void> => {
 
         // На 404 сервер одинаково отвечает для удалённого списка, неверной ссылки
         // и списка дел, доступ к которому владелец выключил: причину гостю не раскрывают
-        error.value =
-            isAxiosError(fetchError) && fetchError.response?.status === 404
-                ? 'Список не найден. Возможно, ссылка неверна, список удалён или владелец закрыл доступ по ссылке.'
-                : 'Не удалось загрузить список. Проверьте URL или попробуйте позже.';
+        isNotFound.value =
+            isAxiosError(fetchError) && fetchError.response?.status === 404;
+        error.value = isNotFound.value
+            ? 'Список не найден'
+            : 'Не удалось загрузить список';
         wishlist.value = null;
     } finally {
         isLoading.value = false;
@@ -321,8 +327,8 @@ const refreshWishlist = async (): Promise<void> => {
             isAxiosError(refreshError) &&
             refreshError.response?.status === 404
         ) {
-            error.value =
-                'Список не найден. Возможно, ссылка неверна, список удалён или владелец закрыл доступ по ссылке.';
+            isNotFound.value = true;
+            error.value = 'Список не найден';
             wishlist.value = null;
             return;
         }
@@ -768,9 +774,11 @@ onMounted(getWishlist);
             <LaoderPageSpinner />
         </div>
 
-        <div v-else-if="error" class="error">
-            <p>{{ error }}</p>
-        </div>
+        <SharedWishlistUnavailable
+            v-else-if="error"
+            :not-found="isNotFound"
+            @retry="getWishlist"
+        />
 
         <div v-else-if="wishlist" class="content">
             <!-- Пояснение для гостя: чей это список подарков -->
@@ -1427,9 +1435,7 @@ onMounted(getWishlist);
             </div>
         </div>
 
-        <div v-else class="empty-state">
-            <p>Список не найден.</p>
-        </div>
+        <SharedWishlistUnavailable v-else not-found />
 
         <TodoGuestNameModal
             v-if="nameModalMode"
@@ -1585,16 +1591,10 @@ onMounted(getWishlist);
     transition: width 0.3s ease;
 }
 
-.loader,
-.error,
-.empty-state {
+.loader {
     text-align: center;
     color: var(--app-ink-soft, var(--ink-muted));
     font-size: 16px;
-}
-
-.error p {
-    color: var(--danger);
 }
 
 .card {

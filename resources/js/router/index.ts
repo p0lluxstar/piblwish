@@ -9,6 +9,7 @@ import ForgotPasswordPage from '@/pages/ForgotPasswordPage.vue';
 import HelpPage from '@/pages/HelpPage.vue';
 import LoginPage from '@/pages/LoginPage.vue';
 import MainPage from '@/pages/MainPage.vue';
+import NotFoundPage from '@/pages/NotFoundPage.vue';
 import RegistrationPage from '@/pages/RegistrationPage.vue';
 import SavedWishlistsPage from '@/pages/SavedWishlistsPage.vue';
 import WishlistSharedPage from '@/pages/WishlistSharedPage.vue';
@@ -131,6 +132,20 @@ const routes: RouteRecordRaw[] = [
                 path: '',
                 name: 'contacts',
                 component: ContactsPage,
+            },
+        ],
+    },
+    {
+        // Любой другой адрес: сервер отдаёт на него оболочку SPA,
+        // поэтому страница 404 выводится здесь. Маршрут должен быть последним
+        path: '/:pathMatch(.*)*',
+        component: DashboardLayout,
+        meta: { loadUser: true },
+        children: [
+            {
+                path: '',
+                name: 'not-found',
+                component: NotFoundPage,
             },
         ],
     },
