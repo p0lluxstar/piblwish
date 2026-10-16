@@ -56,9 +56,11 @@ const apiOrigin = (): string | null => {
 };
 
 const sampleRate = (): number => {
-    const value = Number(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE);
+    // Пустой аргумент сборки приходит пустой строкой, а Number('') — это 0
+    const raw = import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE?.trim() ?? '';
+    const value = Number(raw);
 
-    return Number.isFinite(value) && value >= 0 && value <= 1
+    return raw !== '' && Number.isFinite(value) && value >= 0 && value <= 1
         ? value
         : DEFAULT_TRACES_SAMPLE_RATE;
 };
