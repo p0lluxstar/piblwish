@@ -54,7 +54,7 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
+            'channels' => explode(',', (string) env('LOG_STACK', 'daily,sentry')),
             'ignore_exceptions' => false,
         ],
 
@@ -71,6 +71,14 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+        ],
+
+        // Записи уровня error и выше отправляются в Sentry: так туда попадают
+        // перехваченные ошибки (Log::error в сервисах), которых нет в обработчике
+        // исключений. Без SENTRY_LARAVEL_DSN канал ничего не отправляет
+        'sentry' => [
+            'driver' => 'sentry',
+            'level' => 'error',
         ],
 
         'slack' => [

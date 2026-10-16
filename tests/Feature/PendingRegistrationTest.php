@@ -6,8 +6,10 @@ use App\Mail\VerificationCodeMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
+use Monolog\Handler\TestHandler;
 use Tests\TestCase;
 
 /**
@@ -146,5 +148,27 @@ class PendingRegistrationTest extends TestCase
         }
 
         Mail::assertNothingQueued();
+    }
+
+    public function test_registration_code_and_email_are_not_logged_outside_local(): void
+    {
+        Mail::fake();
+
+        $logHandler = new TestHandler;
+        Log::driver()->getLogger()->pushHandler($logHandler);
+
+        $this->register()->assertCreated();
+
+        $code = $this->lastCode();
+
+        // Запись «Verification email queued» есть всегда: журнал подключён
+        $this->assertNotEmpty($logHandler->getRecords());
+
+        foreach ($logHandler->getRecords() as $record) {
+            $text = $record->message.json_encode($record->context);
+
+            $this->assertStringNotContainsString($code, $text);
+            $this->assertStringNotContainsString('new@example.com', $text);
+        }
     }
 }

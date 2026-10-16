@@ -28,15 +28,20 @@ services:
             dockerfile: _docker/app/Dockerfile.prod
             args:
                 VITE_API_URL: ${VITE_API_URL}
+                VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+                VITE_SENTRY_TRACES_SAMPLE_RATE: ${VITE_SENTRY_TRACES_SAMPLE_RATE:-}
         container_name: piblwish_app
         ports:
             # Только локальный адрес: снаружи PHP-FPM недоступен
             - '127.0.0.1:9090:9000'
 
-    # queue и scheduler используют образ, собранный для app
+    # queue и scheduler используют образ, собранный для app.
+    # Они работают от www-data, как и обработчики PHP-FPM: иначе файл журнала
+    # за день, созданный ими от root, PHP-FPM не сможет дописывать
     queue:
         <<: *app
         pull_policy: never
+        user: www-data
         container_name: piblwish_queue
         command: php artisan queue:work --verbose --tries=3 --timeout=90
 
@@ -44,6 +49,7 @@ services:
     scheduler:
         <<: *app
         pull_policy: never
+        user: www-data
         container_name: piblwish_scheduler
         command: php artisan schedule:work
 

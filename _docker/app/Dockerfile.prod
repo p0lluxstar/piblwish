@@ -19,6 +19,12 @@ COPY . .
 # передаётся аргументом сборки из docker-compose.prod.yml
 ARG VITE_API_URL
 ENV VITE_API_URL=${VITE_API_URL}
+# DSN Sentry фронтенда; пустой — Sentry в сборке выключен
+ARG VITE_SENTRY_DSN=
+ENV VITE_SENTRY_DSN=${VITE_SENTRY_DSN}
+# Доля трассировки фронтенда от 0 до 1; пустая — 0.1
+ARG VITE_SENTRY_TRACES_SAMPLE_RATE=
+ENV VITE_SENTRY_TRACES_SAMPLE_RATE=${VITE_SENTRY_TRACES_SAMPLE_RATE}
 
 RUN npm run build
 

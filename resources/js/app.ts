@@ -9,6 +9,7 @@ import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 
 import { setupAuthInterceptor } from '@/lib/authInterceptor';
+import { setupSentry } from '@/lib/sentry';
 
 import App from './App.vue';
 import router from './router';
@@ -29,5 +30,8 @@ const pinia = createPinia();
 app.use(router).use(pinia).use(VueQueryPlugin, { queryClient });
 
 setupAuthInterceptor(router, queryClient);
+
+// До mount, чтобы перехватывались и ошибки первой отрисовки
+setupSentry(app, router, pinia);
 
 app.mount('#app');

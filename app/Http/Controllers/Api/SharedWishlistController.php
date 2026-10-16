@@ -11,7 +11,6 @@ use App\Http\Requests\SharedWishlist\UpdateSharedWishlistItemsRequest;
 use App\Http\Resources\SharedWishlist\SharedWishlistResource;
 use App\Services\SharedWishlist\SharedWishlistService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
 
 class SharedWishlistController extends Controller
 {
@@ -23,10 +22,6 @@ class SharedWishlistController extends Controller
     public function getWishlistById(
         string $id
     ): SharedWishlistResource {
-        Log::info('Wishlist ID:', [
-            'id' => $id,
-        ]);
-
         $wishlist = $this->sharedWishlistService
             ->getWishlistById(
                 $id
@@ -40,11 +35,6 @@ class SharedWishlistController extends Controller
         UpdateSharedWishlistItemsRequest $request,
         string $wishlistId
     ): SharedWishlistResource {
-
-        Log::info('Обновление элементов списка желаний', [
-            'wishlist_id' => $wishlistId,
-        ]);
-
         $validated = $request->validated();
 
         $result = $this->sharedWishlistService->updateSharedWishlistItems(
