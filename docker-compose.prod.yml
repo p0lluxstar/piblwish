@@ -28,6 +28,7 @@ services:
             dockerfile: _docker/app/Dockerfile.prod
             args:
                 VITE_API_URL: ${VITE_API_URL}
+                VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
         container_name: piblwish_app
         ports:
             # Только локальный адрес: снаружи PHP-FPM недоступен

@@ -6,6 +6,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\AssignRequestContext;
 use App\Http\Middleware\TransformApiResponse;
 use Illuminate\Http\Request;
+use Sentry\Laravel\Integration;
 use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -24,6 +25,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(append: [AssignRequestContext::class]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        // Исключения, которые Laravel записывает в журнал, отправляются в Sentry.
+        // 4xx (404, 422, 401…) Laravel не записывает, поэтому они не отправляются
+        Integration::handles($exceptions);
+
         $exceptions->shouldRenderJsonWhen(function (Request $request, Throwable $e) {
             return $request->expectsJson();
         });
