@@ -9,8 +9,15 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Напоминания о списках, дата которых наступает в пределах срока пользователя.
-// Повторный запуск писем не дублирует (WishlistReminder)
+// Повторный запуск писем не дублирует (WishlistReminder).
+// Монитор Sentry Crons сообщает, если запуск пропущен, упал или не закончился
+// за maxRuntime; расписание и пояс берутся из задачи. Без DSN отметки не отправляются
 Schedule::command('wishlists:send-due-reminders')
     ->dailyAt(config('wishlist.reminders.time'))
     ->timezone(config('wishlist.reminders.timezone'))
-    ->withoutOverlapping();
+    ->withoutOverlapping()
+    ->sentryMonitor(
+        monitorSlug: 'due-date-reminders',
+        checkInMargin: 10,
+        maxRuntime: 15,
+    );

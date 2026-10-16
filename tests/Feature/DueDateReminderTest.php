@@ -8,6 +8,7 @@ use App\Models\Wishlist;
 use App\Services\Reminder\DueDateReminderService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -161,6 +162,18 @@ class DueDateReminderTest extends TestCase
         $this->runReminders();
 
         Mail::assertNothingQueued();
+    }
+
+    public function test_run_logs_number_of_sent_reminders(): void
+    {
+        $this->createWishlist(User::factory()->create());
+        Log::spy();
+
+        $this->runReminders();
+        $this->runReminders();
+
+        Log::shouldHaveReceived('info')->with('Due date reminders sent', ['count' => 1])->once();
+        Log::shouldHaveReceived('info')->with('Due date reminders sent', ['count' => 0])->once();
     }
 
     public function test_repeated_run_does_not_duplicate_reminders(): void
