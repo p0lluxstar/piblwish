@@ -11,6 +11,7 @@ export default [
             'node_modules/**',
             'vendor/**',
             'public/build/**',
+            'public/vendor/**',
             'storage/**',
             'bootstrap/cache/**',
         ],
