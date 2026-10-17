@@ -173,6 +173,13 @@ class AuthService
 
         $request->session()->regenerate();
 
+        // Context заполнен до входа, когда пользователь был гостем,
+        // поэтому ID передаётся явно. Email в журнал не пишется
+        Log::info('User logged in', [
+            'user_id' => $user->getKey(),
+            'remember' => $remember,
+        ]);
+
         return $request->user();
     }
 

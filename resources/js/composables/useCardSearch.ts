@@ -7,8 +7,8 @@ const normalize = (value: string): string =>
 // Поиск карточек по тексту на клиенте: все списки раздела уже загружены.
 // textsOf возвращает строки карточки, в которых ищется запрос (название,
 // текст заметки, имя владельца). Запрос не сохраняется между посещениями:
-// забытый запрос скрыл бы часть карточек. Поиск показывается, когда карточек
-// больше одной, как и панель с ним; иначе запрос не действует
+// забытый запрос скрыл бы часть карточек. Поиск показывается, когда есть
+// хотя бы одна карточка, как и панель с ним; иначе запрос не действует
 export const useCardSearch = <T>(
     items: Ref<T[]>,
     textsOf: (item: T) => (string | null | undefined)[],
@@ -20,7 +20,7 @@ export const useCardSearch = <T>(
 } => {
     const searchQuery = ref('');
 
-    const hasSearch = computed(() => items.value.length > 1);
+    const hasSearch = computed(() => items.value.length > 0);
 
     const activeSearchQuery = computed(() =>
         hasSearch.value ? normalize(searchQuery.value) : '',

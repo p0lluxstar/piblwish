@@ -40,7 +40,7 @@ const canReset = computed(
     () =>
         (props.showSearch && props.search.trim() !== '') ||
         props.activeType !== 'all' ||
-        !props.isDefaultSort,
+        (props.showSort && !props.isDefaultSort),
 );
 
 // Подпись для экранных дикторов: поле и текущее направление сортировки
@@ -63,7 +63,7 @@ const sortAriaLabel = (field: WishlistSortField, label: string): string => {
 
         <div
             v-if="showTypeFilter"
-            class="sort-group"
+            class="sort-group type-group"
             role="group"
             aria-label="Тип списков"
         >
@@ -89,7 +89,11 @@ const sortAriaLabel = (field: WishlistSortField, label: string): string => {
         </div>
 
         <!-- Сброс стоит вплотную к сортировке, а не через отступ между группами -->
-        <div v-if="showSort || canReset" class="sort-tail">
+        <div
+            v-if="showSort || canReset"
+            class="sort-tail"
+            :class="{ 'sort-tail--with-sort': showSort }"
+        >
             <div
                 v-if="showSort"
                 class="sort-group"
@@ -215,7 +219,7 @@ const sortAriaLabel = (field: WishlistSortField, label: string): string => {
 }
 
 // Узкий экран: открытое поле занимает всю строку над фильтрами
-@media (max-width: 599px) {
+@media (max-width: 479px) {
     .sort-bar .card-search.open {
         flex-basis: 100%;
         width: 100%;
@@ -227,14 +231,50 @@ const sortAriaLabel = (field: WishlistSortField, label: string): string => {
     flex-shrink: 0;
 }
 
-/* Очень узкий экран: у кнопок фильтра по типу иконка вместо подписи,
-   чтобы ряд занимал меньше места */
-@media (max-width: 399px) {
+/* Узкий экран: панель ровными рядами на всю ширину. Первый ряд — лупа
+   и фильтр по типу с иконками вместо подписей, второй — сортировка
+   и сброс, дальше — кнопки из слота. Кнопки в ряду делят ширину поровну */
+@media (max-width: 479px) {
+    .sort-bar {
+        gap: 8px 6px;
+    }
+
     .type-filter-icon {
         display: block;
     }
     .type-filter-label {
         display: none;
+    }
+
+    .type-group {
+        flex: 1 1 0;
+        flex-wrap: nowrap;
+        gap: 5px;
+        min-width: 0;
+
+        .sort-btn {
+            flex: 1 1 0;
+            justify-content: center;
+            gap: 3px;
+            min-width: 0;
+            padding: 5px 4px;
+        }
+    }
+
+    .sort-tail--with-sort {
+        flex-basis: 100%;
+        flex-wrap: nowrap;
+
+        .sort-group {
+            flex: 1;
+            gap: 6px;
+        }
+
+        .sort-btn {
+            flex: 1 1 auto;
+            justify-content: center;
+            padding: 5px 8px;
+        }
     }
 }
 </style>
