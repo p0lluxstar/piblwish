@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\HideLogViewerPage;
 use Opcodes\LogViewer\Enums\SortingMethod;
 use Opcodes\LogViewer\Enums\SortingOrder;
 use Opcodes\LogViewer\Enums\Theme;
@@ -105,6 +106,8 @@ return [
 
     'middleware' => [
         'web',
+        // Без прав — страница 404 приложения вместо 403 пакета
+        HideLogViewerPage::class,
         AuthorizeLogViewer::class,
     ],
 
