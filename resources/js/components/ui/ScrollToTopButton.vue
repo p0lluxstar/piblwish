@@ -11,13 +11,66 @@ const updateVisibility = (): void => {
     isVisible.value = window.scrollY > SHOW_AFTER;
 };
 
+// Длительность анимации растёт с расстоянием, но в пределах этих границ, мс.
+// Встроенная smooth-прокрутка браузера проходит длинную страницу почти рывком
+const MIN_DURATION = 500;
+const MAX_DURATION = 900;
+
+// Плавный разгон и торможение
+const easeInOutCubic = (t: number): number =>
+    t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+
+let frameId: number | null = null;
+
+// Колесо, касание или клавиши во время анимации её останавливают,
+// чтобы прокрутка не спорила с пользователем
+const INTERRUPT_EVENTS = ['wheel', 'touchstart', 'keydown'] as const;
+
+const stopAnimation = (): void => {
+    if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+        frameId = null;
+    }
+
+    INTERRUPT_EVENTS.forEach((name) =>
+        window.removeEventListener(name, stopAnimation),
+    );
+};
+
 const scrollToTop = (): void => {
     // При системной настройке «уменьшить движение» страница перематывается без анимации
     const reduceMotion = window.matchMedia(
         '(prefers-reduced-motion: reduce)',
     ).matches;
 
-    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+    const start = window.scrollY;
+
+    if (reduceMotion || start === 0) {
+        window.scrollTo({ top: 0 });
+        return;
+    }
+
+    stopAnimation();
+
+    const duration = Math.min(MAX_DURATION, Math.max(MIN_DURATION, start / 4));
+    const startTime = performance.now();
+
+    const step = (now: number): void => {
+        const progress = Math.min((now - startTime) / duration, 1);
+
+        window.scrollTo({ top: start * (1 - easeInOutCubic(progress)) });
+
+        if (progress < 1) {
+            frameId = requestAnimationFrame(step);
+        } else {
+            stopAnimation();
+        }
+    };
+
+    INTERRUPT_EVENTS.forEach((name) =>
+        window.addEventListener(name, stopAnimation, { passive: true }),
+    );
+    frameId = requestAnimationFrame(step);
 };
 
 onMounted(() => {
@@ -27,6 +80,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     window.removeEventListener('scroll', updateVisibility);
+    stopAnimation();
 });
 </script>
 

@@ -126,9 +126,10 @@ const refresh = (): void => {
         {{ removeErrorMessage }}
     </p>
 
-    <!-- Панель имеет смысл, только когда списков больше одного -->
+    <!-- Поиск виден и при одной карточке, сортировка — только когда списков
+         больше одного -->
     <WishlistSortBar
-        v-if="!isLoading && wishlists.length > 1"
+        v-if="!isLoading && wishlists.length > 0"
         v-model:search="searchQuery"
         :show-search="hasSearch"
         search-placeholder="Название или автор"
@@ -138,7 +139,7 @@ const refresh = (): void => {
         :sort-options="SORT_OPTIONS"
         :sort="sort"
         :is-default-sort="isDefaultSort"
-        show-sort
+        :show-sort="wishlists.length > 1"
         @update:type="typeFilter = $event"
         @sort="setSort"
         @reset="resetFilters"

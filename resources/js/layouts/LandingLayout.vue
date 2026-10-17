@@ -79,7 +79,17 @@ const imageStyle = computed(() => ({
     transform: `translate3d(${offsetX.value}px, ${offsetY.value}px, 0) rotate(${offsetX.value / 18}deg) scale(1.04)`,
 }));
 
+// Сдвиг за курсором только в десктопной раскладке и с мышью: на сенсорном
+// экране касание тоже порождает mousemove и картинка дёргалась бы к пальцу
+const PARALLAX_QUERY =
+    '(min-width: 901px) and (hover: hover) and (pointer: fine)';
+
 function handleMouseMove(event: MouseEvent): void {
+    if (!window.matchMedia(PARALLAX_QUERY).matches) {
+        resetImage();
+        return;
+    }
+
     const { innerWidth, innerHeight } = window;
 
     const x = (event.clientX / innerWidth - 0.5) * 2;
@@ -570,8 +580,10 @@ function resetImage(): void {
         padding-top: 48px;
     }
 
+    /* minmax(0, …): колонка не расширяется под содержимое шире экрана,
+       иначе её правый край обрезается и центр смещается влево */
     .landing {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .left-panel {
@@ -582,17 +594,24 @@ function resetImage(): void {
     }
 
     .right-panel {
+        grid-template-columns: minmax(0, 1fr);
         min-height: 42vh;
         padding: 32px;
     }
 
+    /* Ширина от панели, а не от экрана: vw не учитывает отступы панели
+       и включает полосу прокрутки */
+    .hero-stage {
+        width: 100%;
+    }
+
     .hero-slider {
-        width: min(86vw, 520px);
+        width: min(100%, 520px);
         height: 320px;
     }
 
     .slide-caption {
-        max-width: min(86vw, 520px);
+        max-width: min(100%, 520px);
     }
 }
 

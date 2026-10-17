@@ -704,10 +704,10 @@ onMounted(generateRandomPhrase);
         </p>
     </div>
 
-    <!-- Сортировка имеет смысл, только когда списков больше одного.
-         Ссылка между разделами видна и при одной карточке -->
+    <!-- Поиск виден и при одной карточке, сортировка — только когда списков
+         больше одного. Ссылка между разделами видна и без карточек -->
     <WishlistSortBar
-        v-if="!isLoading && (wishLists.length > 1 || hasSectionLink)"
+        v-if="!isLoading && (wishLists.length > 0 || hasSectionLink)"
         v-model:search="searchQuery"
         :show-search="hasSearch"
         search-placeholder="Поиск по названию"
@@ -728,24 +728,26 @@ onMounted(generateRandomPhrase);
             <router-link
                 :to="{ name: archived ? 'dashboard' : 'dashboard-archive' }"
                 class="sort-btn section-link"
+                :title="archived ? 'Мои карточки' : 'Архив'"
             >
                 <template v-if="archived">
                     <ArrowLeft :size="12" aria-hidden="true" />
-                    <span>Мои карточки</span>
+                    <span class="section-label">Мои карточки</span>
                 </template>
                 <template v-else>
                     <Archive :size="12" aria-hidden="true" />
-                    <span>Архив</span>
+                    <span class="section-label">Архив</span>
                     <span class="sort-count">{{ archivedCount }}</span>
                 </template>
             </router-link>
             <button
                 v-if="archived"
                 class="sort-btn clear-btn"
+                title="Удалить все"
                 @click="isClearArchiveModalOpen = true"
             >
                 <Trash2 :size="12" aria-hidden="true" />
-                <span>Удалить все</span>
+                <span class="section-label">Удалить все</span>
             </button>
         </div>
     </WishlistSortBar>
@@ -1052,6 +1054,30 @@ onMounted(generateRandomPhrase);
 
 .section-link {
     text-decoration: none;
+}
+
+// Узкий экран: отдельный ряд, кнопки справа и, как у фильтра по типу,
+// иконка вместо подписи. Подпись скрыта визуально и остаётся
+// для экранного диктора, title показывает её при наведении
+@media (max-width: 479px) {
+    .section-actions {
+        flex-basis: 100%;
+        justify-content: flex-end;
+        margin-left: 0;
+    }
+
+    .section-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .section-actions > .sort-btn {
+        padding: 5px 10px;
+    }
 }
 
 // Удаление всех карточек архива: в розовых тонах кнопки подтверждения удаления.
