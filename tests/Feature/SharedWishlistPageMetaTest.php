@@ -52,7 +52,7 @@ class SharedWishlistPageMetaTest extends TestCase
             ->assertOk()
             ->assertSee('<meta property="og:title" content="День рождения">', false)
             ->assertSee('Список желаний ivan: 3 желания. Дата события: 14 октября 2026.', false)
-            ->assertSee('<title>День рождения — PiblKit</title>', false)
+            ->assertSee('<title>День рождения — Piblix</title>', false)
             ->assertSee('<meta name="robots" content="noindex">', false);
     }
 
@@ -89,7 +89,7 @@ class SharedWishlistPageMetaTest extends TestCase
         $this->get("/shared-wishlist/{$hidden->id}")
             ->assertNotFound()
             ->assertDontSee('День рождения')
-            ->assertSee('<meta property="og:title" content="PiblKit — желания, дела, сборы и заметки в одном месте">', false);
+            ->assertSee('<meta property="og:title" content="Piblix — желания, дела, сборы и заметки в одном месте">', false);
     }
 
     public function test_archived_list_page_has_only_site_meta(): void
@@ -105,7 +105,7 @@ class SharedWishlistPageMetaTest extends TestCase
     {
         $this->get('/shared-wishlist/01JAAAAAAAAAAAAAAAAAAAAAAA')
             ->assertNotFound()
-            ->assertSee('<meta property="og:title" content="PiblKit — желания, дела, сборы и заметки в одном месте">', false)
+            ->assertSee('<meta property="og:title" content="Piblix — желания, дела, сборы и заметки в одном месте">', false)
             ->assertSee('<meta name="robots" content="noindex">', false)
             // Это та же оболочка SPA, а не страница ошибки Laravel
             ->assertSee('id="app"', false);

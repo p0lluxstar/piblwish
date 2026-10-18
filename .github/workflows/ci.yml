@@ -1,11 +1,11 @@
-# Проверка кода: тесты бэкенда, линтер, типы и сборка фронтенда, сборка прод-образа.
-# Запускается на пулреквестах и при push в dev и main. После push в main,
+# Проверка кода: тесты бэкенда, линтер и типы фронтенда, сборка прод-образа
+# (в ней же собирается фронтенд). Запускается при push в dev и main. На
+# пулреквестах отдельно не запускается: в main код попадает только из dev,
+# и в пулреквесте видны проверки его последнего коммита. После push в main,
 # если все проверки прошли, задача deploy выкладывает код на сервер.
 name: CI
 
 on:
-    pull_request:
-        branches: [main, dev]
     push:
         branches: [main, dev]
 
@@ -49,7 +49,7 @@ jobs:
             - run: php artisan test
 
     frontend:
-        name: Линтер, типы и сборка фронтенда
+        name: Линтер и типы фронтенда
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -62,9 +62,7 @@ jobs:
             - run: npm ci
             - run: npm run lint
             - run: npm run type-check
-            - run: npm run build
-              env:
-                  VITE_API_URL: https://example.test
+            # Сборку фронтенда проверяет задача docker: Dockerfile.prod собирает его сам
 
     docker:
         name: Сборка прод-образа

@@ -115,7 +115,12 @@ function resetImage(): void {
                             <LayoutGrid :size="33" color="#fff" />
                             <span class="logo-spark">✦</span>
                         </div>
-                        <h1>PiblKit</h1>
+                        <!-- Части названия — отдельные элементы: перенос строки между
+                             ними Vue убирает, и пробел перед X не появляется -->
+                        <h1>
+                            <span>Pibli</span>
+                            <span class="logo-x">x</span>
+                        </h1>
                     </div>
                 </router-link>
 
@@ -343,6 +348,19 @@ function resetImage(): void {
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+}
+
+/* X другим шрифтом (подключён в welcome.blade.php). У шрифта одно
+   начертание, поэтому вес обычный: иначе браузер дорисует жирность.
+   line-height: 1 — чтобы крупная буква не увеличивала высоту строки.
+   Штрих X выходит за ширину буквы вправо, а градиент рисуется только
+   внутри блока названия: отступ справа расширяет блок, и X не обрезается */
+.logo-x {
+    padding-right: 0.12em;
+    font-family: 'Permanent Marker', cursive;
+    font-size: 1.2em;
+    font-weight: 400;
+    line-height: 1;
 }
 
 .right-panel {
@@ -622,6 +640,11 @@ function resetImage(): void {
 
     .brand h1 {
         font-size: 26px;
+    }
+
+    /* На телефоне крупная X выглядит слишком большой */
+    .logo-x {
+        font-size: 1.05em;
     }
 
     .content h2 {

@@ -16,7 +16,7 @@
     <p>Здравствуйте, {{ $username }}!</p>
 
     @if (count($ownLists) > 0)
-        <p>Напоминаем о ваших списках в системе <strong>«PiblKit»</strong>:</p>
+        <p>Напоминаем о ваших списках в системе <strong>«Piblix»</strong>:</p>
 
         @foreach ($ownLists as $list)
             <div
@@ -61,7 +61,7 @@
                 Скоро также наступает дата чужих списков, которые вы сохранили:
             @else
                 Скоро наступает дата чужих списков, которые вы сохранили
-                в системе <strong>«PiblKit»</strong>:
+                в системе <strong>«Piblix»</strong>:
             @endif
         </p>
 

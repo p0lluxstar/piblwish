@@ -1,7 +1,7 @@
 @php
     // Мета-теги превью ссылки. Общая страница списка передаёт $meta
     // (SharedWishlistPageController), остальные страницы получают общие теги сайта
-    $siteName = 'PiblKit';
+    $siteName = 'Piblix';
     $pageTitle = isset($meta) ? $meta['title'].' — '.$siteName : $siteName.' - Желания, дела, сборы и заметки в одном месте';
     $ogTitle = $meta['title'] ?? $siteName.' — желания, дела, сборы и заметки в одном месте';
     $ogDescription = $meta['description']
@@ -51,6 +51,10 @@
             document.documentElement.dataset.theme = dark ? 'dark' : 'light';
         })();
     </script>
+    {{-- Шрифт буквы X в логотипе. text=xX — загружаются только эти два символа --}}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&text=xX&display=swap">
     @vite(['resources/css/app.css', 'resources/js/app.ts'])
     <title>{{ $pageTitle }}</title>
 </head>
