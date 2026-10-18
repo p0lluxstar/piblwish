@@ -17,7 +17,7 @@
 
     <p>
         Для смены пароля от аккаунта в системе
-        <strong>«PiblKit»</strong>
+        <strong>«Piblix»</strong>
         введите следующий код:
     </p>
 

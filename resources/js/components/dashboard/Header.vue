@@ -44,7 +44,7 @@ const handleDeleteAccount = (): void => {
     <header class="header">
         <div class="header-inner">
             <!-- Авторизованный пользователь попадает на свои карточки, гость — на главную -->
-            <router-link :to="logoLink" class="logo" aria-label="PiblKit">
+            <router-link :to="logoLink" class="logo" aria-label="Piblix">
                 <div class="logo-icon">
                     <LayoutGrid :size="20" color="#fff" />
                     <span class="logo-spark">✦</span>
@@ -52,8 +52,16 @@ const handleDeleteAccount = (): void => {
                 <span class="logo-text">
                     <!-- На узком экране вместо полного названия — сокращение -->
                     <span class="logo-title" aria-hidden="true">
-                        <span class="logo-title-full">PiblKit</span>
-                        <span class="logo-title-short">PK</span>
+                        <!-- Части названия — отдельные элементы: перенос строки между
+                             ними Vue убирает, и пробел перед X не появляется -->
+                        <span class="logo-title-full">
+                            <span>Pibli</span>
+                            <span class="logo-x">x</span>
+                        </span>
+                        <span class="logo-title-short">
+                            <span>P</span>
+                            <span class="logo-x">X</span>
+                        </span>
                     </span>
                     <!-- Фраза обращена к владельцу списков, поэтому гостю не показывается.
                          Невидимая самая длинная фраза лежит в той же ячейке и задаёт
@@ -242,6 +250,18 @@ const handleDeleteAccount = (): void => {
 }
 .logo-title-short {
     display: none;
+}
+/* X другим шрифтом (подключён в welcome.blade.php). У шрифта одно
+   начертание, поэтому вес обычный: иначе браузер дорисует жирность.
+   line-height: 1 — чтобы крупная буква не увеличивала высоту строки.
+   Штрих X выходит за ширину буквы вправо, а градиент рисуется только
+   внутри блока названия: отступ справа расширяет блок, и X не обрезается */
+.logo-x {
+    padding-right: 0.12em;
+    font-family: 'Permanent Marker', cursive;
+    font-size: 1.2em;
+    font-weight: 400;
+    line-height: 1;
 }
 /* Название и фраза под ним. В сетке у блока фразы с overflow: hidden нулевой минимальный
    размер, поэтому при нехватке места блок сжимается до ширины названия, а фраза обрезается */
@@ -502,7 +522,7 @@ const handleDeleteAccount = (): void => {
         height: 40px;
         font-size: 15px;
     }
-    /* На узком экране вместо полного названия — сокращение PW */
+    /* На узком экране вместо полного названия — сокращение PX */
     .logo {
         gap: 8px;
     }
@@ -512,7 +532,15 @@ const handleDeleteAccount = (): void => {
     .logo-title-short {
         display: inline;
     }
-    /* Под сокращением PW фразе не хватает места */
+    /* Сокращение из двух букв крупнее полного названия */
+    .logo-title {
+        font-size: 22px;
+    }
+    /* В сокращении крупная X выглядит слишком большой рядом с одной P */
+    .logo-x {
+        font-size: 1em;
+    }
+    /* Под сокращением PX фразе не хватает места */
     .logo-phrase-box {
         display: none;
     }
